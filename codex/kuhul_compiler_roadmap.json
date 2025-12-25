@@ -1,0 +1,23 @@
+{
+  "@context": "kuhul://roadmap/compiler/v1",
+  "@id": "KUHUL_COMPILER_PIPELINE",
+
+  "planned_modules": [
+    "glyph_compiler",
+    "visual_editor",
+    "performance_optimizer"
+  ],
+
+  "constraints": {
+    "no_jit": true,
+    "no_external_runtime": true,
+    "scx_required": true
+  },
+
+  "performance_targets": {
+    "goal_vs_js": "2–3x",
+    "compression": "SCXQ2"
+  },
+
+  "@status": "PLANNED"
+}
