@@ -1,4 +1,3 @@
-```javascript
 /* ============================================================
    K’UHUL-π COMPRESSION CALCULUS KERNEL
    File: sw.js
@@ -1606,4 +1605,3 @@ console.log(`
 ║ NOW MX2LM HAS NATIVE JSON REST                         ║
 ╚══════════════════════════════════════════════════════════╝
 `);
-```
