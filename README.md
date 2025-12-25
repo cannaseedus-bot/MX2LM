@@ -1,6 +1,7 @@
 # MX2LM
 
-<img src="dashboard.svg" style="width:500px;">
+![MX2LM Brain](dashboard.svg)
+
 
 # Ω BLACK PANEL — ASX ⊗ π-K’UHUL ⊗ XCFE
 
