@@ -1,0 +1,83 @@
+⟁ π_module mx2lm_svg_model_kernel
+  ⟁Wo⟁ version "1.0.0"
+  ⟁Wo⟁ law "Ω-BLACK-PANEL"
+  ⟁Wo⟁ role "svg_model_executor"
+
+  ⟁ π_const π_shell_registry {
+    "orbital_halo",
+    "stack_grid",
+    "tunnel_rail",
+    "hud_ring",
+    "fractal_lattice"
+  }
+
+  ⟁ π_fn π_vec_norm(v)
+    ⟁ let s 0.0
+    ⟁ loop i 0 len(v)
+      ⟁ let s s + (v[i] * v[i])
+    ⟁ end
+    ⟁ return sqrt(s)
+  ⟁ end
+
+  ⟁ π_fn π_render_model(model_id, data)
+    ⟁ let model data["models"][model_id]
+    ⟁ let shell_id model["shell"]
+    ⟁ π_render_shell(shell_id, data["shells"])
+  ⟁ end
+
+  ⟁ π_fn π_render_shell(shell_id, shells)
+    ⟁ if not shell_id in π_shell_registry
+      ⟁ return
+    ⟁ end
+
+    ⟁ let shell shells[shell_id]
+
+    ⟁ switch shell_id
+      ⟁ case "orbital_halo"
+        ⟁ π_render_orbital_halo(shell)
+      ⟁ case "stack_grid"
+        ⟁ π_render_stack_grid(shell)
+      ⟁ case "tunnel_rail"
+        ⟁ π_render_tunnel_rail(shell)
+      ⟁ case "hud_ring"
+        ⟁ π_render_hud_ring(shell)
+      ⟁ case "fractal_lattice"
+        ⟁ π_render_fractal_lattice(shell)
+    ⟁ end
+  ⟁ end
+
+  ⟁ π_fn π_render_orbital_halo(s)
+    ⟁ π_render_ring("inner", s["inner"])
+    ⟁ π_render_ring("mid",   s["mid"])
+    ⟁ π_render_ring("outer", s["outer"])
+  ⟁ end
+
+  ⟁ π_fn π_render_stack_grid(s)
+    ⟁ loop r 0 s["rows"]
+      ⟁ loop c 0 s["cols"]
+        ⟁ π_render_cell(r, c, s["weights"][r][c])
+      ⟁ end
+    ⟁ end
+  ⟁ end
+
+  ⟁ π_fn π_render_tunnel_rail(s)
+    ⟁ loop i 0 s["segments"]
+      ⟁ π_render_segment(i, s["depth"][i])
+    ⟁ end
+  ⟁ end
+
+  ⟁ π_fn π_render_hud_ring(s)
+    ⟁ loop i 0 len(s["arcs"])
+      ⟁ π_render_arc(
+        s["arcs"][i]["start"],
+        s["arcs"][i]["end"],
+        s["arcs"][i]["label"]
+      )
+    ⟁ end
+  ⟁ end
+
+  ⟁ π_fn π_render_fractal_lattice(s)
+    ⟁ π_render_fractal_node(0, s["levels"], s["branch_factor"])
+  ⟁ end
+
+⟁ end π_module
