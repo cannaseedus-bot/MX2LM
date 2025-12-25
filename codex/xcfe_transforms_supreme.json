@@ -3,11 +3,23 @@
   "@id": "SUPREME_MERGE",
   "@role": "law",
   "@executable": false,
-  "@inputs": ["MX2LM_KERNEL_REST_API", "SVG3D_MODEL_SHELLS"],
-  "@outputs": ["UNIFIED_AST"],
+  "@description": "Canonical XCFE transform merging native REST API AST with SVG3D visualization AST into a unified execution model.",
+  "@inputs": [
+    "MX2LM_KERNEL_REST_API",
+    "SVG3D_MODEL_SHELLS"
+  ],
+  "@outputs": [
+    "UNIFIED_AST"
+  ],
   "@integration_points": [
     "API_ENDPOINT → SVG3D_RENDER",
     "SVG3D_INTERACTION → API_REINFORCEMENT",
     "MEMORY_UPDATE → VISUALIZATION_REFRESH"
-  ]
+  ],
+  "@guarantees": [
+    "Deterministic AST merge",
+    "No side effects",
+    "Law-level only (no runtime execution)"
+  ],
+  "@status": "FROZEN"
 }
