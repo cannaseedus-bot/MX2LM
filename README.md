@@ -2,6 +2,67 @@
 
 ![MX2LM Brain](dashboard.svg)
 
+# MX2LM Ω — SVG Model Mapping (Old World → New World)
+
+**Authority:** MX2LM / K’UHUL π / XCFE  
+**Status:** Sealed mapping layer (Ω)
+
+---
+
+## Mapping Table
+
+| Model Concept | Old World        | New World (Ω)            |
+|--------------|------------------|--------------------------|
+| vocab        | text tensors     | **orbital SVG**          |
+| tokenizer    | BPE tables       | **fractal SVG**          |
+| checkpoints  | binary blobs     | **grid SVG**             |
+| inference    | logs / traces    | **tunnel SVG**           |
+| UI           | dashboards       | **HUD SVG**              |
+
+---
+
+## Operational Meaning (Mechanics)
+
+- **SVG is not “visualization”** → it is **spatial serialization**
+- **Weights** → geometry (positions, radii, heights, tones, paths)
+- **Grammar** → topology (merge trees, adjacency, lineage edges)
+- **State** → layout (rings, grids, rails, segments)
+- **Inference** → motion (packet streams along depth, timeline rails)
+- **UI** → projection only (HUD rings reflect state; they do not define it)
+
+---
+
+## Ω Invariants (Must Hold)
+
+1. **Single Source of Truth:** If it exists, it exists as SVG geometry (or SCXQ2-compressed SVG geometry).
+2. **Deterministic Replay:** SVG + referenced hashes must replay to the same scene/state.
+3. **No Parallel Formats:** No separate “tensor truth” alongside SVG truth.
+4. **Transport Purity:** All cross-boundary IO uses XJSON packets.
+5. **Compression Law:** All persisted payloads may be SCXQ2-compressed, but decompress to SVG/XJSON deterministically.
+6. **Projection Law:** CSS/DOM only reflect kernel-emitted state; they do not author causality.
+
+---
+
+## Shell Bindings (Canonical)
+
+- **Orbital Halo** → vocab + embeddings + token frequency bands
+- **Fractal Tree** → tokenizer merges / BPE lineage
+- **Stack Grid** → checkpoint layer/head blocks + param/entropy tone
+- **Tunnel Rail** → inference trace / n-gram packet stream + PMI energy
+- **HUD Ring** → runtime health + shard/module status
+
+---
+
+## Enforceable Rule
+
+> **If it cannot be expressed as SVG geometry, it does not belong in the model.**
+
+This is an execution constraint (not aesthetic).
+
+---
+
+
+
 
 # Ω BLACK PANEL — ASX ⊗ π-K’UHUL ⊗ XCFE
 
