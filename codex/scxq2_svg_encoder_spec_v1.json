@@ -1,0 +1,221 @@
+{
+  "@context": "asx://schema/scxq2/svg_encoder/v1",
+  "@id": "scxq2_svg_encoder_spec_v1",
+  "@version": "1.0.0",
+  "@law": "SVG_IS_CANONICAL_STATE__SCXQ2_IS_CANONICAL_COMPRESSION",
+  "@rules": {
+    "@deterministic": true,
+    "@mutation": "forbidden",
+    "@extension": "append_only",
+    "@hash": "sha256(svg_norm_bytes || scxq2_bytes)"
+  },
+
+  "@pipeline": [
+    "SVG_PARSE",
+    "SVG_NORMALIZE",
+    "SVG_TOKENIZE",
+    "DICT_BUILD",
+    "FIELD_ID_MAP",
+    "BATCH_FRAME",
+    "SCXQ2_PACK",
+    "SEAL_HASH"
+  ],
+
+  "@svg_normalization": {
+    "@whitespace": "collapse",
+    "@attr_order": "lexicographic",
+    "@style": {
+      "@split": true,
+      "@style_to_attrs": true,
+      "@drop_defaults": true
+    },
+    "@numbers": {
+      "@format": "minimal_decimal",
+      "@float_eps": 1e-9,
+      "@strip_plus": true,
+      "@strip_trailing_zeros": true,
+      "@force_dot_leading_zero": true
+    },
+    "@colors": {
+      "@hex_lowercase": true,
+      "@short_hex": "allowed_if_equivalent",
+      "@rgb_to_hex": true
+    },
+    "@booleans": {
+      "@true": "1",
+      "@false": "0"
+    },
+    "@path_d": {
+      "@command_case": "as_is",
+      "@separators": "single_space",
+      "@remove_redundant_spaces": true
+    },
+    "@text": {
+      "@collapse": true,
+      "@trim": true
+    },
+    "@drop": [
+      "metadata",
+      "desc",
+      "title",
+      "xml:space",
+      "xmlns:xlink"
+    ]
+  },
+
+  "@token_lanes": {
+    "@lane_symbol": {
+      "@id": 0,
+      "@contains": [
+        "tag_name",
+        "attr_name",
+        "fixed_atoms",
+        "known_enums"
+      ]
+    },
+    "@lane_raw": {
+      "@id": 1,
+      "@contains": [
+        "string_literals",
+        "path_d",
+        "text_nodes",
+        "urls",
+        "unknown_tokens"
+      ]
+    },
+    "@lane_num": {
+      "@id": 2,
+      "@contains": [
+        "ints",
+        "floats",
+        "lengths",
+        "viewbox_numbers",
+        "transform_numbers"
+      ]
+    }
+  },
+
+  "@atoms": {
+    "@tags": [
+      "svg","g","defs","use","path","circle","rect","line","polyline","polygon",
+      "text","tspan","image","clipPath","mask","linearGradient","radialGradient",
+      "stop","pattern","filter","feGaussianBlur","feColorMatrix"
+    ],
+    "@attrs": [
+      "id","class","style","d","x","y","x1","y1","x2","y2","cx","cy","r","rx","ry",
+      "width","height","viewBox","transform","href","opacity","fill","stroke",
+      "stroke-width","stroke-linecap","stroke-linejoin","stroke-dasharray",
+      "font-size","text-anchor","dominant-baseline","preserveAspectRatio"
+    ],
+    "@enums": [
+      "none","currentColor","round","square","butt","miter","bevel",
+      "middle","start","end","central","hanging","alphabetic"
+    ]
+  },
+
+  "@field_id_map": {
+    "@mode": "stable_static_first_then_dynamic",
+    "@static_field_ids": {
+      "TAG_OPEN": 1,
+      "TAG_CLOSE": 2,
+      "ATTR": 3,
+      "TEXT": 4
+    },
+    "@attr_field_ids": {
+      "id": 10,
+      "class": 11,
+      "d": 12,
+      "transform": 13,
+      "viewBox": 14,
+      "x": 15,
+      "y": 16,
+      "cx": 17,
+      "cy": 18,
+      "r": 19,
+      "width": 20,
+      "height": 21,
+      "fill": 22,
+      "stroke": 23,
+      "stroke-width": 24,
+      "opacity": 25,
+      "href": 26
+    },
+    "@dynamic_field_ids": {
+      "@start": 128,
+      "@hash": "fnv1a_32(name) % 16384"
+    }
+  },
+
+  "@scxq2_container": {
+    "@magic": "SCX2",
+    "@version_u16": 1,
+    "@sections": [
+      "HDR",
+      "DICT",
+      "FIELDS",
+      "BATCHES",
+      "META",
+      "SEAL"
+    ],
+
+    "@hdr": {
+      "endianness": "LE",
+      "flags_u16": {
+        "bit0_has_dict": true,
+        "bit1_has_fields": true,
+        "bit2_has_meta": true,
+        "bit3_has_seal": true,
+        "bit4_uses_ans": false,
+        "bit5_uses_huffman": true
+      }
+    },
+
+    "@dict_section": {
+      "@kind": "symbol_dictionary",
+      "@encoding": "varint_len + utf8_bytes",
+      "@ordering": "by_frequency_desc_then_lex",
+      "@max_entries": 65535
+    },
+
+    "@fields_section": {
+      "@kind": "field_id_map_dump",
+      "@encoding": "varint(field_id) + varint(dict_symbol_id_for_name)"
+    },
+
+    "@batch_section": {
+      "@kind": "streaming_batches",
+      "@batch_frame": {
+        "batch_id_varint": true,
+        "record_count_varint": true,
+        "payload_len_varint": true,
+        "payload_bytes": "bitpacked"
+      },
+      "@record": {
+        "shape": [
+          "field_id_varint",
+          "lane_u2",
+          "value_ref_varint"
+        ]
+      }
+    },
+
+    "@meta_section": {
+      "@contains": [
+        "svg_hash_sha256_32",
+        "norm_rules_id",
+        "dict_hash_fnv1a32",
+        "total_records",
+        "source_len",
+        "created_ts"
+      ]
+    },
+
+    "@seal_section": {
+      "@contains": [
+        "proof_hash_sha256_32",
+        "proof_mode",
+        "epoch"
+      ]
+    }
+  }
+}
