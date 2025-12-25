@@ -10,7 +10,7 @@
 -------------------------------- */
 
 const Ω = Object.freeze({
-  VERSION: "Ω-KUHUL-PI-KERNEL.v1",
+  VERSION: "Ω-KUHUL-PI-KERNEL.v1.1",
   DETERMINISTIC: true,
   UI_READS_STATE: true,
   STATE_READS_UI: false,
@@ -52,6 +52,11 @@ const KERNEL_STATE = {
   manifest: null,
   brain: null,
   expandedSVG: null,
+
+  // Codex is NON-AUTHORITATIVE semantic layer. UI may read it.
+  // Kernel must never obey it.
+  codex: Object.freeze([]),
+
   entropy: 0.32,
   ticks: 0
 };
@@ -72,7 +77,7 @@ async function loadManifest() {
    ============================================================ */
 
 function extractBrain(manifest, brainId = "mx2lm_v1_1") {
-  const brain = manifest.brains?.[brainId];
+  const brain = manifest?.brains?.[brainId];
   if (!brain) throw new Error("Ω: Brain not found");
   KERNEL_STATE.brain = brain;
   return brain;
@@ -86,24 +91,30 @@ function expandNodeGlyph(node, layout) {
   const [x, y] = layout.⟁P;
   const [w, h] = layout.⟁S;
 
+  const bindNode = node?.bind?.node || "UNKNOWN_NODE";
+  const bindLayer = node?.bind?.layer || "unknown";
+
   return `
-    <g class="mx-node" data-node="${node.bind.node}" data-layer="${node.bind.layer}">
+    <g class="mx-node" data-node="${bindNode}" data-layer="${bindLayer}">
       <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="16"
-            fill="var(--${node.bind.layer}-bg, #0b1322)"
-            stroke="var(--${node.bind.layer}-fg, #1a2b44)" />
+            fill="var(--${bindLayer}-bg, #0b1322)"
+            stroke="var(--${bindLayer}-fg, #1a2b44)" />
       <text x="${x + 20}" y="${y + 28}" font-family="monospace" font-size="12" fill="#e8f5ff">
-        ${node.bind.node}
+        ${bindNode}
       </text>
     </g>
   `;
 }
 
 function expandLayer(layer, nodes) {
-  const layout = layer.layout;
-  let offsetX = layout.⟁P[0];
-  let offsetY = layout.⟁P[1] + 40;
+  const layout = layer.layout || { ⟁P: [64, 64], ⟁S: [960, 118] };
+  const baseX = (layout.⟁P && layout.⟁P[0]) || 0;
+  const baseY = (layout.⟁P && layout.⟁P[1]) || 0;
 
-  return nodes.map((node, i) =>
+  const offsetX = baseX;
+  const offsetY = baseY + 40;
+
+  return (nodes || []).map((node, i) =>
     expandNodeGlyph(node, {
       ⟁P: [offsetX + i * 320, offsetY],
       ⟁S: [300, 58]
@@ -121,12 +132,13 @@ function expandBrainToSVG(brain) {
       <rect width="100%" height="100%" fill="#070b12"/>
   `;
 
-  brain.layers_def.forEach(layer => {
-    const nodes = layer.nodes.map(id =>
-      brain.nodes_def.find(n => n.id === id)
-    );
+  const layers = brain?.layers_def || [];
+  const nodesDef = brain?.nodes_def || [];
+
+  for (const layer of layers) {
+    const nodes = (layer.nodes || []).map(id => nodesDef.find(n => n.id === id)).filter(Boolean);
     svg += expandLayer(layer, nodes);
-  });
+  }
 
   svg += `</svg>`;
   KERNEL_STATE.expandedSVG = svg;
@@ -138,12 +150,14 @@ function expandBrainToSVG(brain) {
    ============================================================ */
 
 function compressionDelta(tokens) {
-  const unique = new Set(tokens).size;
-  return tokens.length === 0 ? 0 : unique / tokens.length;
+  const arr = Array.isArray(tokens) ? tokens : [];
+  const unique = new Set(arr).size;
+  return arr.length === 0 ? 0 : unique / arr.length;
 }
 
 function symbolicWeight(tokens) {
-  return tokens.reduce((sum, t) => {
+  const arr = Array.isArray(tokens) ? tokens : [];
+  return arr.reduce((sum, t) => {
     if (t === "π") return sum + π.PI;
     if (t === "φ") return sum + π.PHI;
     if (t === "e") return sum + π.E;
@@ -161,57 +175,6 @@ function kuhulTick() {
 }
 
 /* ============================================================
-   MESSAGE BRIDGE (UI → KERNEL)
-   ============================================================ */
-
-self.addEventListener("message", async (event) => {
-  const { type } = event.data || {};
-
-  switch (type) {
-
-    case "Ω_INIT": {
-      await loadManifest();
-      extractBrain(KERNEL_STATE.manifest);
-      const svg = expandBrainToSVG(KERNEL_STATE.brain);
-      event.source.postMessage({ type: "Ω_SVG_READY", svg });
-      break;
-    }
-
-    case "Ω_NODE_ACTIVATE": {
-      const { node, tokens } = event.data;
-      const delta = compressionDelta(tokens);
-      const weight = symbolicWeight(tokens);
-      kuhulTick();
-      event.source.postMessage({
-        type: "Ω_NODE_RESULT",
-        node,
-        delta,
-        weight,
-        tick: KERNEL_STATE.ticks
-      });
-      break;
-    }
-
-    default:
-      // ignore unknown messages
-      break;
-  }
-});
-
-/* ============================================================
-   SERVICE WORKER LIFECYCLE
-   ============================================================ */
-
-self.addEventListener("install", e => {
-  self.skipWaiting();
-});
-
-self.addEventListener("activate", e => {
-  e.waitUntil(self.clients.claim());
-});
-
-
-/* ============================================================
    MX2LM — IndexedDB Memory Substrate (Structural Only)
    Add-on Module for sw.js
    Law: UI reads state; state never reads UI
@@ -226,9 +189,9 @@ const MX2_IDB = {
   VERSION: 1,
 
   STORES: {
-    events:  { keyPath: "id", indexes: [["t","t"], ["node","node"], ["layer","layer"]] },
-    memory:  { keyPath: "k",  indexes: [["ns","ns"], ["t","t"]] },
-    sessions:{ keyPath: "sid",indexes: [["t0","t0"], ["t1","t1"]] },
+    events:   { keyPath: "id", indexes: [["t","t"], ["node","node"], ["layer","layer"], ["sid","sid"]] },
+    memory:   { keyPath: "k",  indexes: [["ns","ns"], ["t","t"]] },
+    sessions: { keyPath: "sid",indexes: [["t0","t0"], ["t1","t1"]] }
   },
 
   // Keep this small + deterministic; flush on tick boundaries or fixed intervals.
@@ -242,7 +205,8 @@ const MX2_IDB = {
     GRAD:        "symbolic_gradients",
     DELTAS:      "compression_deltas",
     INFER:       "inference_log",
-    MANIFEST:    "manifest_brains", // optional: store compressed brain glyph blocks
+    MANIFEST:    "manifest_brains",
+    CODEX:       "codex_cache" // optional: store a frozen codex snapshot/hash
   }
 };
 
@@ -257,10 +221,8 @@ function mx2_idb_open() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(MX2_IDB.NAME, MX2_IDB.VERSION);
 
-    req.onupgradeneeded = (e) => {
+    req.onupgradeneeded = () => {
       const db = req.result;
-
-      // Create stores
       for (const [name, spec] of Object.entries(MX2_IDB.STORES)) {
         if (!db.objectStoreNames.contains(name)) {
           const store = db.createObjectStore(name, { keyPath: spec.keyPath });
@@ -304,14 +266,6 @@ function mx2_idb_put(store, value) {
   });
 }
 
-function mx2_idb_get(store, key) {
-  return new Promise((resolve, reject) => {
-    const req = store.get(key);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = () => reject(req.error);
-  });
-}
-
 function mx2_idb_getAll(store) {
   return new Promise((resolve, reject) => {
     const req = store.getAll();
@@ -330,23 +284,18 @@ function mx2_idb_clear(store) {
 
 /* ---------------------------
    2) STRUCTURAL MEMORY (in SW)
-   - Buffers are RAM-only; IDB is substrate
 --------------------------- */
 const MX2_MEM = {
-  // RAM buffers (flush to IDB)
   buf: {
     events: [],
-    memory: [],    // memory snapshots/deltas
-    sessions: []
+    memory: []
   },
 
-  // RAM mirrors (optional, keep tiny)
-  // These are structural and can be reconstructed from IDB.
   maps: {
-    eventTraces: new Map(),       // key: layer -> array[{node,t,tc}]
-    coActivation: new Map(),      // key: `${layer}:${node}` -> Set(otherNodes)
-    gradients: new Map(),         // key: `${layer}:${node}` -> {count,eff,t}
-    deltas: new Map(),            // key: `${node}:${t}` -> delta
+    eventTraces: new Map(),  // layer -> array[{node,t,tc}]
+    coActivation: new Map(), // `${layer}:${node}` -> Set(otherNodes)
+    gradients: new Map(),    // `${layer}:${node}` -> {count,eff,t}
+    deltas: new Map()        // `${node}:${t}` -> delta
   },
 
   session: {
@@ -360,41 +309,32 @@ const MX2_MEM = {
 
 function mx2_now() { return Date.now(); }
 
-// Deterministic ID: based on epoch seconds + stable tag
 function mx2_make_session_id() {
   const s = Math.floor(mx2_now() / 1000);
   return `mx2_${s}_Ω`;
 }
 
-function mx2_hash32(str) {
-  // deterministic, non-crypto
-  let h = 0;
-  for (let i = 0; i < str.length; i++) {
-    h = ((h << 5) - h) + str.charCodeAt(i);
-    h |= 0;
-  }
-  return Math.abs(h);
-}
-
 function mx2_compression_delta(tokens) {
-  if (!tokens || !tokens.length) return 0;
-  const uniq = new Set(tokens).size;
-  return uniq / tokens.length;
+  const arr = Array.isArray(tokens) ? tokens : [];
+  if (!arr.length) return 0;
+  const uniq = new Set(arr).size;
+  return uniq / arr.length;
 }
 
 /* ---------------------------
    3) BOOT / LOAD SUBSTRATE
 --------------------------- */
+let __mx2_flush_timer = null;
+
 async function mx2_mem_boot() {
   if (!MX2_MEM.session.sid) {
     MX2_MEM.session.sid = mx2_make_session_id();
     MX2_MEM.session.t0 = mx2_now();
   }
 
-  // Load small structural mirrors from IDB if present
+  // Rebuild small RAM mirrors from IDB snapshots if present
   await mx2_idb_tx(["memory"], "readonly", async ({ memory }) => {
     const all = await mx2_idb_getAll(memory);
-    // We only rebuild RAM mirrors for known namespaces.
     for (const row of all) {
       if (!row || !row.ns) continue;
 
@@ -402,7 +342,6 @@ async function mx2_mem_boot() {
         MX2_MEM.maps.eventTraces = new Map(row.v || []);
       }
       if (row.ns === MX2_IDB.NS.COACT && row.id === "graph") {
-        // Stored as [key, [vals...]]
         const m = new Map();
         for (const [k, arr] of (row.v || [])) m.set(k, new Set(arr));
         MX2_MEM.maps.coActivation = m;
@@ -413,80 +352,20 @@ async function mx2_mem_boot() {
     }
   });
 
-  // Start deterministic flush interval
-  mx2_mem_start_flush_loop();
-}
-
-let __mx2_flush_timer = null;
-function mx2_mem_start_flush_loop() {
-  if (__mx2_flush_timer) return;
-  __mx2_flush_timer = setInterval(() => {
-    mx2_mem_flush().catch(() => {});
-  }, MX2_IDB.FLUSH_MS);
+  if (!__mx2_flush_timer) {
+    __mx2_flush_timer = setInterval(() => {
+      mx2_mem_flush().catch(() => {});
+    }, MX2_IDB.FLUSH_MS);
+  }
 }
 
 /* ---------------------------
    4) WRITE PATHS (events → substrate)
 --------------------------- */
-function mx2_record_activation({ node, layer, token, weight, tokens }) {
-  const t = mx2_now();
-  const ts = Math.floor(t / 1000);
-
-  // Structural event id: stable within second window
-  const id = `ev_${node}_${layer}_${ts}`;
-
-  // 1) Update RAM mirrors
-  MX2_MEM.session.totalActivations++;
-  MX2_MEM.session.totalTokens += (tokens?.length || 0);
-
-  // event traces
-  if (!MX2_MEM.maps.eventTraces.has(layer)) MX2_MEM.maps.eventTraces.set(layer, []);
-  MX2_MEM.maps.eventTraces.get(layer).push({ node, t, tc: (tokens?.length || 0) });
-
-  // compression deltas
-  const d = mx2_compression_delta(tokens || []);
-  MX2_MEM.maps.deltas.set(`${node}:${t}`, d);
-
-  // gradients (structural mean efficiency)
-  const gk = `${layer}:${node}`;
-  const cur = MX2_MEM.maps.gradients.get(gk) || { count: 0, eff: 0, t: 0 };
-  const n = cur.count + 1;
-  const eff = (cur.eff * cur.count + d) / n;
-  MX2_MEM.maps.gradients.set(gk, { count: n, eff, t });
-
-  // co-activation graph (optional): you can feed “active set” externally;
-  // here we only store an empty set unless you pass coActivatedWith[].
-  // (Keep deterministic: no heuristics.)
-  if (!MX2_MEM.maps.coActivation.has(gk)) MX2_MEM.maps.coActivation.set(gk, new Set());
-
-  // 2) Buffer IDB writes (bounded)
-  MX2_MEM.buf.events.push({
-    id,
-    sid: MX2_MEM.session.sid,
-    node,
-    layer,
-    token,
-    w: +weight,
-    tc: (tokens?.length || 0),
-    d,
-    t
-  });
-
-  if (MX2_MEM.buf.events.length > MX2_IDB.MAX_BUFFER) {
-    MX2_MEM.buf.events.splice(0, MX2_MEM.buf.events.length - MX2_IDB.MAX_BUFFER);
-  }
-
-  // 3) Buffer memory snapshots (small, periodic – we store mirrors)
-  // Snapshots are overwrite-style (same key), so safe.
-  mx2_buffer_memory_mirrors(t);
-}
-
 function mx2_buffer_memory_mirrors(t) {
-  // Convert Sets -> arrays for storage
   const coactArr = [];
   MX2_MEM.maps.coActivation.forEach((set, k) => coactArr.push([k, Array.from(set)]));
 
-  // Overwrite snapshots (same k)
   MX2_MEM.buf.memory.push({
     k: `${MX2_IDB.NS.EVENT_TRACES}:by_layer`,
     ns: MX2_IDB.NS.EVENT_TRACES,
@@ -511,8 +390,53 @@ function mx2_buffer_memory_mirrors(t) {
     t
   });
 
-  // Keep memory buffer bounded (overwrite-style; keep last few)
+  // Keep bounded
   if (MX2_MEM.buf.memory.length > 24) MX2_MEM.buf.memory.splice(0, MX2_MEM.buf.memory.length - 24);
+}
+
+function mx2_record_activation({ node, layer, token, weight, tokens }) {
+  const t = mx2_now();
+  const ts = Math.floor(t / 1000);
+  const nid = String(node || "UNKNOWN");
+  const lid = String(layer || "unknown");
+
+  // Stable per-second event id (structural)
+  const id = `ev_${nid}_${lid}_${ts}`;
+
+  MX2_MEM.session.totalActivations++;
+  MX2_MEM.session.totalTokens += (Array.isArray(tokens) ? tokens.length : 0);
+
+  if (!MX2_MEM.maps.eventTraces.has(lid)) MX2_MEM.maps.eventTraces.set(lid, []);
+  MX2_MEM.maps.eventTraces.get(lid).push({ node: nid, t, tc: (Array.isArray(tokens) ? tokens.length : 0) });
+
+  const d = mx2_compression_delta(tokens);
+  MX2_MEM.maps.deltas.set(`${nid}:${t}`, d);
+
+  const gk = `${lid}:${nid}`;
+  const cur = MX2_MEM.maps.gradients.get(gk) || { count: 0, eff: 0, t: 0 };
+  const n = cur.count + 1;
+  const eff = (cur.eff * cur.count + d) / n;
+  MX2_MEM.maps.gradients.set(gk, { count: n, eff, t });
+
+  if (!MX2_MEM.maps.coActivation.has(gk)) MX2_MEM.maps.coActivation.set(gk, new Set());
+
+  MX2_MEM.buf.events.push({
+    id,
+    sid: MX2_MEM.session.sid,
+    node: nid,
+    layer: lid,
+    token: token == null ? null : String(token),
+    w: +weight || 0,
+    tc: (Array.isArray(tokens) ? tokens.length : 0),
+    d,
+    t
+  });
+
+  if (MX2_MEM.buf.events.length > MX2_IDB.MAX_BUFFER) {
+    MX2_MEM.buf.events.splice(0, MX2_MEM.buf.events.length - MX2_IDB.MAX_BUFFER);
+  }
+
+  mx2_buffer_memory_mirrors(t);
 }
 
 /* ---------------------------
@@ -525,7 +449,6 @@ async function mx2_mem_flush() {
   const events = MX2_MEM.buf.events.splice(0);
   const memory = MX2_MEM.buf.memory.splice(0);
 
-  // Session snapshot (overwrite)
   const sess = {
     sid: MX2_MEM.session.sid,
     t0: MX2_MEM.session.t0,
@@ -535,13 +458,8 @@ async function mx2_mem_flush() {
   };
 
   await mx2_idb_tx(["events", "memory", "sessions"], "readwrite", async ({ events: ev, memory: mem, sessions }) => {
-    // events append
     for (const e of events) await mx2_idb_put(ev, e);
-
-    // memory overwrite snapshots
     for (const m of memory) await mx2_idb_put(mem, m);
-
-    // sessions overwrite
     await mx2_idb_put(sessions, sess);
   });
 
@@ -550,13 +468,10 @@ async function mx2_mem_flush() {
 
 /* ---------------------------
    6) RESET (structural only)
-   - Clears session + RAM buffers
-   - Optionally clears IDB stores
 --------------------------- */
 async function mx2_mem_reset({ clear_idb = false } = {}) {
   MX2_MEM.buf.events = [];
   MX2_MEM.buf.memory = [];
-  MX2_MEM.buf.sessions = [];
 
   MX2_MEM.maps.eventTraces = new Map();
   MX2_MEM.maps.coActivation = new Map();
@@ -583,10 +498,7 @@ async function mx2_mem_reset({ clear_idb = false } = {}) {
 }
 
 /* ---------------------------
-   7) SW ROUTES (optional, but useful)
-   - /mx2/memory/status
-   - /mx2/memory/export
-   - /mx2/memory/reset?clear=1
+   7) SW ROUTES (memory)
 --------------------------- */
 function mx2_json(obj, status = 200) {
   return new Response(JSON.stringify(obj, null, 2), {
@@ -595,7 +507,7 @@ function mx2_json(obj, status = 200) {
   });
 }
 
-async function mx2_route_memory(req, url) {
+async function mx2_route_memory(url) {
   const p = url.pathname;
 
   if (p === "/mx2/memory/status") {
@@ -615,7 +527,6 @@ async function mx2_route_memory(req, url) {
   }
 
   if (p === "/mx2/memory/export") {
-    // Export structural data only
     const coactArr = [];
     MX2_MEM.maps.coActivation.forEach((set, k) => coactArr.push([k, Array.from(set)]));
 
@@ -645,52 +556,12 @@ async function mx2_route_memory(req, url) {
   return null;
 }
 
-/* ---------------------------
-   8) MESSAGE API (optional)
-   - postMessage({type:"mx2.activation", payload:{...}})
---------------------------- */
-self.addEventListener("message", (evt) => {
-  const msg = evt.data || {};
-  if (!msg || !msg.type) return;
-
-  if (msg.type === "mx2.activation") {
-    // payload: {node,layer,token,weight,tokens[]}
-    try { mx2_record_activation(msg.payload || {}); } catch (_) {}
-  }
-
-  if (msg.type === "mx2.flush") {
-    mx2_mem_flush().catch(() => {});
-  }
-
-  if (msg.type === "mx2.reset") {
-    mx2_mem_reset({ clear_idb: !!msg.clear_idb }).catch(() => {});
-  }
-});
-
-/* ---------------------------
-   9) FETCH HOOK (mount routes)
-   IMPORTANT: integrate inside your existing fetch router.
-   If you don't have one yet, this is safe to paste near the top
-   and let it fall through to your other handlers.
---------------------------- */
-self.addEventListener("fetch", (event) => {
-  const url = new URL(event.request.url);
-
-  // Only handle same-origin routes (3-file law)
-  if (url.origin !== self.location.origin) return;
-
-  if (url.pathname.startsWith("/mx2/memory/")) {
-    event.respondWith((async () => {
-      const res = await mx2_route_memory(event.request, url);
-      return res || mx2_json({ ok: false, err: "not_found" }, 404);
-    })());
-  }
-});
-
-
-/* ---------------------------
-   10) Codex loader (SAFE VERSION)
---------------------------- */
+/* ============================================================
+   CODEX LOADER (SAFE VERSION)
+   - Non-authoritative
+   - Failure tolerant
+   - Frozen return
+   ============================================================ */
 
 async function loadCodex() {
   try {
@@ -698,13 +569,20 @@ async function loadCodex() {
     if (!idxRes.ok) return Object.freeze([]);
 
     const index = await idxRes.json();
-    if (!Array.isArray(index.files)) return Object.freeze([]);
+    if (!index || !Array.isArray(index.files)) return Object.freeze([]);
 
     const codex = [];
 
     for (const file of index.files) {
+      const fname = String(file || "").trim();
+      if (!fname) continue;
+
+      // Hard safety: only .json filenames, no traversal
+      if (!fname.endsWith(".json")) continue;
+      if (fname.includes("..") || fname.includes("\\") || fname.startsWith("/")) continue;
+
       try {
-        const res = await fetch(`./codex/${file}`, { cache: "no-store" });
+        const res = await fetch(`./codex/${fname}`, { cache: "no-store" });
         if (res.ok) codex.push(await res.json());
       } catch (_) {}
     }
@@ -714,3 +592,165 @@ async function loadCodex() {
     return Object.freeze([]);
   }
 }
+
+/* ============================================================
+   MESSAGE BRIDGE (UI → KERNEL)
+   - Single unified message listener (prevents double-handlers)
+   ============================================================ */
+
+function postBack(source, payload) {
+  try { source && source.postMessage && source.postMessage(payload); } catch (_) {}
+}
+
+self.addEventListener("message", async (event) => {
+  const msg = event.data || {};
+  const type = msg.type;
+
+  // MX2 substrate message API
+  if (type === "mx2.activation") {
+    try { mx2_record_activation(msg.payload || {}); } catch (_) {}
+    return;
+  }
+  if (type === "mx2.flush") {
+    mx2_mem_flush().catch(() => {});
+    return;
+  }
+  if (type === "mx2.reset") {
+    mx2_mem_reset({ clear_idb: !!msg.clear_idb }).catch(() => {});
+    return;
+  }
+
+  // Ω kernel UI bridge
+  switch (type) {
+    case "Ω_INIT": {
+      try {
+        await mx2_mem_boot();              // substrate available immediately
+        await loadManifest();              // authoritative
+        extractBrain(KERNEL_STATE.manifest);
+
+        // SAFE: codex does not affect execution
+        KERNEL_STATE.codex = await loadCodex();
+
+        const svg = expandBrainToSVG(KERNEL_STATE.brain);
+
+        postBack(event.source, {
+          type: "Ω_SVG_READY",
+          svg,
+          codex: KERNEL_STATE.codex, // optional read-only projection
+          meta: {
+            kernel: Ω.VERSION,
+            ticks: KERNEL_STATE.ticks,
+            entropy: KERNEL_STATE.entropy,
+            deterministic: Ω.DETERMINISTIC
+          }
+        });
+      } catch (err) {
+        postBack(event.source, { type: "Ω_ERROR", err: String(err && err.message ? err.message : err) });
+      }
+      break;
+    }
+
+    case "Ω_NODE_ACTIVATE": {
+      try {
+        const node = msg.node;
+        const tokens = msg.tokens;
+
+        const delta = compressionDelta(tokens);
+        const weight = symbolicWeight(tokens);
+
+        kuhulTick();
+
+        // Optional: record activation structurally (still lawful)
+        // If UI provides layer/token, pass them; otherwise keep minimal.
+        try {
+          mx2_record_activation({
+            node: String(node || "UNKNOWN"),
+            layer: String(msg.layer || "unknown"),
+            token: msg.token == null ? null : String(msg.token),
+            weight,
+            tokens: Array.isArray(tokens) ? tokens : []
+          });
+        } catch (_) {}
+
+        postBack(event.source, {
+          type: "Ω_NODE_RESULT",
+          node,
+          delta,
+          weight,
+          tick: KERNEL_STATE.ticks,
+          entropy: KERNEL_STATE.entropy
+        });
+      } catch (err) {
+        postBack(event.source, { type: "Ω_ERROR", err: String(err && err.message ? err.message : err) });
+      }
+      break;
+    }
+
+    // Optional: allow UI to request codex refresh without changing law
+    case "Ω_CODEX_REFRESH": {
+      try {
+        KERNEL_STATE.codex = await loadCodex();
+        postBack(event.source, { type: "Ω_CODEX_READY", codex: KERNEL_STATE.codex });
+      } catch (_) {
+        postBack(event.source, { type: "Ω_CODEX_READY", codex: Object.freeze([]) });
+      }
+      break;
+    }
+
+    default:
+      // ignore unknown messages
+      break;
+  }
+});
+
+/* ============================================================
+   FETCH HOOK (routes)
+   - Single unified fetch handler (prevents collisions)
+   ============================================================ */
+
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+
+  // Only handle same-origin routes (3-file law)
+  if (url.origin !== self.location.origin) return;
+
+  // MX2 memory routes
+  if (url.pathname.startsWith("/mx2/memory/")) {
+    event.respondWith((async () => {
+      const res = await mx2_route_memory(url);
+      return res || mx2_json({ ok: false, err: "not_found" }, 404);
+    })());
+    return;
+  }
+
+  // (Optional) codex index passthrough helper (read-only convenience)
+  // - Does not grant directory listing; only returns already-loaded codex count.
+  if (url.pathname === "/mx2/codex/status") {
+    event.respondWith(mx2_json({
+      ok: true,
+      codex_loaded: Array.isArray(KERNEL_STATE.codex) ? KERNEL_STATE.codex.length : 0
+    }));
+    return;
+  }
+
+  // Otherwise: fall through to network (no caching behavior defined here by design).
+});
+
+/* ============================================================
+   SERVICE WORKER LIFECYCLE
+   - Single install/activate (prevents double-boot)
+   ============================================================ */
+
+self.addEventListener("install", (e) => {
+  e.waitUntil((async () => {
+    await mx2_mem_boot();
+    self.skipWaiting();
+  })());
+});
+
+self.addEventListener("activate", (e) => {
+  e.waitUntil((async () => {
+    await mx2_mem_boot();
+    await self.clients.claim();
+  })());
+});
