@@ -1,0 +1,30 @@
+{
+  "@context": "kuhul://spec/vm/glyph/v1",
+  "@id": "KUHUL_GLYPH_VM_SPEC",
+  "@role": "specification",
+
+  "glyphs": {
+    "Wo":    { "opcode": "0x01", "args": 1, "semantics": "create value" },
+    "Ch'en": { "opcode": "0x02", "args": 1, "semantics": "store variable" },
+    "Yax":   { "opcode": "0x03", "args": 1, "semantics": "load variable" },
+    "Sek":   { "opcode": "0x04", "args": 1, "semantics": "execute function" },
+    "Pop":   { "opcode": "0x05", "args": 1, "semantics": "function entry" },
+    "Xul":   { "opcode": "0x06", "args": 0, "semantics": "function exit" },
+    "K'ayab'": { "opcode": "0x07", "args": 0, "semantics": "loop start" },
+    "Kumk'u": { "opcode": "0x08", "args": 0, "semantics": "loop end" }
+  },
+
+  "bytecode_rules": {
+    "endianness": "little",
+    "string_encoding": "utf8",
+    "determinism": true
+  },
+
+  "execution_model": {
+    "type": "stack_vm",
+    "jit": false,
+    "side_effects": "explicit_only"
+  },
+
+  "@status": "DRAFT_SPEC"
+}
