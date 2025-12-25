@@ -703,3 +703,29 @@ self.addEventListener("activate", (e) => {
     await self.clients.claim();
   })());
 });
+
+/* ---------------------------
+   11) Codex loader (SAFE VERSION)
+--------------------------- */
+
+async function loadCodex() {
+  const codexFiles = [
+    "kuhul_ui_codex.json",
+    "kuhul_chat_codex.json",
+    "kuhul_visualization_codex.json"
+    // optionally auto-discovered
+  ];
+
+  const codex = [];
+
+  for (const file of codexFiles) {
+    try {
+      const res = await fetch(`./codex/${file}`, { cache: "no-store" });
+      if (res.ok) codex.push(await res.json());
+    } catch (_) {
+      // Codex failure must NEVER crash kernel
+    }
+  }
+
+  return Object.freeze(codex);
+}
