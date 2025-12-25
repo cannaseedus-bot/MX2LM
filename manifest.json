@@ -25,10 +25,6 @@
   },
 
   "schemas": {
-
-    /* =========================================================
-       ATOMIC TOKENIZER
-       ========================================================= */
     "atomic_tokenizer_v1": {
       "$id": "asx://schema/atomic_tokenizer.v1",
       "$schema": "xjson://xcfe/schema/v1",
@@ -52,9 +48,6 @@
       }
     },
 
-    /* =========================================================
-       ATOMIC RUNTIME
-       ========================================================= */
     "atomic_runtime_v1": {
       "$id": "asx://schema/atomic_runtime.v1",
       "$schema": "xjson://xcfe/schema/v1",
@@ -76,9 +69,6 @@
       }
     },
 
-    /* =========================================================
-       CLUSTER IDENTITY
-       ========================================================= */
     "cluster_identity_v1": {
       "$id": "asx://schema/cluster_identity.v1",
       "$schema": "xjson://xcfe/schema/v1",
@@ -95,9 +85,6 @@
       }
     },
 
-    /* =========================================================
-       CLUSTER DELTA
-       ========================================================= */
     "cluster_delta_v1": {
       "$id": "asx://schema/cluster_delta.v1",
       "$schema": "xjson://xcfe/schema/v1",
@@ -127,9 +114,6 @@
       }
     },
 
-    /* =========================================================
-       CLUSTER MERGE RESULT
-       ========================================================= */
     "cluster_merge_result_v1": {
       "$id": "asx://schema/cluster_merge_result.v1",
       "$schema": "xjson://xcfe/schema/v1",
@@ -152,9 +136,6 @@
       }
     },
 
-    /* =========================================================
-       DELTA CONFLICT PROOF
-       ========================================================= */
     "delta_conflict_proof_v1": {
       "$id": "asx://schema/delta_conflict_proof.v1",
       "$schema": "xjson://xcfe/schema/v1",
@@ -177,9 +158,6 @@
       }
     },
 
-    /* =========================================================
-       TRACE → DELTA COMPILER
-       ========================================================= */
     "trace_to_delta_compiler_v1": {
       "$id": "asx://schema/trace_to_delta_compiler.v1",
       "$schema": "xjson://xcfe/schema/v1",
@@ -195,9 +173,6 @@
       }
     },
 
-    /* =========================================================
-       REPLAY VERIFIER
-       ========================================================= */
     "replay_verifier_v1": {
       "$id": "asx://schema/replay_verifier.v1",
       "$schema": "xjson://xcfe/schema/v1",
@@ -219,14 +194,12 @@
   },
 
   "codex": {
-    "id": "KUHUL_ETERNAL_CODEX",     
+    "id": "KUHUL_ETERNAL_CODEX",
     "version": "Ω.∞.Ω",
     "path": "./codex/",
     "mode": "semantic-only",
     "authority": "non-executing",
     "hashing": "optional",
     "sealed": false
-}
-
   }
 }
