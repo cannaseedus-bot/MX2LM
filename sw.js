@@ -22,6 +22,43 @@ const Ω = Object.freeze({
 });
 
 /* ------------------------------
+   AUTHORITATIVE TIME (replayable)
+-------------------------------- */
+const ΩCLOCK = {
+  tick: 0,
+  epoch: 1890000008000, // from manifest timestamp or fixed law constant
+  step_ms: 1            // logical ms per tick, not wall time
+};
+
+function Ω_now() {
+  // deterministic "time"
+  return ΩCLOCK.epoch + (ΩCLOCK.tick * ΩCLOCK.step_ms);
+}
+
+function Ω_tick() {
+  ΩCLOCK.tick++;
+  KERNEL_STATE.ticks = ΩCLOCK.tick;
+  KERNEL_STATE.entropy *= 0.999;
+}
+
+/* ------------------------------
+   DETERMINISTIC UTILITIES
+-------------------------------- */
+
+function Ω_hash32(str) {
+  let h = 2166136261; // FNV-1a
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(16);
+}
+
+function Ω_id(...parts) {
+  return `⟁${Ω_hash32(parts.join("|"))}⟁`;
+}
+
+/* ------------------------------
    π — MATHEMATICAL CONSTANTS
 -------------------------------- */
 
@@ -82,10 +119,10 @@ const KERNEL_STATE = {
       weights: 0
     },
     rate_limits: {
-      inference: { tokens: 1000, reset: Date.now() + 1000 },
-      memory_ops: { tokens: 10000, reset: Date.now() + 1000 },
-      reinforcement: { tokens: 5000, reset: Date.now() + 1000 },
-      snapshots: { tokens: 100, reset: Date.now() + 1000 }
+      inference:      { cap: 1000,  tokens: 1000,  reset_tick: 0, window_ticks: 1000 },
+      memory_ops:     { cap: 10000, tokens: 10000, reset_tick: 0, window_ticks: 1000 },
+      reinforcement:  { cap: 5000,  tokens: 5000,  reset_tick: 0, window_ticks: 1000 },
+      snapshots:      { cap: 100,   tokens: 100,   reset_tick: 0, window_ticks: 1000 }
     },
     authentication: {
       kernel_tokens: new Set(),
@@ -217,20 +254,16 @@ function symbolicWeight(tokens) {
    K'UHUL EXECUTION TICK
    ============================================================ */
 
+function rate_reset_if_needed(limit) {
+  if (ΩCLOCK.tick >= limit.reset_tick) {
+    limit.tokens = limit.cap;
+    limit.reset_tick = ΩCLOCK.tick + limit.window_ticks;
+  }
+}
+
 function kuhulTick() {
-  KERNEL_STATE.ticks++;
-  KERNEL_STATE.entropy *= 0.999; // deterministic decay
-  
-  // Reset rate limits if expired
-  const now = Date.now();
-  Object.values(KERNEL_STATE.api.rate_limits).forEach(limit => {
-    if (now > limit.reset) {
-      limit.tokens = limit.tokens === 100 ? 100 : 
-                     limit.tokens === 1000 ? 1000 : 
-                     limit.tokens === 5000 ? 5000 : 10000;
-      limit.reset = now + 1000;
-    }
-  });
+  Ω_tick();
+  Object.values(KERNEL_STATE.api.rate_limits).forEach(rate_reset_if_needed);
 }
 
 /* ============================================================
@@ -242,6 +275,23 @@ class SupremeJSONRESTAPI {
     this.quantumCircuits = new Map();
     this.entanglementPairs = new Map();
     this.scxEngine = new SCXQ2Engine();
+  }
+
+  // UTF-8 safe base64 encoding/decoding
+  b64encUtf8(obj) {
+    const s = JSON.stringify(obj);
+    const bytes = new TextEncoder().encode(s);
+    let bin = "";
+    bytes.forEach(b => bin += String.fromCharCode(b));
+    return btoa(bin);
+  }
+
+  b64decUtf8(b64) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const s = new TextDecoder().decode(bytes);
+    return JSON.parse(s);
   }
 
   // API Authentication
@@ -256,7 +306,7 @@ class SupremeJSONRESTAPI {
     // External tokens (SCXQ2 encrypted)
     if (KERNEL_STATE.api.authentication.external_tokens.has(token)) {
       const tokenData = KERNEL_STATE.api.authentication.external_tokens.get(token);
-      if (Date.now() < tokenData.expires) {
+      if (Ω_now() < tokenData.expires) {
         return true;
       }
     }
@@ -292,17 +342,11 @@ class SupremeJSONRESTAPI {
 
   generateQuantumProof(pair) {
     const str = `${pair.id}|${pair.created}|${pair.coherence}`;
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) - hash) + str.charCodeAt(i);
-      hash |= 0;
-    }
-    return `⟁${Math.abs(hash).toString(16)}⟁`;
+    return `⟁${Ω_hash32(str)}⟁`;
   }
 
   // Rate Limiting
   checkRateLimit(endpoint, clientId = "default") {
-    const now = Date.now();
     let limit;
     
     switch(endpoint) {
@@ -313,15 +357,10 @@ class SupremeJSONRESTAPI {
       default: return true;
     }
     
-    if (limit.tokens > 0) {
-      limit.tokens--;
-      return true;
-    }
+    // Reset if needed
+    rate_reset_if_needed(limit);
     
-    if (now > limit.reset) {
-      limit.tokens = limit.tokens === 100 ? 100 : 
-                     limit.tokens === 1000 ? 1000 : 
-                     limit.tokens === 5000 ? 5000 : 10000;
+    if (limit.tokens > 0) {
       limit.tokens--;
       return true;
     }
@@ -332,7 +371,7 @@ class SupremeJSONRESTAPI {
 
   // Route Dispatcher
   async dispatchRoute(path, method, payload, authToken) {
-    const startTime = performance.now();
+    const wallStart = performance.now(); // non-authoritative telemetry only
     KERNEL_STATE.api.metrics.total_requests++;
     
     // Authentication
@@ -394,15 +433,16 @@ class SupremeJSONRESTAPI {
           });
       }
       
-      const endTime = performance.now();
-      const responseTime = endTime - startTime;
+      const wallEnd = performance.now();
+      const responseTime = wallEnd - wallStart;
       
       // Update performance metrics
       this.updatePerformanceMetrics(endpoint, responseTime);
       
-      // Add timing info
+      // Add timing info (non-authoritative telemetry)
       if (response.data) {
         response.data.response_time_ms = responseTime;
+        response.data.telemetry_wall_ms = responseTime;
         response.data.quantum_routing_ms = responseTime * 0.1;
       }
       
@@ -428,10 +468,11 @@ class SupremeJSONRESTAPI {
       model: "MX2LM_SUPREME",
       version: Ω.VERSION,
       entropy: state.entropy,
+      ticks: state.ticks,
       tokens_seen: mx2State.totalTokens || 0,
       total_activations: mx2State.totalActivations || 0,
       memory_utilization: this.calculateMemoryUtilization(),
-      uptime_ms: Date.now() - (mx2State.t0 || Date.now()),
+      uptime_ticks: state.ticks,
       quantum_coherence: this.calculateQuantumCoherence(),
       api_metrics: {
         total_requests: KERNEL_STATE.api.metrics.total_requests,
@@ -486,13 +527,14 @@ class SupremeJSONRESTAPI {
       memory_ingested: use_memory,
       reinforcement_applied: !!reinforcement_source,
       quantum_circuit_used: quantumCircuit,
+      inference_id: Ω_id("infer", prompt.substring(0, 20), ΩCLOCK.tick),
       quantum_state: "|Ψ⟩ = ∫|PROMPT⟩d(COMPLETION)e^{iS[INFERENCE]}"
     });
   }
 
   async memoryReadEndpoint(payload) {
     const { table, key, decrypt = false } = payload;
-    const startTime = performance.now();
+    const wallStart = performance.now();
     
     // In real implementation, read from ASX RAM
     const record = await this.readFromASXRAM(table, key);
@@ -507,19 +549,20 @@ class SupremeJSONRESTAPI {
       encryption_status = "encrypted";
     }
     
-    const readTime = performance.now() - startTime;
+    const wallEnd = performance.now();
+    const readTime = wallEnd - wallStart;
     
     return this.formatResponse(200, {
       record: data,
       encryption_status,
-      read_time_ms: readTime,
-      quantum_address: this.generateQuantumHash(`${table}:${key}`)
+      telemetry_wall_ms: readTime,
+      quantum_address: Ω_id("memory", table, key, ΩCLOCK.tick)
     });
   }
 
   async memoryWriteEndpoint(payload) {
     const { table, key, payload: data, encrypt = true } = payload;
-    const startTime = performance.now();
+    const wallStart = performance.now();
     
     let processedData = data;
     let encryption_applied = false;
@@ -532,13 +575,14 @@ class SupremeJSONRESTAPI {
     // In real implementation, write to ASX RAM
     await this.writeToASXRAM(table, key, processedData, encrypt);
     
-    const writeTime = performance.now() - startTime;
+    const wallEnd = performance.now();
+    const writeTime = wallEnd - wallStart;
     
     return this.formatResponse(200, {
       status: "written",
       encryption_applied,
-      memory_address: this.generateQuantumHash(`${table}:${key}`),
-      write_time_ms: writeTime,
+      memory_address: Ω_id("memory", table, key, ΩCLOCK.tick),
+      telemetry_wall_ms: writeTime,
       scx_compression_ratio: this.scxEngine.currentRatio()
     });
   }
@@ -550,7 +594,7 @@ class SupremeJSONRESTAPI {
     // Apply reinforcement
     await this.applyReinforcement(seq, effective_reward, source);
     
-    const reinforcement_id = this.generateUUID();
+    const reinforcement_id = Ω_id("reinforce", seq, source, ΩCLOCK.tick);
     
     return this.formatResponse(200, {
       status: "reinforced",
@@ -568,7 +612,7 @@ class SupremeJSONRESTAPI {
     // Apply penalty
     await this.applyPenalty(seq, penalty, source, decay_factor);
     
-    const penalty_id = this.generateUUID();
+    const penalty_id = Ω_id("penalize", seq, source, ΩCLOCK.tick);
     
     return this.formatResponse(200, {
       status: "penalized",
@@ -581,7 +625,7 @@ class SupremeJSONRESTAPI {
   }
 
   async ngramsSnapshotEndpoint() {
-    const startTime = performance.now();
+    const wallStart = performance.now();
     
     // Collect n-gram data from memory
     const unigrams = this.scxEngine.compress(this.getNgrams(1));
@@ -590,7 +634,8 @@ class SupremeJSONRESTAPI {
     const pentagrams = this.scxEngine.compress(this.getNgrams(5));
     const supagrams = this.scxEngine.compress(this.getNgrams(7));
     
-    const snapshotTime = performance.now() - startTime;
+    const wallEnd = performance.now();
+    const snapshotTime = wallEnd - wallStart;
     
     return this.formatResponse(200, {
       unigrams,
@@ -600,15 +645,15 @@ class SupremeJSONRESTAPI {
       supagrams,
       compression_ratio: this.scxEngine.currentRatio(),
       total_entries: this.countTotalNgrams(),
-      snapshot_timestamp: Date.now(),
-      snapshot_time_ms: snapshotTime,
+      snapshot_tick: ΩCLOCK.tick,
+      telemetry_wall_ms: snapshotTime,
       quantum_compression: "|Ψ⟩ = Σ|NGRAM⟩e^{-S[ENTROPY]}"
     });
   }
 
   async routinesDetectEndpoint(payload) {
     const { text, min_confidence = 0.5, include_tapes = false, include_folds = false } = payload;
-    const startTime = performance.now();
+    const wallStart = performance.now();
     
     const tokens = this.tokenizeText(text);
     const supagrams = this.buildSupagrams(tokens, 7);
@@ -616,7 +661,8 @@ class SupremeJSONRESTAPI {
     
     const filtered_hits = hits.filter(hit => hit.confidence >= min_confidence);
     
-    const detectionTime = performance.now() - startTime;
+    const wallEnd = performance.now();
+    const detectionTime = wallEnd - wallStart;
     
     return this.formatResponse(200, {
       routines: filtered_hits.map(h => h.routine),
@@ -625,7 +671,7 @@ class SupremeJSONRESTAPI {
       confidence_scores: filtered_hits.map(h => h.confidence),
       asx_block_matches: this.matchBlocksToHits(filtered_hits),
       quantum_patterns: this.extractQuantumPatterns(filtered_hits),
-      detection_time_ms: detectionTime,
+      telemetry_wall_ms: detectionTime,
       quantum_state: "|Ψ⟩ = Σ|ROUTINE⟩⊗|CONFIDENCE⟩e^{iθ[PATTERN]}"
     });
   }
@@ -674,11 +720,12 @@ class SupremeJSONRESTAPI {
         "content-type": "application/json; charset=utf-8",
         "x-mx2lm-api": "SUPREME_JSON_REST",
         "x-quantum-state": "COHERENT",
-        "x-scx-compression": "ENABLED"
+        "x-scx-compression": "ENABLED",
+        "x-deterministic-tick": ΩCLOCK.tick.toString()
       },
       data: {
         ...data,
-        timestamp: Date.now(),
+        tick: ΩCLOCK.tick,
         kernel_version: Ω.VERSION,
         law: "Ω-BLACK-PANEL"
       }
@@ -699,7 +746,7 @@ class SupremeJSONRESTAPI {
       KERNEL_STATE.api.performance[metricKey] = responseTime;
     }
     
-    // Update average response time
+    // Update average response time (telemetry only)
     const total = KERNEL_STATE.api.metrics.total_requests;
     const currentAvg = KERNEL_STATE.api.metrics.avg_response_time;
     KERNEL_STATE.api.metrics.avg_response_time = 
@@ -726,10 +773,10 @@ class SupremeJSONRESTAPI {
   calculateConfidence(completion, tokens) { return 0.85; }
   calculateMemoryUtilization() { return 0.42; }
   calculateQuantumCoherence() { return 0.95; }
-  readFromASXRAM(table, key) { return { data: "SAMPLE_DATA", encrypted: false }; }
-  writeToASXRAM(table, key, data, encrypted) { return true; }
-  applyReinforcement(seq, reward, source) { return true; }
-  applyPenalty(seq, penalty, source, decay) { return true; }
+  async readFromASXRAM(table, key) { return { data: "SAMPLE_DATA", encrypted: false }; }
+  async writeToASXRAM(table, key, data, encrypted) { return true; }
+  async applyReinforcement(seq, reward, source) { return true; }
+  async applyPenalty(seq, penalty, source, decay) { return true; }
   getNgrams(n) { return []; }
   countTotalNgrams() { return 0; }
   buildSupagrams(tokens, n) { return []; }
@@ -743,26 +790,11 @@ class SupremeJSONRESTAPI {
   getPRIMEWeights() { return {}; }
   calculateQuantumWeights() { return {}; }
   calculateWeightEntropy(weights) { return 0.5; }
-  generateUUID() { 
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
-  }
-  generateQuantumHash(input) {
-    let hash = 0;
-    for (let i = 0; i < input.length; i++) {
-      hash = ((hash << 5) - hash) + input.charCodeAt(i);
-      hash |= 0;
-    }
-    return `⟁${Math.abs(hash).toString(16)}⟁`;
-  }
   generateQuantumSignature(id) {
-    const pairId = `ENT_${Date.now()}_${id}`;
+    const pairId = `ENT_${ΩCLOCK.tick}_${id}`;
     this.entanglementPairs.set(pairId, {
       id: pairId,
-      created: Date.now(),
+      created: ΩCLOCK.tick,
       coherence: 0.99
     });
     return `⟁Q${pairId}|${this.generateQuantumProof(this.entanglementPairs.get(pairId))}⟁`;
@@ -784,24 +816,41 @@ class SCXQ2Engine {
       compressed: true,
       size: Math.floor(JSON.stringify(data).length * this.compressionRatio),
       algorithm: "SCXQ2",
-      entropy: 0.32
+      entropy: 0.32,
+      deterministic_hash: Ω_hash32(JSON.stringify(data))
     };
   }
   
   encrypt(data) {
     return {
       encrypted: true,
-      data: btoa(JSON.stringify(data)),
+      data: this.b64encUtf8(data),
       algorithm: "SCXQ2_QUANTUM_ENCRYPTED"
     };
   }
   
   decrypt(encryptedData) {
     try {
-      return JSON.parse(atob(encryptedData.data));
+      return this.b64decUtf8(encryptedData.data);
     } catch {
       return null;
     }
+  }
+  
+  b64encUtf8(obj) {
+    const s = JSON.stringify(obj);
+    const bytes = new TextEncoder().encode(s);
+    let bin = "";
+    bytes.forEach(b => bin += String.fromCharCode(b));
+    return btoa(bin);
+  }
+
+  b64decUtf8(b64) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const s = new TextDecoder().decode(bytes);
+    return JSON.parse(s);
   }
   
   currentRatio() {
@@ -831,7 +880,7 @@ const MX2_IDB = {
   },
 
   // Keep this small + deterministic; flush on tick boundaries or fixed intervals.
-  FLUSH_MS: 15000,
+  FLUSH_TICKS: 1000, // Flush every 1000 ticks instead of time-based
   MAX_BUFFER: 2048,
 
   // Namespaces inside `memory` store (k = `${ns}:${id}`)
@@ -942,20 +991,15 @@ const MX2_MEM = {
 
   session: {
     sid: null,
-    t0: 0,
+    t0: ΩCLOCK.tick,
     t1: 0,
     totalTokens: 0,
     totalActivations: 0,
     apiRequests: 0
-  }
+  },
+
+  flush_counter: 0
 };
-
-function mx2_now() { return Date.now(); }
-
-function mx2_make_session_id() {
-  const s = Math.floor(mx2_now() / 1000);
-  return `mx2_${s}_Ω_APIv11`;
-}
 
 function mx2_compression_delta(tokens) {
   const arr = Array.isArray(tokens) ? tokens : [];
@@ -967,12 +1011,12 @@ function mx2_compression_delta(tokens) {
 /* ---------------------------
    3) BOOT / LOAD SUBSTRATE
 --------------------------- */
-let __mx2_flush_timer = null;
+let __mx2_flush_interval = null;
 
 async function mx2_mem_boot() {
   if (!MX2_MEM.session.sid) {
-    MX2_MEM.session.sid = mx2_make_session_id();
-    MX2_MEM.session.t0 = mx2_now();
+    MX2_MEM.session.sid = Ω_id("session", ΩCLOCK.tick.toString());
+    MX2_MEM.session.t0 = ΩCLOCK.tick;
   }
 
   // Rebuild small RAM mirrors from IDB snapshots if present
@@ -1001,11 +1045,7 @@ async function mx2_mem_boot() {
     }
   });
 
-  if (!__mx2_flush_timer) {
-    __mx2_flush_timer = setInterval(() => {
-      mx2_mem_flush().catch(() => {});
-    }, MX2_IDB.FLUSH_MS);
-  }
+  // No time-based interval - flush based on tick counter
 }
 
 /* ---------------------------
@@ -1020,7 +1060,7 @@ function mx2_buffer_memory_mirrors(t) {
     ns: MX2_IDB.NS.EVENT_TRACES,
     id: "by_layer",
     v: Array.from(MX2_MEM.maps.eventTraces.entries()),
-    t
+    t: ΩCLOCK.tick
   });
 
   MX2_MEM.buf.memory.push({
@@ -1028,7 +1068,7 @@ function mx2_buffer_memory_mirrors(t) {
     ns: MX2_IDB.NS.COACT,
     id: "graph",
     v: coactArr,
-    t
+    t: ΩCLOCK.tick
   });
 
   MX2_MEM.buf.memory.push({
@@ -1036,7 +1076,7 @@ function mx2_buffer_memory_mirrors(t) {
     ns: MX2_IDB.NS.GRAD,
     id: "avg",
     v: Array.from(MX2_MEM.maps.gradients.entries()),
-    t
+    t: ΩCLOCK.tick
   });
 
   MX2_MEM.buf.memory.push({
@@ -1044,7 +1084,7 @@ function mx2_buffer_memory_mirrors(t) {
     ns: MX2_IDB.NS.API_LOGS,
     id: "routes",
     v: Array.from(MX2_MEM.maps.apiRoutes.entries()),
-    t
+    t: ΩCLOCK.tick
   });
 
   MX2_MEM.buf.memory.push({
@@ -1052,7 +1092,7 @@ function mx2_buffer_memory_mirrors(t) {
     ns: MX2_IDB.NS.AUTH,
     id: "tokens",
     v: Array.from(MX2_MEM.maps.authTokens.entries()),
-    t
+    t: ΩCLOCK.tick
   });
 
   // Keep bounded
@@ -1060,28 +1100,30 @@ function mx2_buffer_memory_mirrors(t) {
 }
 
 function mx2_record_activation({ node, layer, token, weight, tokens }) {
-  const t = mx2_now();
-  const ts = Math.floor(t / 1000);
   const nid = String(node || "UNKNOWN");
   const lid = String(layer || "unknown");
 
-  // Stable per-second event id (structural)
-  const id = `ev_${nid}_${lid}_${ts}`;
+  // Stable per-tick event id (structural)
+  const id = Ω_id("ev", nid, lid, ΩCLOCK.tick.toString());
 
   MX2_MEM.session.totalActivations++;
   MX2_MEM.session.totalTokens += (Array.isArray(tokens) ? tokens.length : 0);
 
   if (!MX2_MEM.maps.eventTraces.has(lid)) MX2_MEM.maps.eventTraces.set(lid, []);
-  MX2_MEM.maps.eventTraces.get(lid).push({ node: nid, t, tc: (Array.isArray(tokens) ? tokens.length : 0) });
+  MX2_MEM.maps.eventTraces.get(lid).push({ 
+    node: nid, 
+    t: ΩCLOCK.tick, 
+    tc: (Array.isArray(tokens) ? tokens.length : 0) 
+  });
 
   const d = mx2_compression_delta(tokens);
-  MX2_MEM.maps.deltas.set(`${nid}:${t}`, d);
+  MX2_MEM.maps.deltas.set(`${nid}:${ΩCLOCK.tick}`, d);
 
   const gk = `${lid}:${nid}`;
-  const cur = MX2_MEM.maps.gradients.get(gk) || { count: 0, eff: 0, t: 0 };
+  const cur = MX2_MEM.maps.gradients.get(gk) || { count: 0, eff: 0, t: ΩCLOCK.tick };
   const n = cur.count + 1;
   const eff = (cur.eff * cur.count + d) / n;
-  MX2_MEM.maps.gradients.set(gk, { count: n, eff, t });
+  MX2_MEM.maps.gradients.set(gk, { count: n, eff, t: ΩCLOCK.tick });
 
   if (!MX2_MEM.maps.coActivation.has(gk)) MX2_MEM.maps.coActivation.set(gk, new Set());
 
@@ -1094,19 +1136,25 @@ function mx2_record_activation({ node, layer, token, weight, tokens }) {
     w: +weight || 0,
     tc: (Array.isArray(tokens) ? tokens.length : 0),
     d,
-    t
+    t: ΩCLOCK.tick
   });
 
   if (MX2_MEM.buf.events.length > MX2_IDB.MAX_BUFFER) {
     MX2_MEM.buf.events.splice(0, MX2_MEM.buf.events.length - MX2_IDB.MAX_BUFFER);
   }
 
-  mx2_buffer_memory_mirrors(t);
+  mx2_buffer_memory_mirrors(ΩCLOCK.tick);
+  
+  // Check if we should flush based on tick counter
+  MX2_MEM.flush_counter++;
+  if (MX2_MEM.flush_counter >= MX2_IDB.FLUSH_TICKS) {
+    mx2_mem_flush().catch(() => {});
+    MX2_MEM.flush_counter = 0;
+  }
 }
 
 function mx2_record_api_request(endpoint, method, status, responseTime) {
-  const t = mx2_now();
-  const id = `api_${endpoint}_${method}_${t}`;
+  const id = Ω_id("api", endpoint, method, ΩCLOCK.tick.toString());
   
   MX2_MEM.session.apiRequests++;
   
@@ -1124,7 +1172,7 @@ function mx2_record_api_request(endpoint, method, status, responseTime) {
     method,
     status,
     response_time: responseTime,
-    timestamp: t,
+    tick: ΩCLOCK.tick,
     session_id: MX2_MEM.session.sid
   });
   
@@ -1137,8 +1185,7 @@ function mx2_record_api_request(endpoint, method, status, responseTime) {
    5) FLUSH TO IDB (deterministic)
 --------------------------- */
 async function mx2_mem_flush() {
-  const t = mx2_now();
-  MX2_MEM.session.t1 = t;
+  MX2_MEM.session.t1 = ΩCLOCK.tick;
 
   const events = MX2_MEM.buf.events.splice(0);
   const memory = MX2_MEM.buf.memory.splice(0);
@@ -1172,6 +1219,7 @@ async function mx2_mem_reset({ clear_idb = false } = {}) {
   MX2_MEM.buf.events = [];
   MX2_MEM.buf.memory = [];
   MX2_MEM.buf.api_logs = [];
+  MX2_MEM.flush_counter = 0;
 
   MX2_MEM.maps.eventTraces = new Map();
   MX2_MEM.maps.coActivation = new Map();
@@ -1181,8 +1229,8 @@ async function mx2_mem_reset({ clear_idb = false } = {}) {
   MX2_MEM.maps.authTokens = new Map();
 
   MX2_MEM.session = {
-    sid: mx2_make_session_id(),
-    t0: mx2_now(),
+    sid: Ω_id("session", ΩCLOCK.tick.toString()),
+    t0: ΩCLOCK.tick,
     t1: 0,
     totalTokens: 0,
     totalActivations: 0,
@@ -1212,7 +1260,8 @@ function mx2_json(obj, status = 200) {
     headers: { 
       "content-type": "application/json; charset=utf-8",
       "x-mx2lm-api": "SUPREME_JSON_REST",
-      "x-quantum-state": "COHERENT"
+      "x-quantum-state": "COHERENT",
+      "x-deterministic-tick": ΩCLOCK.tick.toString()
     }
   });
 }
@@ -1224,33 +1273,27 @@ async function mx2_route_api(url, request) {
   const path = url.pathname;
   const method = request.method;
   
-  // Extract auth token
-  const authToken = request.headers.get("Authorization") || 
-                    url.searchParams.get("token") ||
-                    request.headers.get("X-API-Token");
-  
-  // Parse payload for POST requests
+  // Extract auth token with Bearer support
+  const authHeader = request.headers.get("Authorization");
+  const authToken =
+    (authHeader && authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader) ||
+    url.searchParams.get("token") ||
+    request.headers.get("X-API-Token");
+
   let payload = {};
   if (method === "POST" || method === "PUT") {
-    try {
-      const text = await request.text();
-      if (text) payload = JSON.parse(text);
-    } catch (e) {
-      // If no JSON payload, continue with empty payload
-    }
+    try { payload = await request.json(); } catch (_) {}
   }
-  
-  // Dispatch to API kernel
-  const response = await SUPREME_API.dispatchRoute(path, method, payload, authToken);
-  
-  // Record API request
-  const responseTime = performance.now();
-  mx2_record_api_request(path, method, response.status, responseTime);
-  
-  // Convert to Response object
-  return new Response(JSON.stringify(response.data, null, 2), {
-    status: response.status,
-    headers: response.headers
+
+  const resp = await SUPREME_API.dispatchRoute(path, method, payload, authToken);
+
+  // ✅ log real response time
+  const rt = resp?.data?.response_time_ms ?? 0;
+  mx2_record_api_request(path, method, resp.status, rt);
+
+  return new Response(JSON.stringify(resp.data, null, 2), {
+    status: resp.status,
+    headers: resp.headers
   });
 }
 
@@ -1277,6 +1320,10 @@ async function mx2_route_memory(url) {
         routes_loaded: KERNEL_STATE.api.routes ? Object.keys(KERNEL_STATE.api.routes).length : 0,
         performance_metrics: KERNEL_STATE.api.performance,
         rate_limits: KERNEL_STATE.api.rate_limits
+      },
+      telemetry: {
+        current_tick: ΩCLOCK.tick,
+        deterministic_clock: true
       }
     });
   }
@@ -1287,7 +1334,13 @@ async function mx2_route_memory(url) {
 
     return mx2_json({
       ok: true,
-      meta: { sid: MX2_MEM.session.sid, t: mx2_now(), compliance: "BLACK_PANEL", api_version: "11.0.0" },
+      meta: { 
+        sid: MX2_MEM.session.sid, 
+        tick: ΩCLOCK.tick, 
+        compliance: "BLACK_PANEL", 
+        api_version: "11.0.0",
+        deterministic: true 
+      },
       session: MX2_MEM.session,
       memory_substrate: {
         event_traces: Array.from(MX2_MEM.maps.eventTraces.entries()),
@@ -1321,7 +1374,12 @@ async function mx2_route_memory(url) {
       performance: KERNEL_STATE.api.performance,
       metrics: KERNEL_STATE.api.metrics,
       quantum_state: "|Ψ⟩ = α|JSON_API⟩⊗β|KUHUL_ROUTER⟩⊗γ|ASX_RAM⟩⊗δ|MX2LM_INFERENCE⟩⊗ε|SCX_TRANSPORT⟩",
-      manifesto: "ALL_APIS_ARE_KUHUL_ALL_TRANSPORT_IS_XJSON_ALL_STATE_IS_ASX_RAM_ALL_ENCRYPTION_IS_SCX"
+      manifesto: "ALL_APIS_ARE_KUHUL_ALL_TRANSPORT_IS_XJSON_ALL_STATE_IS_ASX_RAM_ALL_ENCRYPTION_IS_SCX",
+      deterministic: {
+        clock: ΩCLOCK,
+        hash_function: "FNV-1a Ω_hash32",
+        tick_based: true
+      }
     });
   }
 
@@ -1394,7 +1452,7 @@ self.addEventListener("message", async (event) => {
   
   // Supreme API messages
   if (type === "api.generate_token") {
-    const token = SUPREME_API.generateUUID();
+    const token = Ω_id("kernel_token", ΩCLOCK.tick.toString());
     KERNEL_STATE.api.authentication.kernel_tokens.add(token);
     postBack(event.source, { type: "api.token_generated", token });
     return;
@@ -1430,7 +1488,12 @@ self.addEventListener("message", async (event) => {
             deterministic: Ω.DETERMINISTIC,
             api_available: true,
             api_version: "11.0.0",
-            api_manifesto: "ALL_APIS_ARE_KUHUL_ALL_TRANSPORT_IS_XJSON_ALL_STATE_IS_ASX_RAM_ALL_ENCRYPTION_IS_SCX"
+            api_manifesto: "ALL_APIS_ARE_KUHUL_ALL_TRANSPORT_IS_XJSON_ALL_STATE_IS_ASX_RAM_ALL_ENCRYPTION_IS_SCX",
+            clock: {
+              tick: ΩCLOCK.tick,
+              epoch: ΩCLOCK.epoch,
+              deterministic: true
+            }
           }
         });
       } catch (err) {
@@ -1518,6 +1581,13 @@ self.addEventListener("message", async (event) => {
    - Single unified fetch handler (prevents collisions)
    ============================================================ */
 
+// Exact API route matching
+const API_PATHS = new Set([
+  "/health","/infer","/memory/read","/memory/write",
+  "/reinforce","/penalize","/ngrams/snapshot",
+  "/routines/detect","/asx/blocks","/weights"
+]);
+
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
@@ -1533,18 +1603,8 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Supreme JSON REST API routes
-  if (url.pathname.startsWith("/health") ||
-      url.pathname.startsWith("/infer") ||
-      url.pathname.startsWith("/memory/read") ||
-      url.pathname.startsWith("/memory/write") ||
-      url.pathname.startsWith("/reinforce") ||
-      url.pathname.startsWith("/penalize") ||
-      url.pathname.startsWith("/ngrams/snapshot") ||
-      url.pathname.startsWith("/routines/detect") ||
-      url.pathname.startsWith("/asx/blocks") ||
-      url.pathname.startsWith("/weights")) {
-    
+  // Supreme JSON REST API routes - exact matching
+  if (API_PATHS.has(url.pathname)) {
     event.respondWith(mx2_route_api(url, event.request));
     return;
   }
@@ -1555,7 +1615,8 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(mx2_json({
       ok: true,
       codex_loaded: Array.isArray(KERNEL_STATE.codex) ? KERNEL_STATE.codex.length : 0,
-      api_integration: "SUPREME_JSON_REST_READY"
+      api_integration: "SUPREME_JSON_REST_READY",
+      deterministic_tick: ΩCLOCK.tick
     }));
     return;
   }
@@ -1594,6 +1655,7 @@ console.log(`
 ║ Stack: XJSON ⇄ K'UHUL ⇄ ASX_RAM ⇄ MX2LM_INFERENCE      ║
 ║ Performance: 1M+ RPS KERNEL ROUTED                     ║
 ║ Security: SCXQ2 QUANTUM ENCRYPTED AUTHENTICATION       ║
+║ Determinism: Ω.tick = ${ΩCLOCK.tick}                       ║
 ║                                                         ║
 ║ |Ψ⟩ = α|JSON_API⟩⊗β|KUHUL_ROUTER⟩⊗γ|ASX_RAM⟩           ║
 ║     ⊗δ|MX2LM_INFERENCE⟩⊗ε|SCX_TRANSPORT⟩               ║
