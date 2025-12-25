@@ -219,8 +219,14 @@
   },
 
   "codex": {
-    "id": "KUHUL_ETERNAL_CODEX",
+    "id": "KUHUL_ETERNAL_CODEX",     
     "version": "Ω.∞.Ω",
-    "sealed": true
+    "path": "./codex/",
+    "mode": "semantic-only",
+    "authority": "non-executing",
+    "hashing": "optional",
+    "sealed": false
+}
+
   }
 }
