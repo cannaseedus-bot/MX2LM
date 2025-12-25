@@ -51,27 +51,7 @@
     </linearGradient>
 
     <!-- Typography -->
-    <style>
-      .bg { fill:#070b12; }
-      .grid { fill:url(#grid); opacity:0.65; }
-      .frame { fill:#0a0f1c; stroke:url(#borderGrad); stroke-width:2; rx:22; }
-      .panel { fill:#0b1322; stroke:#1a2b44; stroke-width:1.5; rx:18; }
-      .panel2 { fill:#0a1020; stroke:#1a2b44; stroke-width:1.5; rx:18; }
-      .cap { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-size:12px; letter-spacing:2.2px; fill:#7a8699; }
-      .h1 { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-weight:800; font-size:30px; fill:url(#titleGrad); }
-      .h2 { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-weight:700; font-size:16px; fill:#e8f5ff; }
-      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:13px; fill:#cfe6ff; }
-      .body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-size:14px; fill:#cfe6ff; }
-      .muted { fill:#7a8699; }
-      .neonA { stroke:#16f2aa; }
-      .neonB { stroke:#00f5ff; }
-      .neonC { stroke:#9c88ff; }
-      .rule { stroke:#1d3352; stroke-width:1; }
-      .chip { fill:#0b1a2b; stroke:#1e3a5c; stroke-width:1; rx:999; }
-      .chipText { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12px; fill:#e8f5ff; }
-      .warn { fill:#ff6b6b; }
-      .ok { fill:#16f2aa; }
-    </style>
+    
   </defs>
 
   <!-- Background -->
