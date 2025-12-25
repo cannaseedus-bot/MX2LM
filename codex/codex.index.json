@@ -1,10 +1,25 @@
 {
+  "@context": "kuhul://codex/index/v1",
   "@version": 1,
-  "@files": [
-   "@vision": "kuhul_eternal_codex_ui_system.json",
-    "@webgl":"kuhul_codex_xcfe_webgl_3d_system.json",
-    "@vectors": "xcfe_vectors_omega.json",
+
+  "@codex": {
     "@law": "kuhul_law_eternal_architecture.json",
-    "@vision": "kuhul_codex_supreme.json"
-  ]
+    "@vectors": "xcfe_vectors_omega.json",
+    "@vision": "kuhul_codex_supreme.json",
+    "@ui": "kuhul_eternal_codex_ui_system.json",
+    "@webgl": "kuhul_codex_xcfe_webgl_3d_system.json"
+  },
+
+  "@rules": {
+    "@executable": false,
+    "@load_order": [
+      "@law",
+      "@vectors",
+      "@vision",
+      "@ui",
+      "@webgl"
+    ],
+    "@mutation": "forbidden",
+    "@extension": "append_only"
+  }
 }
