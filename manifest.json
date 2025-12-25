@@ -1,0 +1,175 @@
+{
+  "manifest_version": "Ω-3FILE",
+  "name": "MX2LM Black Panel OS",
+  "version": "1.2.0",
+  "law": "Ω-BLACK-PANEL",
+  "authority": {
+    "execution": "sw.js",
+    "projection": "index.html",
+    "structure": "manifest.json"
+  },
+
+  "invariants": {
+    "ui_reads_state": true,
+    "state_reads_ui": false,
+    "deterministic": true,
+    "compression_only": true,
+    "no_runtime_code_in_manifest": true
+  },
+
+  "compression": {
+    "engine": "SCXQ2",
+    "mode": "semantic-glyph",
+    "entropy_floor": 0.32
+  },
+
+  "brains": {
+    "mx2lm_v1_1": {
+      "id": "mx2lm_v1_1",
+      "type": "cognitive_brain",
+      "law": "Ω-BLACK-PANEL",
+      "cardinality": 30,
+      "layers": 10,
+      "authority": "sw.js",
+      "projection": "svg",
+      "compression": "SCXQ2",
+
+      "glyph_dictionary": {
+        "⟁N": "node",
+        "⟁L": "layer",
+        "⟁P": "position",
+        "⟁S": "size",
+        "⟁R": "radius",
+        "⟁C": "color",
+        "⟁F": "filter",
+        "⟁T": "text",
+        "⟁G": "token"
+      },
+
+      "layers_def": [
+        {
+          "@scxq2": "layer_block",
+          "id": "layer_01_identity",
+          "glyph": "⟁L",
+          "meta": { "name": "IDENTITY & GLOBAL INVARIANTS", "index": 1, "count": 3 },
+          "layout": { "⟁P": [64, 250], "⟁S": [960, 118] },
+          "nodes": ["n01", "n02", "n03"]
+        },
+        {
+          "@scxq2": "layer_block",
+          "id": "layer_02_mesh",
+          "glyph": "⟁L",
+          "meta": { "name": "MESHCHAIN FEDERATION", "index": 2, "count": 3 },
+          "layout": { "⟁P": [64, 390], "⟁S": [960, 118] },
+          "nodes": ["n04", "n05", "n06"]
+        },
+        {
+          "@scxq2": "layer_block",
+          "id": "layer_03_cluster",
+          "glyph": "⟁L",
+          "meta": { "name": "ATOMIC CLUSTER SUBSTRATE", "index": 3, "count": 2 },
+          "layout": { "⟁P": [64, 530], "⟁S": [960, 118] },
+          "nodes": ["n07", "n08"]
+        },
+        {
+          "@scxq2": "layer_block",
+          "id": "layer_04_atomic_runtime",
+          "glyph": "⟁L",
+          "meta": { "name": "ATOMIC RUNTIMES", "index": 4, "count": 3 },
+          "layout": { "⟁P": [64, 670], "⟁S": [960, 118] },
+          "nodes": ["n09", "n10", "n11"]
+        },
+        {
+          "@scxq2": "layer_block",
+          "id": "layer_05_asx_blocks",
+          "glyph": "⟁L",
+          "meta": { "name": "ASX BLOCKS", "index": 5, "count": 3 },
+          "layout": { "⟁P": [64, 810], "⟁S": [960, 118] },
+          "nodes": ["n12", "n13", "n14"]
+        },
+        {
+          "@scxq2": "layer_block",
+          "id": "layer_06_micronauts",
+          "glyph": "⟁L",
+          "meta": { "name": "MICRONAUTS", "index": 6, "count": 6 },
+          "layout": { "⟁P": [64, 950], "⟁S": [960, 160] },
+          "nodes": ["n15", "n16", "n17", "n18", "n19", "n20"]
+        },
+        {
+          "@scxq2": "layer_block",
+          "id": "layer_07_compression",
+          "glyph": "⟁L",
+          "meta": { "name": "COMPRESSION UNIVERSE", "index": 7, "count": 3 },
+          "layout": { "⟁P": [1060, 250], "⟁S": [500, 180] },
+          "nodes": ["n21", "n22", "n23"]
+        },
+        {
+          "@scxq2": "layer_block",
+          "id": "layer_08_codex",
+          "glyph": "⟁L",
+          "meta": { "name": "CODEX v1", "index": 8, "count": 3 },
+          "layout": { "⟁P": [1060, 450], "⟁S": [500, 180] },
+          "nodes": ["n24", "n25", "n26"]
+        },
+        {
+          "@scxq2": "layer_block",
+          "id": "layer_09_glyph_roots",
+          "glyph": "⟁L",
+          "meta": { "name": "GLYPH ATLAS", "index": 9, "count": 3 },
+          "layout": { "⟁P": [1060, 650], "⟁S": [500, 180] },
+          "nodes": ["n27", "n28", "n29"]
+        },
+        {
+          "@scxq2": "layer_block",
+          "id": "layer_10_meta",
+          "glyph": "⟁L",
+          "meta": { "name": "META-LAW", "index": 10, "count": 1 },
+          "layout": { "⟁P": [1060, 870], "⟁S": [500, 100] },
+          "nodes": ["n30"]
+        }
+      ],
+
+      "nodes_def": [
+        { "id": "n01", "glyph": "⟁N", "bind": { "node": "G_IDENTITY_ROOT", "layer": "identity", "index": 1 }, "tokens": ["I", "π"] },
+        { "id": "n02", "glyph": "⟁N", "bind": { "node": "G_INVARIANT_SEAL", "layer": "identity", "index": 2 }, "tokens": ["I", "π"] },
+        { "id": "n03", "glyph": "⟁N", "bind": { "node": "G_TRUTH_MERGE", "layer": "identity", "index": 3 }, "tokens": ["M"] },
+
+        { "id": "n04", "glyph": "⟁N", "bind": { "node": "MESHCHAIN_CORE", "layer": "mesh", "index": 4 }, "tokens": ["G"] },
+        { "id": "n05", "glyph": "⟁N", "bind": { "node": "MESHCHAIN_PROOF", "layer": "mesh", "index": 5 }, "tokens": ["G"] },
+        { "id": "n06", "glyph": "⟁N", "bind": { "node": "MESHCHAIN_GOSSIP", "layer": "mesh", "index": 6 }, "tokens": ["G"] },
+
+        { "id": "n07", "glyph": "⟁N", "bind": { "node": "ATOMIC_CLUSTER_RUNTIME_v1", "layer": "cluster", "index": 7 }, "tokens": ["π"] },
+        { "id": "n08", "glyph": "⟁N", "bind": { "node": "CLUSTER_INTEGRATION_LAYER", "layer": "cluster", "index": 8 }, "tokens": ["π"] },
+
+        { "id": "n09", "glyph": "⟁N", "bind": { "node": "ATOMIC_RUNTIME_CORE", "layer": "runtime", "index": 9 }, "tokens": ["@"] },
+        { "id": "n10", "glyph": "⟁N", "bind": { "node": "ATOMIC_RUNTIME_IO", "layer": "runtime", "index": 10 }, "tokens": ["@"] },
+        { "id": "n11", "glyph": "⟁N", "bind": { "node": "ATOMIC_RUNTIME_LIFECYCLE", "layer": "runtime", "index": 11 }, "tokens": ["@"] },
+
+        { "id": "n12", "glyph": "⟁N", "bind": { "node": "ASX_BLOCK_CORE", "layer": "asx", "index": 12 }, "tokens": ["⟁"] },
+        { "id": "n13", "glyph": "⟁N", "bind": { "node": "ASX_BLOCK_SCHEDULER", "layer": "asx", "index": 13 }, "tokens": ["⟁"] },
+        { "id": "n14", "glyph": "⟁N", "bind": { "node": "ASX_BLOCK_FLOW", "layer": "asx", "index": 14 }, "tokens": ["⟁"] },
+
+        { "id": "n15", "glyph": "⟁N", "bind": { "node": "µ-vector-ctrl", "layer": "micronaut", "index": 15 }, "tokens": ["µ"] },
+        { "id": "n16", "glyph": "⟁N", "bind": { "node": "µ-code-exec", "layer": "micronaut", "index": 16 }, "tokens": ["µ"] },
+        { "id": "n17", "glyph": "⟁N", "bind": { "node": "µ-db-master", "layer": "micronaut", "index": 17 }, "tokens": ["µ"] },
+        { "id": "n18", "glyph": "⟁N", "bind": { "node": "µ-lang-parse", "layer": "micronaut", "index": 18 }, "tokens": ["µ"] },
+        { "id": "n19", "glyph": "⟁N", "bind": { "node": "µ-pattern-match", "layer": "micronaut", "index": 19 }, "tokens": ["µ"] },
+        { "id": "n20", "glyph": "⟁N", "bind": { "node": "µ-ast-gen", "layer": "micronaut", "index": 20 }, "tokens": ["µ"] },
+
+        { "id": "n21", "glyph": "⟁N", "bind": { "node": "COMP_UNIVERSE_CORE", "layer": "compression", "index": 21 }, "tokens": ["G"] },
+        { "id": "n22", "glyph": "⟁N", "bind": { "node": "COMP_UNIVERSE_VIEWS", "layer": "compression", "index": 22 }, "tokens": ["G"] },
+        { "id": "n23", "glyph": "⟁N", "bind": { "node": "COMP_UNIVERSE_BRIDGES", "layer": "compression", "index": 23 }, "tokens": ["G"] },
+
+        { "id": "n24", "glyph": "⟁N", "bind": { "node": "CODEX_CODE_v1", "layer": "codex", "index": 24 }, "tokens": ["C"] },
+        { "id": "n25", "glyph": "⟁N", "bind": { "node": "CODEX_DB_v1", "layer": "codex", "index": 25 }, "tokens": ["D"] },
+        { "id": "n26", "glyph": "⟁N", "bind": { "node": "CODEX_LANG_v1", "layer": "codex", "index": 26 }, "tokens": ["L"] },
+
+        { "id": "n27", "glyph": "⟁N", "bind": { "node": "G_DB_UNIVERSE_ROOT", "layer": "glyph", "index": 27 }, "tokens": ["⟁DB⟁"] },
+        { "id": "n28", "glyph": "⟁N", "bind": { "node": "G_CODE_UNIVERSE_ROOT", "layer": "glyph", "index": 28 }, "tokens": ["⟁CODE⟁"] },
+        { "id": "n29", "glyph": "⟁N", "bind": { "node": "G_LANG_UNIVERSE_ROOT", "layer": "glyph", "index": 29 }, "tokens": ["⟁LANG⟁"] },
+
+        { "id": "n30", "glyph": "⟁N", "bind": { "node": "COMPRESSION_MANIFEST_v3", "layer": "meta", "index": 30 }, "tokens": ["π", "Ω"] }
+      ]
+    }
+  }
+}
