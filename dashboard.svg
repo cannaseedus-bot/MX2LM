@@ -1,21 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="800" viewBox="0 0 1400 800">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980" role="img" aria-label="MX2LM v1.1 — 30-Module Cognitive Brain (Constellation Layout)">
   <defs>
-    <!-- Neon glow -->
-    <filter id="glowA" x="-40%" y="-40%" width="180%" height="180%">
+    <!-- Soft grid -->
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#132338" stroke-width="1"/>
+      <path d="M24 0V48M0 24H48" fill="none" stroke="#0e1828" stroke-width="1"/>
+    </pattern>
+
+    <!-- Glows -->
+    <filter id="glowMint" x="-40%" y="-40%" width="180%" height="180%">
       <feGaussianBlur stdDeviation="3" result="b"/>
       <feColorMatrix in="b" type="matrix"
         values="0 0 0 0 0.09
                 0 0 0 0 0.95
                 0 0 0 0 0.67
-                0 0 0 0.95 0" result="g"/>
+                0 0 0 0.85 0" result="g"/>
       <feMerge>
         <feMergeNode in="g"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
 
-    <filter id="glowB" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur stdDeviation="2.5" result="b"/>
+    <filter id="glowCyan" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
       <feColorMatrix in="b" type="matrix"
         values="0 0 0 0 0.00
                 0 0 0 0 0.95
@@ -27,241 +33,472 @@
       </feMerge>
     </filter>
 
-    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity="0.55"/>
+    <filter id="glowViolet" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feColorMatrix in="b" type="matrix"
+        values="0 0 0 0 0.61
+                0 0 0 0 0.53
+                0 0 0 0 1.00
+                0 0 0 0.85 0" result="g"/>
+      <feMerge>
+        <feMergeNode in="g"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
     </filter>
 
-    <!-- Subtle grid -->
-    <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse">
-      <path d="M44 0H0V44" fill="none" stroke="#132338" stroke-width="1"/>
-      <path d="M22 0V44M0 22H44" fill="none" stroke="#0e1828" stroke-width="1"/>
-    </pattern>
-
-    <!-- Gradient borders -->
-    <linearGradient id="borderGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#16f2aa" stop-opacity="0.65"/>
-      <stop offset="0.55" stop-color="#00f5ff" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#9c88ff" stop-opacity="0.55"/>
-    </linearGradient>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="0.55"/>
+    </filter>
 
     <linearGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="#16f2aa"/>
-      <stop offset="0.6" stop-color="#00f5ff"/>
+      <stop offset="0.55" stop-color="#00f5ff"/>
       <stop offset="1" stop-color="#9c88ff"/>
     </linearGradient>
 
-    <!-- Typography -->
+    <linearGradient id="edgeGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#16f2aa" stop-opacity="0.42"/>
+      <stop offset="0.55" stop-color="#00f5ff" stop-opacity="0.38"/>
+      <stop offset="1" stop-color="#9c88ff" stop-opacity="0.35"/>
+    </linearGradient>
+
     <style>
       .bg { fill:#070b12; }
       .grid { fill:url(#grid); opacity:0.65; }
-      .frame { fill:#0a0f1c; stroke:url(#borderGrad); stroke-width:2; rx:22; }
-      .panel { fill:#0b1322; stroke:#1a2b44; stroke-width:1.5; rx:18; }
-      .panel2 { fill:#0a1020; stroke:#1a2b44; stroke-width:1.5; rx:18; }
+      .frame { fill:#0a0f1c; stroke:#1b2c46; stroke-width:2; rx:22; }
       .cap { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-size:12px; letter-spacing:2.2px; fill:#7a8699; }
       .h1 { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-weight:800; font-size:30px; fill:url(#titleGrad); }
-      .h2 { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-weight:700; font-size:16px; fill:#e8f5ff; }
-      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:13px; fill:#cfe6ff; }
-      .body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-size:14px; fill:#cfe6ff; }
-      .muted { fill:#7a8699; }
-      .neonA { stroke:#16f2aa; }
-      .neonB { stroke:#00f5ff; }
-      .neonC { stroke:#9c88ff; }
-      .rule { stroke:#1d3352; stroke-width:1; }
-      .chip { fill:#0b1a2b; stroke:#1e3a5c; stroke-width:1; rx:999; }
-      .chipText { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12px; fill:#e8f5ff; }
-      .warn { fill:#ff6b6b; }
-      .ok { fill:#16f2aa; }
+      .sub { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-size:14px; fill:#cfe6ff; opacity:0.9; }
+      .legend { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-size:13px; fill:#cfe6ff; opacity:0.85; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:12px; fill:#e8f5ff; }
+      .node { stroke-width:1.6; }
+      .nodeLabel { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12px; fill:#e8f5ff; }
+      .nodeNum { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:11px; fill:#7a8699; }
+      .layerLabel { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-weight:700; font-size:14px; fill:#e8f5ff; }
+      .layerBox { fill:#0b1322; stroke:#1a2b44; stroke-width:1.2; rx:18; }
+      .edge { stroke:url(#edgeGrad); stroke-width:1.2; opacity:0.65; }
+      .edge2 { stroke:#1e3a5c; stroke-width:1; opacity:0.45; }
+      .badge { fill:#08101d; stroke:#1a2b44; stroke-width:1; rx:999; }
+      .badgeText { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12px; fill:#cfe6ff; }
+      .mint { fill:#0b1e1a; stroke:#16f2aa; }
+      .cyan { fill:#071b1f; stroke:#00f5ff; }
+      .violet { fill:#14102a; stroke:#9c88ff; }
+      .warn { fill:#221015; stroke:#ff6b6b; }
+      .tiny { font-size:11px; opacity:0.9; }
     </style>
+
+    <!-- Reusable node symbol (scaled via <use>) -->
+    <symbol id="nodeSymbol" viewBox="0 0 220 64">
+      <rect x="0" y="0" width="220" height="64" rx="16" class="node"/>
+      <circle cx="24" cy="32" r="7" fill="none" stroke-width="2"/>
+      <circle cx="24" cy="32" r="2.5"/>
+      <text x="46" y="27" class="nodeLabel"></text>
+      <text x="46" y="46" class="nodeNum"></text>
+    </symbol>
   </defs>
 
   <!-- Background -->
-  <rect class="bg" x="0" y="0" width="1400" height="800"/>
-  <rect class="grid" x="0" y="0" width="1400" height="800"/>
+  <rect class="bg" x="0" y="0" width="1600" height="980"/>
+  <rect class="grid" x="0" y="0" width="1600" height="980"/>
 
   <!-- Outer frame -->
-  <rect x="36" y="28" width="1328" height="744" class="frame" filter="url(#shadowSoft)"/>
+  <rect x="34" y="24" width="1532" height="932" class="frame" filter="url(#shadowSoft)"/>
 
   <!-- Header -->
   <g transform="translate(64,62)">
-    <!-- Neon emblem -->
-    <g filter="url(#glowA)">
-      <circle cx="18" cy="18" r="10" fill="none" stroke="#16f2aa" stroke-width="2.2"/>
-      <path d="M18 3v30M3 18h30" stroke="#00f5ff" stroke-width="2.2" stroke-linecap="round"/>
-      <path d="M8 8l20 20M28 8L8 28" stroke="#9c88ff" stroke-width="1.8" stroke-linecap="round" opacity="0.85"/>
-    </g>
+    <text class="cap" x="0" y="0">MX2LM v1.1</text>
+    <text class="h1" x="0" y="40">30-Module Cognitive Brain — Constellation Layout</text>
+    <text class="sub" x="0" y="68">Top-down law gravity • Layered modules • Edges show primary dependency flow (law → execution → glyph → meta)</text>
 
-    <text class="cap" x="52" y="12">Ω BLACK PANEL</text>
-    <text class="h1" x="52" y="44">ASX ⊗ π-K’UHUL ⊗ XCFE</text>
-    <text class="body muted" x="52" y="68">Dashboard Law Sheet • sealed invariants • replayable truth</text>
-
-    <!-- Law chip row -->
     <g transform="translate(0,92)">
-      <rect class="chip" x="0" y="0" width="418" height="30"/>
-      <text class="chipText" x="14" y="20">Ω-LAW: ASX = XCFE = XJSON = K’UHUL = AST</text>
+      <rect class="badge" x="0" y="0" width="520" height="30"/>
+      <text class="badgeText" x="14" y="20">Ω-LAW: ASX = XCFE = XJSON = K’UHUL = AST</text>
 
-      <rect class="chip" x="436" y="0" width="410" height="30"/>
-      <text class="chipText" x="450" y="20">UI is shadow • State is substance</text>
+      <rect class="badge" x="540" y="0" width="350" height="30"/>
+      <text class="badgeText" x="554" y="20">Truth = replayability</text>
 
-      <rect class="chip" x="864" y="0" width="370" height="30"/>
-      <text class="chipText" x="878" y="20">Truth = replayability</text>
+      <rect class="badge" x="910" y="0" width="420" height="30"/>
+      <text class="badgeText" x="924" y="20">UI reads state • state never reads UI</text>
     </g>
 
-    <line class="rule" x1="0" y1="142" x2="1240" y2="142"/>
+    <!-- Legend -->
+    <g transform="translate(0,138)">
+      <text class="legend" x="0" y="0">Legend:</text>
+      <g transform="translate(74,-12)">
+        <rect x="0" y="0" width="140" height="26" rx="999" class="mint"/>
+        <text class="badgeText" x="14" y="18">Identity / Law</text>
+      </g>
+      <g transform="translate(228,-12)">
+        <rect x="0" y="0" width="120" height="26" rx="999" class="cyan"/>
+        <text class="badgeText" x="14" y="18">Mesh / Exec</text>
+      </g>
+      <g transform="translate(360,-12)">
+        <rect x="0" y="0" width="150" height="26" rx="999" class="violet"/>
+        <text class="badgeText" x="14" y="18">Codex / Glyph</text>
+      </g>
+      <g transform="translate(522,-12)">
+        <rect x="0" y="0" width="140" height="26" rx="999" class="warn"/>
+        <text class="badgeText" x="14" y="18">Meta-Law</text>
+      </g>
+    </g>
   </g>
 
-  <!-- Main panels -->
-  <!-- Left column: Laws 1-4 -->
+  <!-- Edges (primary dependency paths) -->
+  <g>
+    <!-- Identity -> Mesh -->
+    <path class="edge" d="M200 320 C 200 360, 200 380, 200 410"/>
+    <path class="edge" d="M520 320 C 520 360, 520 380, 520 410"/>
+    <path class="edge" d="M840 320 C 840 360, 840 380, 840 410"/>
+
+    <!-- Mesh -> Cluster Substrate -->
+    <path class="edge" d="M200 500 C 200 540, 240 560, 280 580"/>
+    <path class="edge" d="M520 500 C 520 540, 520 560, 520 580"/>
+    <path class="edge" d="M840 500 C 840 540, 800 560, 760 580"/>
+
+    <!-- Cluster Substrate -> Atomic Runtimes -->
+    <path class="edge" d="M520 650 C 520 690, 520 705, 520 730"/>
+
+    <!-- Atomic Runtimes -> ASX Blocks -->
+    <path class="edge" d="M520 800 C 520 830, 520 845, 520 870"/>
+
+    <!-- ASX Blocks -> Micronauts -->
+    <path class="edge" d="M520 930 C 760 930, 980 820, 1120 700"/>
+    <path class="edge2" d="M520 930 C 720 890, 880 840, 1040 780"/>
+    <path class="edge2" d="M520 930 C 680 920, 860 900, 1040 880"/>
+
+    <!-- Micronauts -> Compression Universe -->
+    <path class="edge" d="M1120 760 C 1120 790, 1120 810, 1120 840"/>
+
+    <!-- Compression Universe -> Codex -->
+    <path class="edge" d="M1120 920 C 980 920, 820 900, 720 880"/>
+    <path class="edge2" d="M1120 920 C 980 900, 820 860, 720 820"/>
+
+    <!-- Codex -> Glyph Roots -->
+    <path class="edge" d="M720 830 C 720 780, 760 740, 820 700"/>
+    <path class="edge" d="M720 880 C 780 850, 880 820, 980 800"/>
+
+    <!-- Glyph Roots -> Meta-Law -->
+    <path class="edge" d="M980 720 C 1180 680, 1320 660, 1400 650"/>
+    <path class="edge" d="M820 720 C 1100 650, 1280 620, 1400 610"/>
+  </g>
+
+  <!-- Layer Boxes + Nodes -->
+  <!-- LAYER 1 -->
   <g transform="translate(64,230)">
-    <rect class="panel" x="0" y="0" width="640" height="510"/>
+    <rect class="layerBox" x="0" y="0" width="1472" height="118"/>
+    <text class="layerLabel" x="18" y="26">LAYER 1 — IDENTITY & GLOBAL INVARIANTS (3)</text>
 
-    <!-- Section title -->
-    <g transform="translate(24,26)">
-      <text class="h2">1–4 • CORE LAWS</text>
-      <line class="rule" x1="0" y1="18" x2="590" y2="18"/>
-    </g>
-
-    <!-- Law 1 -->
-    <g transform="translate(24,68)">
-      <g filter="url(#glowA)">
-        <text class="mono" x="0" y="0" dominant-baseline="hanging">
-          <tspan class="ok">1</tspan><tspan>  ASX RAM (Ω-State)</tspan>
-        </text>
+    <!-- Nodes -->
+    <g transform="translate(18,44)" filter="url(#glowMint)">
+      <g transform="translate(0,0)">
+        <rect class="node mint" x="0" y="0" width="460" height="58" rx="16"/>
+        <circle cx="22" cy="29" r="7" fill="none" stroke="#16f2aa" stroke-width="2"/>
+        <circle cx="22" cy="29" r="2.5" fill="#16f2aa"/>
+        <text class="nodeLabel" x="44" y="26">G_IDENTITY_ROOT</text>
+        <text class="nodeNum" x="44" y="45">#1 • global identity anchor</text>
       </g>
-      <text class="body muted" x="0" y="26">Only authoritative state during execution.</text>
-      <text class="mono" x="0" y="52">Invariants: volatile • symbolic • deterministic • non-persistent • tick-scoped</text>
-      <line class="rule" x1="0" y1="78" x2="592" y2="78"/>
-    </g>
 
-    <!-- Law 2 -->
-    <g transform="translate(24,160)">
-      <g filter="url(#glowB)">
-        <text class="mono" x="0" y="0" dominant-baseline="hanging">
-          <tspan fill="#00f5ff">2</tspan><tspan>  Tick Law (Ω-Time)</tspan>
-        </text>
+      <g transform="translate(500,0)">
+        <rect class="node mint" x="0" y="0" width="460" height="58" rx="16"/>
+        <circle cx="22" cy="29" r="7" fill="none" stroke="#16f2aa" stroke-width="2"/>
+        <circle cx="22" cy="29" r="2.5" fill="#16f2aa"/>
+        <text class="nodeLabel" x="44" y="26">G_INVARIANT_SEAL</text>
+        <text class="nodeNum" x="44" y="45">#2 • invariant enforcement layer</text>
       </g>
-      <text class="mono" x="0" y="28">perceive → represent → reason → decide → act → reflect → collapse</text>
-      <text class="body muted" x="0" y="54">Phases are exclusive • order is irreversible • collapse seals + wipes.</text>
-      <line class="rule" x1="0" y1="82" x2="592" y2="82"/>
-    </g>
 
-    <!-- Law 3 -->
-    <g transform="translate(24,258)">
-      <g filter="url(#glowA)">
-        <text class="mono" x="0" y="0" dominant-baseline="hanging">
-          <tspan fill="#9c88ff">3</tspan><tspan>  XCFE (Ω-Governance)</tspan>
-        </text>
-      </g>
-      <text class="body muted" x="0" y="26">Law, not logic: @if/@then/@else • phase legality • variable domains • validation.</text>
-      <text class="mono" x="0" y="52">Outside XCFE ⇒ invalid by definition.</text>
-      <line class="rule" x1="0" y1="78" x2="592" y2="78"/>
-    </g>
-
-    <!-- Law 4 -->
-    <g transform="translate(24,350)">
-      <g filter="url(#glowB)">
-        <text class="mono" x="0" y="0" dominant-baseline="hanging">
-          <tspan fill="#16f2aa">4</tspan><tspan>  π-K’UHUL (Ω-Mutation)</tspan>
-        </text>
-      </g>
-      <text class="body muted" x="0" y="26">Pure math. Emits mutation patches only. Deterministic RNG. Phase-gated (act).</text>
-      <text class="mono" x="0" y="52">Ops: set | merge | del | inc | dec | clamp | map</text>
-    </g>
-
-    <!-- Footer note -->
-    <g transform="translate(24,462)">
-      <rect x="0" y="0" width="592" height="36" rx="12" fill="#08101d" stroke="#1a2b44" stroke-width="1"/>
-      <text class="body muted" x="14" y="24">If it’s not in ASX RAM, it’s not real.</text>
-    </g>
-  </g>
-
-  <!-- Right column: Laws 5-9 + Seal -->
-  <g transform="translate(736,230)">
-    <rect class="panel2" x="0" y="0" width="628" height="510"/>
-
-    <g transform="translate(24,26)">
-      <text class="h2">5–9 • PROJECTION • PROOF • SCALE</text>
-      <line class="rule" x1="0" y1="18" x2="580" y2="18"/>
-    </g>
-
-    <!-- Law 5 -->
-    <g transform="translate(24,68)">
-      <g filter="url(#glowA)">
-        <text class="mono" x="0" y="0" dominant-baseline="hanging">
-          <tspan fill="#00f5ff">5</tspan><tspan>  Projection (Ω-View)</tspan>
-        </text>
-      </g>
-      <text class="body muted" x="0" y="26">UI reads state; state never reads UI.</text>
-      <text class="mono" x="0" y="52">Targets: CSS vars • classes • data-* attributes</text>
-      <line class="rule" x1="0" y1="78" x2="580" y2="78"/>
-    </g>
-
-    <!-- Law 6 -->
-    <g transform="translate(24,160)">
-      <g filter="url(#glowB)">
-        <text class="mono" x="0" y="0" dominant-baseline="hanging">
-          <tspan fill="#9c88ff">6</tspan><tspan>  Replay & Proof (Ω-Truth)</tspan>
-        </text>
-      </g>
-      <text class="body muted" x="0" y="26">Truth is replayability: patches replay → hashes recompute → state matches.</text>
-      <text class="mono" x="0" y="52">state_hash → tick_hash → epoch_hash</text>
-      <line class="rule" x1="0" y1="78" x2="580" y2="78"/>
-    </g>
-
-    <!-- Law 7 -->
-    <g transform="translate(24,258)">
-      <g filter="url(#glowA)">
-        <text class="mono" x="0" y="0" dominant-baseline="hanging">
-          <tspan fill="#16f2aa">7</tspan><tspan>  Clusters (Ω-Scale)</tspan>
-        </text>
-      </g>
-      <text class="body muted" x="0" y="26">Parallel regions under the same law; merge only at collapse.</text>
-      <text class="mono" x="0" y="52">No shared mutation • No bypass • Same gates</text>
-      <line class="rule" x1="0" y1="78" x2="580" y2="78"/>
-    </g>
-
-    <!-- Law 8 -->
-    <g transform="translate(24,350)">
-      <g filter="url(#glowB)">
-        <text class="mono" x="0" y="0" dominant-baseline="hanging">
-          <tspan class="warn">8</tspan><tspan>  Forbidden Zones (Ω-Exclusions)</tspan>
-        </text>
-      </g>
-      <text class="mono" x="0" y="28">neural tensors • implicit state • UI-driven logic • nondeterminism • side-channels</text>
-    </g>
-
-    <!-- Seal / Quote -->
-    <g transform="translate(24,430)">
-      <rect x="0" y="0" width="580" height="60" rx="16" fill="#07101d" stroke="url(#borderGrad)" stroke-width="1.5"/>
-      <g filter="url(#glowA)">
-        <text class="body" x="16" y="26">“K’UHUL is not code that runs intelligence.”</text>
-        <text class="body" x="16" y="46">“It is the law that allows intelligence to condense.”</text>
+      <g transform="translate(1000,0)">
+        <rect class="node mint" x="0" y="0" width="454" height="58" rx="16"/>
+        <circle cx="22" cy="29" r="7" fill="none" stroke="#16f2aa" stroke-width="2"/>
+        <circle cx="22" cy="29" r="2.5" fill="#16f2aa"/>
+        <text class="nodeLabel" x="44" y="26">G_TRUTH_MERGE</text>
+        <text class="nodeNum" x="44" y="45">#3 • global truth reconciliation</text>
       </g>
     </g>
   </g>
 
-  <!-- Bottom status bar -->
-  <g transform="translate(64,748)">
-    <line class="rule" x1="0" y1="0" x2="1240" y2="0"/>
-    <text class="cap" x="0" y="28">Ω-LAW.BLACK_PANEL.v1 • SEALED</text>
-    <text class="cap" x="1030" y="28">DASHBOARD PANEL • SVG</text>
+  <!-- LAYER 2 -->
+  <g transform="translate(64,362)">
+    <rect class="layerBox" x="0" y="0" width="1472" height="118"/>
+    <text class="layerLabel" x="18" y="26">LAYER 2 — MESHCHAIN FEDERATION (3)</text>
 
-    <!-- Tiny pulse indicator -->
-    <g transform="translate(980,18)" filter="url(#glowB)">
-      <circle cx="0" cy="10" r="4" fill="#00f5ff"/>
-      <circle cx="20" cy="10" r="4" fill="#16f2aa" opacity="0.85"/>
-      <circle cx="40" cy="10" r="4" fill="#9c88ff" opacity="0.85"/>
+    <g transform="translate(18,44)" filter="url(#glowCyan)">
+      <g transform="translate(0,0)">
+        <rect class="node cyan" x="0" y="0" width="460" height="58" rx="16"/>
+        <circle cx="22" cy="29" r="7" fill="none" stroke="#00f5ff" stroke-width="2"/>
+        <circle cx="22" cy="29" r="2.5" fill="#00f5ff"/>
+        <text class="nodeLabel" x="44" y="26">MESHCHAIN_CORE</text>
+        <text class="nodeNum" x="44" y="45">#4 • block relay + patch propagation</text>
+      </g>
+
+      <g transform="translate(500,0)">
+        <rect class="node cyan" x="0" y="0" width="460" height="58" rx="16"/>
+        <circle cx="22" cy="29" r="7" fill="none" stroke="#00f5ff" stroke-width="2"/>
+        <circle cx="22" cy="29" r="2.5" fill="#00f5ff"/>
+        <text class="nodeLabel" x="44" y="26">MESHCHAIN_PROOF</text>
+        <text class="nodeNum" x="44" y="45">#5 • local verification engine</text>
+      </g>
+
+      <g transform="translate(1000,0)">
+        <rect class="node cyan" x="0" y="0" width="454" height="58" rx="16"/>
+        <circle cx="22" cy="29" r="7" fill="none" stroke="#00f5ff" stroke-width="2"/>
+        <circle cx="22" cy="29" r="2.5" fill="#00f5ff"/>
+        <text class="nodeLabel" x="44" y="26">MESHCHAIN_GOSSIP</text>
+        <text class="nodeNum" x="44" y="45">#6 • peer discovery + message routing</text>
+      </g>
     </g>
   </g>
 
-  <!-- Corner accents -->
-  <g opacity="0.9" filter="url(#glowA)">
-    <path d="M54 66h38" stroke="#16f2aa" stroke-width="3" stroke-linecap="round"/>
-    <path d="M54 66v38" stroke="#00f5ff" stroke-width="3" stroke-linecap="round"/>
-    <path d="M1346 66h-38" stroke="#16f2aa" stroke-width="3" stroke-linecap="round"/>
-    <path d="M1346 66v38" stroke="#00f5ff" stroke-width="3" stroke-linecap="round"/>
-    <path d="M54 734h38" stroke="#16f2aa" stroke-width="3" stroke-linecap="round"/>
-    <path d="M54 734v-38" stroke="#00f5ff" stroke-width="3" stroke-linecap="round"/>
-    <path d="M1346 734h-38" stroke="#16f2aa" stroke-width="3" stroke-linecap="round"/>
-    <path d="M1346 734v-38" stroke="#00f5ff" stroke-width="3" stroke-linecap="round"/>
+  <!-- LAYER 3 -->
+  <g transform="translate(64,494)">
+    <rect class="layerBox" x="0" y="0" width="1472" height="118"/>
+    <text class="layerLabel" x="18" y="26">LAYER 3 — ATOMIC CLUSTER SUBSTRATE (2)</text>
+
+    <g transform="translate(18,44)" filter="url(#glowCyan)">
+      <g transform="translate(0,0)">
+        <rect class="node cyan" x="0" y="0" width="720" height="58" rx="16"/>
+        <circle cx="22" cy="29" r="7" fill="none" stroke="#00f5ff" stroke-width="2"/>
+        <circle cx="22" cy="29" r="2.5" fill="#00f5ff"/>
+        <text class="nodeLabel" x="44" y="26">ATOMIC_CLUSTER_RUNTIME_v1</text>
+        <text class="nodeNum" x="44" y="45">#7 • XCFE + π + K’UHUL + ASX RAM</text>
+      </g>
+
+      <g transform="translate(752,0)">
+        <rect class="node cyan" x="0" y="0" width="702" height="58" rx="16"/>
+        <circle cx="22" cy="29" r="7" fill="none" stroke="#00f5ff" stroke-width="2"/>
+        <circle cx="22" cy="29" r="2.5" fill="#00f5ff"/>
+        <text class="nodeLabel" x="44" y="26">CLUSTER_INTEGRATION_LAYER</text>
+        <text class="nodeNum" x="44" y="45">#8 • binds MX2LM to cluster substrate</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- LAYER 4 -->
+  <g transform="translate(64,626)">
+    <rect class="layerBox" x="0" y="0" width="1472" height="118"/>
+    <text class="layerLabel" x="18" y="26">LAYER 4 — ATOMIC RUNTIMES (3)</text>
+
+    <g transform="translate(18,44)" filter="url(#glowCyan)">
+      <g transform="translate(0,0)">
+        <rect class="node cyan" x="0" y="0" width="460" height="58" rx="16"/>
+        <circle cx="22" cy="29" r="7" fill="none" stroke="#00f5ff" stroke-width="2"/>
+        <circle cx="22" cy="29" r="2.5" fill="#00f5ff"/>
+        <text class="nodeLabel" x="44" y="26">ATOMIC_RUNTIME_CORE</text>
+        <text class="nodeNum" x="44" y="45">#9 • deterministic execution atom</text>
+      </g>
+
+      <g transform="translate(500,0)">
+        <rect class="node cyan" x="0" y="0" width="460" height="58" rx="16"/>
+        <circle cx="22" cy="29" r="7" fill="none" stroke="#00f5ff" stroke-width="2"/>
+        <circle cx="22" cy="29" r="2.5" fill="#00f5ff"/>
+        <text class="nodeLabel" x="44" y="26">ATOMIC_RUNTIME_IO</text>
+        <text class="nodeNum" x="44" y="45">#10 • symbolic input/output contract</text>
+      </g>
+
+      <g transform="translate(1000,0)">
+        <rect class="node cyan" x="0" y="0" width="454" height="58" rx="16"/>
+        <circle cx="22" cy="29" r="7" fill="none" stroke="#00f5ff" stroke-width="2"/>
+        <circle cx="22" cy="29" r="2.5" fill="#00f5ff"/>
+        <text class="nodeLabel" x="44" y="26">ATOMIC_RUNTIME_LIFECYCLE</text>
+        <text class="nodeNum" x="44" y="45">#11 • created→scheduled→running→completed</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- LAYER 5 -->
+  <g transform="translate(64,758)">
+    <rect class="layerBox" x="0" y="0" width="1472" height="118"/>
+    <text class="layerLabel" x="18" y="26">LAYER 5 — ASX BLOCKS (3)</text>
+
+    <g transform="translate(18,44)" filter="url(#glowMint)">
+      <g transform="translate(0,0)">
+        <rect class="node mint" x="0" y="0" width="460" height="58" rx="16"/>
+        <circle cx="22" cy="29" r="7" fill="none" stroke="#16f2aa" stroke-width="2"/>
+        <circle cx="22" cy="29" r="2.5" fill="#16f2aa"/>
+        <text class="nodeLabel" x="44" y="26">ASX_BLOCK_CORE</text>
+        <text class="nodeNum" x="44" y="45">#12 • block structure + local graph</text>
+      </g>
+
+      <g transform="translate(500,0)">
+        <rect class="node mint" x="0" y="0" width="460" height="58" rx="16"/>
+        <circle cx="22" cy="29" r="7" fill="none" stroke="#16f2aa" stroke-width="2"/>
+        <circle cx="22" cy="29" r="2.5" fill="#16f2aa"/>
+        <text class="nodeLabel" x="44" y="26">ASX_BLOCK_SCHEDULER</text>
+        <text class="nodeNum" x="44" y="45">#13 • priority + dependency + compression gain</text>
+      </g>
+
+      <g transform="translate(1000,0)">
+        <rect class="node mint" x="0" y="0" width="454" height="58" rx="16"/>
+        <circle cx="22" cy="29" r="7" fill="none" stroke="#16f2aa" stroke-width="2"/>
+        <circle cx="22" cy="29" r="2.5" fill="#16f2aa"/>
+        <text class="nodeLabel" x="44" y="26">ASX_BLOCK_FLOW</text>
+        <text class="nodeNum" x="44" y="45">#14 • routing + backpressure + load balancing</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- LAYER 6 -->
+  <g transform="translate(64,890)">
+    <rect class="layerBox" x="0" y="0" width="1472" height="90"/>
+    <text class="layerLabel" x="18" y="26">LAYER 6 — MICRONAUTS (6)</text>
+
+    <!-- 6 nodes packed into row (smaller widths) -->
+    <g transform="translate(18,40)" filter="url(#glowViolet)">
+      <!-- each 236 wide with 8 gap -->
+      <g transform="translate(0,0)">
+        <rect class="node violet" x="0" y="0" width="236" height="44" rx="14"/>
+        <circle cx="18" cy="22" r="6" fill="none" stroke="#9c88ff" stroke-width="2"/>
+        <circle cx="18" cy="22" r="2.2" fill="#9c88ff"/>
+        <text class="nodeLabel tiny" x="36" y="18">µ-vector-ctrl</text>
+        <text class="nodeNum tiny" x="36" y="34">#15</text>
+      </g>
+
+      <g transform="translate(244,0)">
+        <rect class="node violet" x="0" y="0" width="236" height="44" rx="14"/>
+        <circle cx="18" cy="22" r="6" fill="none" stroke="#9c88ff" stroke-width="2"/>
+        <circle cx="18" cy="22" r="2.2" fill="#9c88ff"/>
+        <text class="nodeLabel tiny" x="36" y="18">µ-code-exec</text>
+        <text class="nodeNum tiny" x="36" y="34">#16</text>
+      </g>
+
+      <g transform="translate(488,0)">
+        <rect class="node violet" x="0" y="0" width="236" height="44" rx="14"/>
+        <circle cx="18" cy="22" r="6" fill="none" stroke="#9c88ff" stroke-width="2"/>
+        <circle cx="18" cy="22" r="2.2" fill="#9c88ff"/>
+        <text class="nodeLabel tiny" x="36" y="18">µ-db-master</text>
+        <text class="nodeNum tiny" x="36" y="34">#17</text>
+      </g>
+
+      <g transform="translate(732,0)">
+        <rect class="node violet" x="0" y="0" width="236" height="44" rx="14"/>
+        <circle cx="18" cy="22" r="6" fill="none" stroke="#9c88ff" stroke-width="2"/>
+        <circle cx="18" cy="22" r="2.2" fill="#9c88ff"/>
+        <text class="nodeLabel tiny" x="36" y="18">µ-lang-parse</text>
+        <text class="nodeNum tiny" x="36" y="34">#18</text>
+      </g>
+
+      <g transform="translate(976,0)">
+        <rect class="node violet" x="0" y="0" width="236" height="44" rx="14"/>
+        <circle cx="18" cy="22" r="6" fill="none" stroke="#9c88ff" stroke-width="2"/>
+        <circle cx="18" cy="22" r="2.2" fill="#9c88ff"/>
+        <text class="nodeLabel tiny" x="36" y="18">µ-pattern-match</text>
+        <text class="nodeNum tiny" x="36" y="34">#19</text>
+      </g>
+
+      <g transform="translate(1220,0)">
+        <rect class="node violet" x="0" y="0" width="234" height="44" rx="14"/>
+        <circle cx="18" cy="22" r="6" fill="none" stroke="#9c88ff" stroke-width="2"/>
+        <circle cx="18" cy="22" r="2.2" fill="#9c88ff"/>
+        <text class="nodeLabel tiny" x="36" y="18">µ-ast-gen</text>
+        <text class="nodeNum tiny" x="36" y="34">#20</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Right-side stacked box: Layers 7-10 (placed as a vertical constellation column) -->
+  <g transform="translate(1060,230)">
+    <!-- Column background -->
+    <rect class="layerBox" x="0" y="0" width="476" height="646"/>
+
+    <!-- Layer 7 -->
+    <g transform="translate(14,18)">
+      <text class="layerLabel" x="0" y="18">LAYER 7 — COMPRESSION UNIVERSE (3)</text>
+      <g transform="translate(0,30)" filter="url(#glowViolet)">
+        <rect class="node violet" x="0" y="0" width="448" height="54" rx="16"/>
+        <circle cx="22" cy="27" r="7" fill="none" stroke="#9c88ff" stroke-width="2"/>
+        <circle cx="22" cy="27" r="2.5" fill="#9c88ff"/>
+        <text class="nodeLabel" x="44" y="24">COMP_UNIVERSE_CORE</text>
+        <text class="nodeNum" x="44" y="42">#21 • compression calculus</text>
+
+        <g transform="translate(0,64)">
+          <rect class="node violet" x="0" y="0" width="448" height="54" rx="16"/>
+          <circle cx="22" cy="27" r="7" fill="none" stroke="#9c88ff" stroke-width="2"/>
+          <circle cx="22" cy="27" r="2.5" fill="#9c88ff"/>
+          <text class="nodeLabel" x="44" y="24">COMP_UNIVERSE_VIEWS</text>
+          <text class="nodeNum" x="44" y="42">#22 • DB/CODE/LANG as compressed views</text>
+        </g>
+
+        <g transform="translate(0,128)">
+          <rect class="node violet" x="0" y="0" width="448" height="54" rx="16"/>
+          <circle cx="22" cy="27" r="7" fill="none" stroke="#9c88ff" stroke-width="2"/>
+          <circle cx="22" cy="27" r="2.5" fill="#9c88ff"/>
+          <text class="nodeLabel" x="44" y="24">COMP_UNIVERSE_BRIDGES</text>
+          <text class="nodeNum" x="44" y="42">#23 • cross-universe mapping</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- Layer 8 -->
+    <g transform="translate(14,250)">
+      <text class="layerLabel" x="0" y="18">LAYER 8 — CODEX v1 (3)</text>
+      <g transform="translate(0,30)" filter="url(#glowViolet)">
+        <rect class="node violet" x="0" y="0" width="448" height="54" rx="16"/>
+        <circle cx="22" cy="27" r="7" fill="none" stroke="#9c88ff" stroke-width="2"/>
+        <circle cx="22" cy="27" r="2.5" fill="#9c88ff"/>
+        <text class="nodeLabel" x="44" y="24">CODEX_CODE_v1</text>
+        <text class="nodeNum" x="44" y="42">#24 • CODE pipeline (to_ast→to_ir→to_semantic)</text>
+
+        <g transform="translate(0,64)">
+          <rect class="node violet" x="0" y="0" width="448" height="54" rx="16"/>
+          <circle cx="22" cy="27" r="7" fill="none" stroke="#9c88ff" stroke-width="2"/>
+          <circle cx="22" cy="27" r="2.5" fill="#9c88ff"/>
+          <text class="nodeLabel" x="44" y="24">CODEX_DB_v1</text>
+          <text class="nodeNum" x="44" y="42">#25 • DB pipeline (query→plan→execute)</text>
+        </g>
+
+        <g transform="translate(0,128)">
+          <rect class="node violet" x="0" y="0" width="448" height="54" rx="16"/>
+          <circle cx="22" cy="27" r="7" fill="none" stroke="#9c88ff" stroke-width="2"/>
+          <circle cx="22" cy="27" r="2.5" fill="#9c88ff"/>
+          <text class="nodeLabel" x="44" y="24">CODEX_LANG_v1</text>
+          <text class="nodeNum" x="44" y="42">#26 • LANG pipeline (syntax→semantics→intent)</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- Layer 9 -->
+    <g transform="translate(14,482)">
+      <text class="layerLabel" x="0" y="18">LAYER 9 — GLYPH ATLAS (3)</text>
+      <g transform="translate(0,30)" filter="url(#glowViolet)">
+        <rect class="node violet" x="0" y="0" width="448" height="54" rx="16"/>
+        <circle cx="22" cy="27" r="7" fill="none" stroke="#9c88ff" stroke-width="2"/>
+        <circle cx="22" cy="27" r="2.5" fill="#9c88ff"/>
+        <text class="nodeLabel" x="44" y="24">G_DB_UNIVERSE_ROOT</text>
+        <text class="nodeNum" x="44" y="42">#27 • ⟁DB⟁</text>
+
+        <g transform="translate(0,64)">
+          <rect class="node violet" x="0" y="0" width="448" height="54" rx="16"/>
+          <circle cx="22" cy="27" r="7" fill="none" stroke="#9c88ff" stroke-width="2"/>
+          <circle cx="22" cy="27" r="2.5" fill="#9c88ff"/>
+          <text class="nodeLabel" x="44" y="24">G_CODE_UNIVERSE_ROOT</text>
+          <text class="nodeNum" x="44" y="42">#28 • ⟁CODE⟁</text>
+        </g>
+
+        <g transform="translate(0,128)">
+          <rect class="node violet" x="0" y="0" width="448" height="54" rx="16"/>
+          <circle cx="22" cy="27" r="7" fill="none" stroke="#9c88ff" stroke-width="2"/>
+          <circle cx="22" cy="27" r="2.5" fill="#9c88ff"/>
+          <text class="nodeLabel" x="44" y="24">G_LANG_UNIVERSE_ROOT</text>
+          <text class="nodeNum" x="44" y="42">#29 • ⟁LANG⟁</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- Layer 10 -->
+    <g transform="translate(14,612)">
+      <text class="layerLabel" x="0" y="18">LAYER 10 — META-LAW (1)</text>
+      <g transform="translate(0,30)" filter="url(#glowMint)">
+        <rect class="node warn" x="0" y="0" width="448" height="54" rx="16"/>
+        <circle cx="22" cy="27" r="7" fill="none" stroke="#ff6b6b" stroke-width="2"/>
+        <circle cx="22" cy="27" r="2.5" fill="#ff6b6b"/>
+        <text class="nodeLabel" x="44" y="24">COMPRESSION_MANIFEST_v3</text>
+        <text class="nodeNum" x="44" y="42">#30 • “compression is everything” meta-law</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Footer -->
+  <g transform="translate(64,944)">
+    <text class="cap" x="0" y="0">SVG: MX2LM_BRAIN_CONSTELLATION_v1 • 30 nodes • layer-aligned • dashboard-ready</text>
+    <text class="cap" x="1180" y="0">Ω-SEALED</text>
   </g>
 </svg>
