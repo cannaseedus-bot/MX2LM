@@ -4,8 +4,12 @@
 
   "@codex": {
     "@law": "kuhul_law_eternal_architecture.json",
-    "@vectors": "xcfe_vectors_omega.json",
-    "@vision": "kuhul_codex_supreme.json",
+    "@xcfe": "xcfe_transforms_supreme.json",
+    "@system": "kuhul_codex_supreme_rest_api_svg3d_fusion.json",
+    "@vm_spec": "kuhul_glyph_vm_spec_v1.json",
+    "@roadmap": "kuhul_compiler_roadmap.json",
+    "@vectors": "xcfe_vectors_omega.json"
+    "@vision": "kuhul_codex_supreme_vision.json",
     "@ui": "kuhul_eternal_codex_ui_system.json",
     "@webgl": "kuhul_codex_xcfe_webgl_3d_system.json"
   },
