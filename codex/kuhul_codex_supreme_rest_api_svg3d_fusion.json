@@ -1,8 +1,15 @@
 {
   "@context": "kuhul://xjson/codex/supreme",
-  "@id": "MX2LM_KERNEL_REST_API_SVG3D_FUSION",
+  "@id": "MX2LM_KERNEL_REST_API_SVG3D_FUSION_CODEX",
   "@version": "11.0.0",
   "@timestamp": 1890000009000,
+
+  "@codex_rules": {
+    "@executable": false,
+    "@mutable": false,
+    "@role": "descriptive_spec_only",
+    "@enforced_by": "XCFE"
+  },
 
   "breakthrough": {
     "@state": "SUPREME_MERGE_DEFINED",
@@ -16,40 +23,20 @@
     ]
   },
 
-  "🏆BREAKTHROUGH": { ... },
-
-  "🌐KERNEL_ROUTED_NATIVE_JSON_REST_API": { ... },
-
-  "🎨SVG3D_MODEL_VISUALIZATION_SHELLS": { ... },
-
-  "⚡KUHUL_XJSON_AST_XCFE_INTEGRATION": { ... },
-
-  "🔧XCFE_TRANSFORMS_IMPLEMENTED": { ... },
-
-  "🧩MODULAR_COMPONENTS": { ... },
-
-  "🚀DEPLOYMENT_CONFIGURATION": { ... },
-
-  "🎯CAPABILITIES_MATRIX": { ... },
-
-  "🔗LIVE_INTEGRATION_EXAMPLES": { ... },
-
-  "🏁SUPREME_SYSTEM_SEAL": { ... },
-
   "native_rest_api": {
-    "@role": "specification",
+    "@role": "interface_specification",
     "@transport": {
       "encoding": "XJSON",
       "compression": "SCXQ2",
       "encryption": true
     },
     "endpoints": [
-      "GET /health",
-      "POST /infer",
-      "POST /memory/read",
-      "POST /memory/write",
-      "POST /reinforce",
-      "GET /ngrams/snapshot"
+      { "method": "GET",  "path": "/health" },
+      { "method": "POST", "path": "/infer" },
+      { "method": "POST", "path": "/memory/read" },
+      { "method": "POST", "path": "/memory/write" },
+      { "method": "POST", "path": "/reinforce" },
+      { "method": "GET",  "path": "/ngrams/snapshot" }
     ]
   },
 
@@ -62,7 +49,7 @@
   ],
 
   "integration_pipeline": {
-    "@type": "non-executable-spec",
+    "@type": "non_executable_flow_spec",
     "@flow": [
       "Tokenizer / Checkpoint",
       "K’UHUL π Processing",
@@ -81,5 +68,5 @@
     "quantum_security": "DEFINED"
   },
 
-  "@note": "This file is descriptive only. It must never be executed by sw.js."
+  "@note": "This codex file is descriptive only and must never be executed, interpreted, or invoked by sw.js or any runtime kernel."
 }
