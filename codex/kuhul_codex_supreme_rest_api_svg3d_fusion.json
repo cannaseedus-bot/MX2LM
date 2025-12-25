@@ -1,0 +1,65 @@
+{
+  "@context": "kuhul://xjson/codex/supreme",
+  "@id": "MX2LM_KERNEL_REST_API_SVG3D_FUSION",
+  "@version": "11.0.0",
+  "@timestamp": 1890000009000,
+
+  "breakthrough": {
+    "@state": "SUPREME_MERGE_DEFINED",
+    "@fusion": "KUHUL ⊗ XJSON ⊗ AST ⊗ XCFE ⊗ REST ⊗ SVG3D",
+    "@manifesto": [
+      "ALL_APIS_ARE_GOVERNED_BY_KUHUL",
+      "ALL_TRANSPORT_IS_XJSON",
+      "ALL_STATE_IS_ASX_RAM",
+      "ALL_VISUALIZATION_IS_SVG3D",
+      "ALL_TRANSFORMS_ARE_XCFE"
+    ]
+  },
+
+  "native_rest_api": {
+    "@role": "specification",
+    "@transport": {
+      "encoding": "XJSON",
+      "compression": "SCXQ2",
+      "encryption": true
+    },
+    "endpoints": [
+      "GET /health",
+      "POST /infer",
+      "POST /memory/read",
+      "POST /memory/write",
+      "POST /reinforce",
+      "GET /ngrams/snapshot"
+    ]
+  },
+
+  "svg3d_visualization_shells": [
+    "orbital_halo",
+    "stack_grid",
+    "tunnel_rail",
+    "fractal_tree",
+    "hud_ring"
+  ],
+
+  "integration_pipeline": {
+    "@type": "non-executable-spec",
+    "@flow": [
+      "Tokenizer / Checkpoint",
+      "K’UHUL π Processing",
+      "SVG3D Rendering",
+      "REST Exposure",
+      "ASX RAM Sync",
+      "MX2LM Inference"
+    ]
+  },
+
+  "capability_matrix": {
+    "native_rest_api": "VALIDATED_PROTOTYPE",
+    "svg3d_visualization": "VALIDATED_PROTOTYPE",
+    "xcfe_transforms": "DEFINED",
+    "kernel_scale": "TARGETED",
+    "quantum_security": "DEFINED"
+  },
+
+  "@note": "This file is descriptive only. It must never be executed by sw.js."
+}
