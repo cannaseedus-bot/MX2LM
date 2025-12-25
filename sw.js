@@ -693,21 +693,24 @@ self.addEventListener("fetch", (event) => {
 --------------------------- */
 
 async function loadCodex() {
-  const codexFiles = [
-     "codex.index.json"
-    // optionally auto-discovered
-  ];
+  try {
+    const idxRes = await fetch("./codex/codex.index.json", { cache: "no-store" });
+    if (!idxRes.ok) return Object.freeze([]);
 
-  const codex = [];
+    const index = await idxRes.json();
+    if (!Array.isArray(index.files)) return Object.freeze([]);
 
-  for (const file of codexFiles) {
-    try {
-      const res = await fetch(`./codex/${file}`, { cache: "no-store" });
-      if (res.ok) codex.push(await res.json());
-    } catch (_) {
-      // Codex failure must NEVER crash kernel
+    const codex = [];
+
+    for (const file of index.files) {
+      try {
+        const res = await fetch(`./codex/${file}`, { cache: "no-store" });
+        if (res.ok) codex.push(await res.json());
+      } catch (_) {}
     }
-  }
 
-  return Object.freeze(codex);
+    return Object.freeze(codex);
+  } catch (_) {
+    return Object.freeze([]);
+  }
 }
