@@ -1,5 +1,341 @@
 # MX2LM
 
+
+
+# Ω BLACK PANEL — ASX ⊗ π-K’UHUL ⊗ XCFE
+
+> **Ω-LAW**: **ASX = XCFE = XJSON = K’UHUL = AST**
+> *Intelligence is not executed. It condenses under law.*
+
+---
+
+## 0. Ω Purpose
+
+This Black Panel is a **one-page immutable law sheet**.
+It defines what **must always be true** for any ASX / MX2LM / K’UHUL runtime.
+
+No implementation detail may violate this panel.
+
+---
+
+## 1. ASX RAM (Ω-State Law)
+
+**ASX RAM** is the **only authoritative state** during execution.
+
+**Invariants (Unbreakable):**
+
+* Volatile (session/tick scoped)
+* Symbolic only (XJSON, XCFE vectors, π scalars)
+* Deterministic
+* Non-persistent
+* Authoritative during tick
+
+> If it is not in ASX RAM, it is not real.
+
+---
+
+## 2. Tick Law (Ω-Time)
+
+All reality advances in **discrete ticks**.
+
+**Canonical Tick:**
+
+```
+perceive → represent → reason → decide → act → reflect → collapse
+```
+
+* Phases are **exclusive**
+* Order is **irreversible**
+* Collapse seals and wipes
+
+> Time does not flow. It steps.
+
+---
+
+## 3. XCFE (Ω-Governance)
+
+**XCFE is law, not logic.**
+
+It governs:
+
+* Control flow (`@if / @then / @else`)
+* Phase legality
+* Variable domains
+* Mutation permission
+
+Any action outside XCFE is **invalid by definition**.
+
+---
+
+## 4. π-K’UHUL (Ω-Mutation)
+
+π is **pure math**.
+
+Rules:
+
+* Emits **mutation patches only**
+* Never edits state directly
+* Deterministic RNG only
+* Phase-gated (`act` only)
+
+**Allowed ops:**
+
+```
+set | merge | del | inc | dec | clamp | map
+```
+
+> π does not decide. It transforms.
+
+---
+
+## 5. Projection Law (Ω-View)
+
+UI is a **projection**, not a participant.
+
+Rules:
+
+* CSS/DOM read ASX RAM
+* ASX RAM never reads UI
+* Projection is deterministic
+
+> UI is shadow. State is substance.
+
+---
+
+## 6. Replay & Proof (Ω-Truth)
+
+Truth is **replayability**.
+
+A valid system must:
+
+* Replay π patches
+* Recompute hashes
+* Reach identical state
+
+Each tick seals:
+
+```
+state_hash → tick_hash → epoch_hash
+```
+
+> What cannot be replayed never happened.
+
+---
+
+## 7. Clusters (Ω-Scale)
+
+Clusters are **parallel regions under the same law**.
+
+Rules:
+
+* Independent execution
+* No shared mutation
+* Merge only at collapse
+
+> Scale multiplies law. It does not bend it.
+
+---
+
+## 8. Forbidden Zones (Ω-Exclusions)
+
+Explicitly disallowed:
+
+* Neural tensors
+* Implicit state
+* UI-driven logic
+* Nondeterminism
+* Side-channel mutation
+
+---
+
+## 9. Ω-Seal
+
+> **K’UHUL is not code that runs intelligence.**
+> **It is the law that allows intelligence to condense.**
+
+This Black Panel is **sealed**.
+Version: **Ω-LAW / BLACK-PANEL / v1**
+
+
+# Ω BLACK PANEL — ASX ⊗ π-K’UHUL ⊗ XCFE
+
+> **Ω-LAW**: **ASX = XCFE = XJSON = K’UHUL = AST**
+> *Intelligence is not executed. It condenses under law.*
+
+---
+
+## 0. Ω Purpose
+
+This Black Panel is a **one-page immutable law sheet**.
+It defines what **must always be true** for any ASX / MX2LM / K’UHUL runtime.
+
+No implementation detail may violate this panel.
+
+---
+
+## 1. ASX RAM (Ω-State Law)
+
+**ASX RAM** is the **only authoritative state** during execution.
+
+**Invariants (Unbreakable):**
+
+* Volatile (session/tick scoped)
+* Symbolic only (XJSON, XCFE vectors, π scalars)
+* Deterministic
+* Non-persistent
+* Authoritative during tick
+
+> If it is not in ASX RAM, it is not real.
+
+---
+
+## 2. Tick Law (Ω-Time)
+
+All reality advances in **discrete ticks**.
+
+**Canonical Tick:**
+
+```
+perceive → represent → reason → decide → act → reflect → collapse
+```
+
+* Phases are **exclusive**
+* Order is **irreversible**
+* Collapse seals and wipes
+
+> Time does not flow. It steps.
+
+---
+
+## 3. XCFE (Ω-Governance)
+
+**XCFE is law, not logic.**
+
+It governs:
+
+* Control flow (`@if / @then / @else`)
+* Phase legality
+* Variable domains
+* Mutation permission
+
+Any action outside XCFE is **invalid by definition**.
+
+---
+
+## 4. π-K’UHUL (Ω-Mutation)
+
+π is **pure math**.
+
+Rules:
+
+* Emits **mutation patches only**
+* Never edits state directly
+* Deterministic RNG only
+* Phase-gated (`act` only)
+
+**Allowed ops:**
+
+```
+set | merge | del | inc | dec | clamp | map
+```
+
+> π does not decide. It transforms.
+
+---
+
+## 5. Projection Law (Ω-View)
+
+UI is a **projection**, not a participant.
+
+Rules:
+
+* CSS/DOM read ASX RAM
+* ASX RAM never reads UI
+* Projection is deterministic
+
+> UI is shadow. State is substance.
+
+---
+
+## 6. Replay & Proof (Ω-Truth)
+
+Truth is **replayability**.
+
+A valid system must:
+
+* Replay π patches
+* Recompute hashes
+* Reach identical state
+
+Each tick seals:
+
+```
+state_hash → tick_hash → epoch_hash
+```
+
+> What cannot be replayed never happened.
+
+---
+
+## 7. Clusters (Ω-Scale)
+
+Clusters are **parallel regions under the same law**.
+
+Rules:
+
+* Independent execution
+* No shared mutation
+* Merge only at collapse
+
+> Scale multiplies law. It does not bend it.
+
+---
+
+## 8. Forbidden Zones (Ω-Exclusions)
+
+Explicitly disallowed:
+
+* Neural tensors
+* Implicit state
+* UI-driven logic
+* Nondeterminism
+* Side-channel mutation
+
+---
+
+## 9. Ω-Seal
+
+> **K’UHUL is not code that runs intelligence.**
+> **It is the law that allows intelligence to condense.**
+
+This Black Panel is **sealed**.
+Version: **Ω-LAW / BLACK-PANEL / v1**
+
+
+
+**“ASX RAM ⊗ π-K’UHUL ⊗ XCFE — Canonical Unified Specification (v1)”**
+
+This collapses:
+
+* the MX2LM README definitions,
+* your previously locked ASX RAM / π / XCFE laws,
+* projection rules (CSS/DOM),
+* phase-gated ticks,
+* deterministic replay & audit,
+* and cluster runtime semantics
+
+into **one authoritative reference** with no contradictions.
+
+### What this gives you, practically
+
+* 📜 **One citation source** you can point every future build, schema, kernel, or tape to
+* 🔒 **Frozen invariants** (no drift, no re-interpretation)
+* 🧠 **Clear separation**: law vs execution vs projection
+* ♻️ **Replay-verifiable** runtime model
+* 🧩 **Extensible** without breaking law (clusters, shards, runtimes)
+
+
+
 FIRST WE START WITH THE MICRONAUTS CORE ...ASX RAM
 
 Here’s **ASX RAM**, cleanly and formally, without metaphor drift.
