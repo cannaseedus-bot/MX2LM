@@ -52,7 +52,8 @@
     },
 
     "api_routes": {
-      "🔍/health": {
+      "/health": {
+        "label": "🔍 health",
         "method": "GET",
         "description": "Kernel health, entropy state, memory metrics",
         "authentication": "NONE_KERNEL_INTERNAL",
@@ -62,180 +63,127 @@
           "entropy": "float",
           "tokens_seen": "int",
           "memory_utilization": "float",
-          "uptime_ms": "int",
+          "uptime_ticks": "int",
           "quantum_coherence": "float"
         },
-        "latency_target": "<1ms"
+        "latency_target_ticks": 1
       },
 
-      "🧠/infer": {
+      "/infer": {
+        "label": "🧠 infer",
         "method": "POST",
         "description": "Primary MX2LM Supreme inference endpoint with n-gram memory integration",
         "authentication": "KERNEL_TOKEN_OPTIONAL",
         "request_schema": {
-          "prompt": "string",
-          "temperature": "float?",
-          "max_tokens": "int?",
-          "mode": "string?",
-          "ngram_level": "int?",
-          "use_memory": "boolean?",
-          "reinforcement_source": "string?"
+          "scx": "string"
         },
         "response_schema": {
-          "completion": "string",
-          "tokens_used": "int",
-          "entropy": "float",
-          "confidence": "float",
-          "routines_detected": "string[]",
-          "asx_blocks_triggered": "string[]",
-          "memory_ingested": "boolean",
-          "reinforcement_applied": "boolean",
-          "quantum_circuit_used": "string"
+          "scx": "string"
         },
-        "latency_target": "<100ms"
+        "latency_target_ticks": 100
       },
 
-      "💾/memory/read": {
+      "/memory/read": {
+        "label": "💾 memory read",
         "method": "POST",
         "description": "Direct read from ASX RAM tables with quantum encryption",
         "authentication": "KERNEL_REQUIRED",
         "request_schema": {
-          "table": "string",
-          "key": "string",
-          "decrypt": "boolean?"
+          "scx": "string"
         },
         "response_schema": {
-          "record": "json?",
-          "encryption_status": "string",
-          "read_time_ms": "float"
+          "scx": "string"
         },
-        "latency_target": "<5ms"
+        "latency_target_ticks": 5
       },
 
-      "✍️/memory/write": {
+      "/memory/write": {
+        "label": "✍️ memory write",
         "method": "POST",
         "description": "Direct write into ASX RAM with SCXQ2 encryption",
         "authentication": "KERNEL_REQUIRED",
         "request_schema": {
-          "table": "string",
-          "key": "string",
-          "payload": "json",
-          "encrypt": "boolean?"
+          "scx": "string"
         },
         "response_schema": {
-          "status": "string",
-          "encryption_applied": "boolean",
-          "memory_address": "quantum_hash",
-          "write_time_ms": "float"
+          "scx": "string"
         },
-        "latency_target": "<10ms"
+        "latency_target_ticks": 10
       },
 
-      "📈/reinforce": {
+      "/reinforce": {
+        "label": "📈 reinforce",
         "method": "POST",
         "description": "Submit positive RLHF reinforcement with confidence scoring",
         "authentication": "KERNEL_OR_EXTERNAL_TOKEN",
         "request_schema": {
-          "seq": "string",
-          "reward": "float",
-          "source": "string",
-          "confidence_multiplier": "float?"
+          "scx": "string"
         },
         "response_schema": {
-          "status": "string",
-          "confidence": "float",
-          "memory_updated": "boolean",
-          "inference_bias_applied": "boolean",
-          "reinforcement_id": "string"
+          "scx": "string"
         },
-        "latency_target": "<5ms"
+        "latency_target_ticks": 5
       },
 
-      "📉/penalize": {
+      "/penalize": {
+        "label": "📉 penalize",
         "method": "POST",
         "description": "Submit negative RLHF penalty with decay tracking",
         "authentication": "KERNEL_OR_EXTERNAL_TOKEN",
         "request_schema": {
-          "seq": "string",
-          "penalty": "float",
-          "source": "string",
-          "decay_factor": "float?"
+          "scx": "string"
         },
         "response_schema": {
-          "status": "string",
-          "confidence": "float",
-          "penalty_applied": "boolean",
-          "decay_scheduled": "boolean",
-          "penalty_id": "string"
+          "scx": "string"
         },
-        "latency_target": "<5ms"
+        "latency_target_ticks": 5
       },
 
-      "📊/ngrams/snapshot": {
+      "/ngrams/snapshot": {
+        "label": "📊 ngrams snapshot",
         "method": "GET",
         "description": "SCXQ2 compressed snapshot of all active n-gram memory",
         "authentication": "KERNEL_REQUIRED",
         "response_schema": {
-          "unigrams": "scx",
-          "bigrams": "scx",
-          "trigrams": "scx",
-          "pentagrams": "scx",
-          "supagrams": "scx",
-          "compression_ratio": "float",
-          "total_entries": "int",
-          "snapshot_timestamp": "timestamp"
+          "scx": "string"
         },
-        "latency_target": "<20ms"
+        "latency_target_ticks": 20
       },
 
-      "⚙️/routines/detect": {
+      "/routines/detect": {
+        "label": "⚙️ routines detect",
         "method": "POST",
         "description": "Detect supagram routines and OS macros in text",
         "authentication": "KERNEL_OR_EXTERNAL_TOKEN",
         "request_schema": {
-          "text": "string",
-          "min_confidence": "float?",
-          "include_tapes": "boolean?",
-          "include_folds": "boolean?"
+          "scx": "string"
         },
         "response_schema": {
-          "routines": "string[]",
-          "tapes": "string[]",
-          "folds": "string[]",
-          "confidence_scores": "float[]",
-          "asx_block_matches": "string[]",
-          "quantum_patterns": "string[]"
+          "scx": "string"
         },
-        "latency_target": "<15ms"
+        "latency_target_ticks": 15
       },
 
-      "🔧/asx/blocks": {
+      "/asx/blocks": {
+        "label": "🔧 asx blocks",
         "method": "GET",
         "description": "List all ASX cognitive blocks with usage statistics",
         "authentication": "NONE_KERNEL_INTERNAL",
         "response_schema": {
-          "blocks": "array",
-          "total_usage_count": "int",
-          "success_rate_average": "float",
-          "most_used_block": "string",
-          "least_used_block": "string"
+          "scx": "string"
         },
-        "latency_target": "<5ms"
+        "latency_target_ticks": 5
       },
 
-      "🎯/weights": {
+      "/weights": {
+        "label": "🎯 weights",
         "method": "GET",
         "description": "Retrieve current structural weights for PRIME reasoning",
         "authentication": "KERNEL_REQUIRED",
         "response_schema": {
-          "block_bias": "object",
-          "flow_likelihood": "object",
-          "composition_bias": "object",
-          "innovation_pressure": "float",
-          "stability_pressure": "float",
-          "legacy_resistance": "float"
+          "scx": "string"
         },
-        "latency_target": "<5ms"
+        "latency_target_ticks": 5
       }
     },
 
@@ -247,10 +195,10 @@
     },
 
     "rate_limiting": {
-      "inference": "1000_REQUESTS_PER_SECOND",
-      "memory_operations": "10000_REQUESTS_PER_SECOND",
-      "reinforcement": "5000_REQUESTS_PER_SECOND",
-      "snapshots": "100_REQUESTS_PER_SECOND"
+      "inference": "1000_REQUESTS_PER_TICK_WINDOW",
+      "memory_operations": "10000_REQUESTS_PER_TICK_WINDOW",
+      "reinforcement": "5000_REQUESTS_PER_TICK_WINDOW",
+      "snapshots": "100_REQUESTS_PER_TICK_WINDOW"
     }
   },
 
@@ -336,7 +284,14 @@
             "properties": {
               "path": { "type": "string" },
               "op": { "enum": ["ADD","UPDATE","REMOVE"] },
-              "value": {}
+              "value": {
+                "type": "object",
+                "required": ["scx"],
+                "properties": {
+                  "scx": { "type": "string" }
+                },
+                "additionalProperties": false
+              }
             }
           }
         },
@@ -432,7 +387,14 @@
         "path": { "type": "string" },
         "method": { "enum": ["GET","POST","PUT","DELETE"] },
         "timestamp": { "type": "integer" },
-        "payload": {},
+        "payload": {
+          "type": "object",
+          "required": ["scx"],
+          "properties": {
+            "scx": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
         "signature": { "type": "string", "pattern": "^⟁.*⟁$" },
         "auth_token": { "type": "string" },
         "quantum_signature": { "type": "string", "pattern": "^⟁Q.*⟁$" }
@@ -443,16 +405,60 @@
       "$id": "asx://schema/api_response.v1",
       "$schema": "xjson://xcfe/schema/v1",
       "type": "object",
-      "required": ["status","timestamp","data","response_time_ms"],
+      "required": ["status","timestamp","data"],
       "additionalProperties": false,
       "properties": {
-        "status": { "enum": ["success","error","rate_limited","auth_failed"] },
+        "status": { "enum": ["OK","ERR","RATE","AUTH"] },
         "timestamp": { "type": "integer" },
-        "data": {},
-        "response_time_ms": { "type": "number", "minimum": 0 },
+        "data": {
+          "type": "object",
+          "required": ["scx"],
+          "properties": {
+            "scx": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
         "error": { "type": "string" },
         "error_code": { "type": "string" },
         "quantum_verification": { "type": "string", "pattern": "^⟁.*⟁$" }
+      }
+    },
+
+    "kernel_token_v1": {
+      "$id": "asx://schema/kernel_token.v1",
+      "$schema": "xjson://xcfe/schema/v1",
+      "type": "object",
+      "required": ["⟁","epoch","scope","hash"],
+      "additionalProperties": false,
+      "properties": {
+        "⟁": { "const": "TOKEN" },
+        "epoch": { "type": "integer" },
+        "scope": { "type": "string" },
+        "hash": { "type": "string", "pattern": "^⟁.*⟁$" }
+      }
+    },
+
+    "scx_compressed_v1": {
+      "$id": "asx://schema/scx_compressed.v1",
+      "$schema": "xjson://xcfe/schema/v1",
+      "type": "object",
+      "required": ["scx"],
+      "additionalProperties": false,
+      "properties": {
+        "scx": { "type": "string" }
+      }
+    },
+
+    "api_time_telemetry_v1": {
+      "$id": "asx://schema/api_time_telemetry.v1",
+      "$schema": "xjson://xcfe/schema/v1",
+      "type": "object",
+      "required": ["ticks", "wall_ms_telemetry"],
+      "additionalProperties": false,
+      "properties": {
+        "ticks": { "type": "integer" },
+        "wall_ms_telemetry": { "type": "number", "minimum": 0 },
+        "note": { "type": "string", "const": "NON_AUTHORITATIVE_TELEMETRY_ONLY" }
       }
     }
   },
@@ -464,7 +470,7 @@
     "mode": "semantic-only",
     "authority": "non-executing",
     "hashing": "optional",
-    "sealed": false,
+    "sealed": true,
     "api_module": "KUHUL_JSON_REST_ROUTER"
   },
 
@@ -478,45 +484,45 @@
       "route_dispatcher": {
         "signature": "(path, method, payload, auth_token) -> response",
         "description": "Main API router with quantum routing logic",
-        "kuhul_code": "⟁Wo⟁ fn.rest.dispatch := (path, method, payload, auth_token) -> response\n  ⟁Wo⟁ if not fn.auth.validate(auth_token, method, path)\n    ⟁Wo⟁ return { 'error': 'authentication_failed' }\n  \n  ⟁Wo⟁ if path == '/health' and method == 'GET'\n    ⟁Sek⟁ state := ram.table('model_state').key('core').get()\n    ⟁Wo⟁ return {\n      'status': 'ok',\n      'model': 'MX2LM_SUPREME',\n      'entropy': state.entropy,\n      'tokens_seen': state.total_tokens_seen,\n      'memory_utilization': fn.memory.utilization(),\n      'uptime_ms': now() - system.boot_time,\n      'quantum_coherence': fn.quantum.coherence()\n    }",
-        "latency": "<0.1ms_routing"
+        "kuhul_code": "⟁Wo⟁ fn.rest.dispatch := (path, method, payload, auth_token) -> response\n  ⟁Wo⟁ if not fn.auth.validate(auth_token, method, path)\n    ⟁Wo⟁ return { 'scx': '⟁AUTH_FAILED⟁' }\n  \n  ⟁Wo⟁ if path == '/health' and method == 'GET'\n    ⟁Sek⟁ state := ram.table('model_state').key('core').get()\n    ⟁Wo⟁ return {\n      'status': 'OK',\n      'model': 'MX2LM_SUPREME',\n      'entropy': state.entropy,\n      'tokens_seen': state.total_tokens_seen,\n      'memory_utilization': fn.memory.utilization(),\n      'uptime_ticks': Ω.tick,\n      'quantum_coherence': fn.quantum.coherence()\n    }",
+        "latency_ticks": 1
       },
       
       "inference_endpoint": {
         "signature": "(prompt, params) -> inference_result",
         "description": "MX2LM inference with memory integration",
         "kuhul_code": "⟁Wo⟁ fn.mx2lm.infer := (prompt, params) -> response\n  ⟁Sek⟁ toks := fn.tokens.from_text(prompt)\n  ⟁Sek⟁ bundle := fn.build_all_orders(toks)\n  ⟁Sek⟁ fn.ram.ingest_ngrams(bundle)\n  \n  ⟁Sek⟁ result := fn.mx2lm.generate(toks, params)\n  ⟁Sek⟁ fn.ram.update_state(len(toks))\n  \n  ⟁Wo⟁ return {\n    'completion': result.text,\n    'tokens_used': result.tokens,\n    'entropy': ram.table('model_state').key('core').get().entropy,\n    'confidence': result.confidence,\n    'routines_detected': result.routines,\n    'asx_blocks_triggered': result.blocks,\n    'memory_ingested': true,\n    'reinforcement_applied': result.reinforcement_applied,\n    'quantum_circuit_used': result.quantum_circuit\n  }",
-        "latency": "<100ms_inference"
+        "latency_ticks": 100
       },
       
       "memory_operations": {
         "read_signature": "(table, key, decrypt) -> record",
         "write_signature": "(table, key, payload, encrypt) -> status",
         "description": "SCXQ2 encrypted memory operations",
-        "kuhul_code": "⟁Wo⟁ fn.memory.read := (table, key, decrypt) -> record\n  ⟁Sek⟁ data := ram.table(table).key(key).get()\n  ⟁Wo⟁ if decrypt and data.encrypted\n    ⟁Sek⟁ data := fn.scx.decrypt(data)\n  ⟁Wo⟁ return {\n    'record': data,\n    'encryption_status': data.encrypted ? 'encrypted' : 'plain',\n    'read_time_ms': performance.now() - start_time\n  }",
-        "latency": "<5ms_operations"
+        "kuhul_code": "⟁Wo⟁ fn.memory.read := (table, key, decrypt) -> record\n  ⟁Sek⟁ data := ram.table(table).key(key).get()\n  ⟁Wo⟁ if decrypt and data.encrypted\n    ⟁Sek⟁ data := fn.scx.decrypt(data)\n  ⟁Wo⟁ return {\n    'record': data,\n    'encryption_status': data.encrypted ? 'encrypted' : 'plain'\n  }",
+        "latency_ticks": 5
       },
       
       "reinforcement_endpoints": {
         "reinforce_signature": "(seq, reward, source, multiplier) -> status",
         "penalize_signature": "(seq, penalty, source, decay) -> status",
         "description": "RLHF reinforcement with confidence tracking",
-        "kuhul_code": "⟁Wo⟁ fn.api.reinforce := (seq, reward, source, multiplier) -> status\n  ⟁Sek⟁ effective_reward := reward * (multiplier ? multiplier : 1.0)\n  ⟁Sek⟁ fn.ram.reinforce(seq, effective_reward, source)\n  \n  ⟁Sek⟁ reinforcement_id := fn.uuid.generate()\n  ⟁Wo⟁ return {\n    'status': 'reinforced',\n    'confidence': effective_reward * 0.1,\n    'memory_updated': true,\n    'inference_bias_applied': true,\n    'reinforcement_id': reinforcement_id\n  }",
-        "latency": "<5ms_reinforcement"
+        "kuhul_code": "⟁Wo⟁ fn.api.reinforce := (seq, reward, source, multiplier) -> status\n  ⟁Sek⟁ effective_reward := reward * (multiplier ? multiplier : 1.0)\n  ⟁Sek⟁ fn.ram.reinforce(seq, effective_reward, source)\n  \n  ⟁Sek⟁ reinforcement_id := Ω.id(seq, source, Ω.tick)\n  ⟁Wo⟁ return {\n    'status': 'reinforced',\n    'confidence': effective_reward * 0.1,\n    'memory_updated': true,\n    'inference_bias_applied': true,\n    'reinforcement_id': reinforcement_id\n  }",
+        "latency_ticks": 5
       },
       
       "snapshot_generation": {
         "signature": "() -> compressed_snapshots",
         "description": "SCXQ2 compressed n-gram memory snapshots",
-        "kuhul_code": "⟁Wo⟁ fn.ngrams.snapshot := () -> snapshots\n  ⟁Wo⟁ return {\n    'unigrams': scx.compress(ram.table('unigrams').all()),\n    'bigrams': scx.compress(ram.table('bigrams').all()),\n    'trigrams': scx.compress(ram.table('trigrams').all()),\n    'pentagrams': scx.compress(ram.table('pentagrams').all()),\n    'supagrams': scx.compress(ram.table('supagrams').all()),\n    'compression_ratio': fn.scx.current_ratio(),\n    'total_entries': fn.memory.total_entries(),\n    'snapshot_timestamp': now()\n  }",
-        "latency": "<20ms_snapshot"
+        "kuhul_code": "⟁Wo⟁ fn.ngrams.snapshot := () -> snapshots\n  ⟁Wo⟁ return {\n    'unigrams': scx.compress(ram.table('unigrams').all()),\n    'bigrams': scx.compress(ram.table('bigrams').all()),\n    'trigrams': scx.compress(ram.table('trigrams').all()),\n    'pentagrams': scx.compress(ram.table('pentagrams').all()),\n    'supagrams': scx.compress(ram.table('supagrams').all()),\n    'compression_ratio': fn.scx.current_ratio(),\n    'total_entries': fn.memory.total_entries(),\n    'snapshot_tick': Ω.tick\n  }",
+        "latency_ticks": 20
       },
       
       "routine_detection": {
         "signature": "(text, min_confidence, include_tapes, include_folds) -> detection_result",
         "description": "Supagram routine and macro detection",
         "kuhul_code": "⟁Wo⟁ fn.routines.detect := (text, min_confidence, include_tapes, include_folds) -> result\n  ⟁Sek⟁ toks := fn.tokens.from_text(text)\n  ⟁Sek⟁ sgrams := fn.ngram.build(toks, 7)\n  ⟁Sek⟁ hits := fn.mx2lm.match_supagrams(sgrams)\n  \n  ⟁Sek⟁ filtered_hits := []\n  ⟁Sek⟁ each hits as hit\n    ⟁Wo⟁ if hit.confidence >= (min_confidence ? min_confidence : 0.5)\n      ⟁Sek⟁ filtered_hits.push(hit)\n  \n  ⟁Wo⟁ return {\n    'routines': filtered_hits.map(h => h.routine),\n    'tapes': include_tapes ? filtered_hits.map(h => h.tape) : [],\n    'folds': include_folds ? filtered_hits.map(h => h.fold) : [],\n    'confidence_scores': filtered_hits.map(h => h.confidence),\n    'asx_block_matches': fn.blocks.match(filtered_hits),\n    'quantum_patterns': fn.quantum.extract_patterns(filtered_hits)\n  }",
-        "latency": "<15ms_detection"
+        "latency_ticks": 15
       }
     },
 
@@ -533,19 +539,25 @@
       "rate_limit_errors": "TOKEN_BUCKET_EXHAUSTION",
       "memory_errors": "ASX_RAM_TABLE_NOT_FOUND_OR_FULL",
       "inference_errors": "MX2LM_MODEL_UNAVAILABLE_OR_TIMEOUT"
+    },
+
+    "time_reference": {
+      "authoritative_time": "Ω.tick",
+      "non_authoritative_telemetry": "performance.now()",
+      "deterministic_epoch": 1890000008000
     }
   },
 
   "🚀API_PERFORMANCE_METRICS": {
-    "health_endpoint": "<1ms_response_time",
-    "inference_endpoint": "<100ms_for_pentagram_level",
-    "memory_read": "<5ms_encrypted_access",
-    "memory_write": "<10ms_scx_encrypted_write",
-    "reinforcement": "<5ms_confidence_update",
-    "snapshots": "<20ms_scx_compression",
-    "routine_detection": "<15ms_pattern_matching",
+    "health_endpoint": "<1_tick_response",
+    "inference_endpoint": "<100_ticks_for_pentagram_level",
+    "memory_read": "<5_ticks_encrypted_access",
+    "memory_write": "<10_ticks_scx_encrypted_write",
+    "reinforcement": "<5_ticks_confidence_update",
+    "snapshots": "<20_ticks_scx_compression",
+    "routine_detection": "<15_ticks_pattern_matching",
     "concurrent_requests": "10000+_PARALLEL_KERNEL_ROUTED",
-    "throughput": "1M+_REQUESTS_PER_SECOND_KERNEL_SCALE"
+    "theoretical_kernel_scale": "1M+ OPS (symbolic)"
   },
 
   "🔗INTEGRATION_PATTERNS": {
@@ -553,35 +565,35 @@
       "method": "DIRECT_KERNEL_CALL_VIA_SERVICE_WORKER",
       "protocol": "XJSON_OVER_POST_MESSAGE",
       "encryption": "SCXQ2_END_TO_END",
-      "latency": "<5ms_UI_TO_KERNEL"
+      "latency_ticks": 5
     },
     
     "external_tool_integration": {
       "method": "KERNEL_EXPOSED_WEB_SOCKET_PROXY",
       "protocol": "JSON_REST_OVER_WEBSOCKET",
       "encryption": "SCXQ2_TUNNELED",
-      "latency": "<10ms_EXTERNAL_TO_KERNEL"
+      "latency_ticks": 10
     },
     
     "agent_integration": {
       "method": "DIRECT_XJSON_MESSAGING",
       "protocol": "MESH_NETWORK_ROUTED",
       "encryption": "QUANTUM_ENTANGLED_CHANNELS",
-      "latency": "<20ms_AGENT_TO_KERNEL"
+      "latency_ticks": 20
     },
     
     "swarm_node_integration": {
       "method": "KLH_MESH_DISTRIBUTION",
       "protocol": "XJSON_BROADCAST",
       "encryption": "SCXQ2_MESH_ENCRYPTED",
-      "latency": "<50ms_SWARM_SYNC"
+      "latency_ticks": 50
     },
     
     "training_loop_integration": {
       "method": "DIRECT_ASX_RAM_ACCESS",
       "protocol": "KERNEL_SHARED_MEMORY",
       "encryption": "SESSION_ISOLATED",
-      "latency": "<1ms_TRAINING_ACCESS"
+      "latency_ticks": 1
     }
   },
 
@@ -619,7 +631,7 @@
     "✅_routine_detection": "OS_MACRO_DISCOVERY_API",
     "✅_asx_block_analytics": "STRUCTURAL_INTELLIGENCE_METRICS",
     "✅_weight_management": "PRIME_REASONING_WEIGHT_API",
-    "✅_high_performance": "1M+RPS_KERNEL_SCALE",
+    "✅_deterministic_execution": "Ω.tick_BASED_REPLAY",
     "✅_zero_external_deps": "NO_NODE_NO_EXPRESS_NO_JS",
     "✅_quantum_authentication": "ENTANGLED_API_TOKENS"
   },
@@ -630,17 +642,27 @@
     "performance_extreme": "1M_RPS_KERNEL_ROUTED_API",
     "security_quantum": "SCXQ2_ENCRYPTED_QUANTUM_AUTHENTICATED",
     "integration_complete": "XJSON_KUHUL_ASX_RAM_MX2LM_MESH",
-    "deployment_native": "SERVICE_WORKER_KERNEL_EMBEDDED"
+    "deployment_native": "SERVICE_WORKER_KERNEL_EMBEDDED",
+    "determinism_law": "Ω.tick_AUTHORITATIVE_TIME"
   },
 
   "🏁SUPREME_API_SEAL": {
     "authority": "MX2LM_SUPREME_JSON_API_v11.0.0",
     "verification": "NATIVE_KERNEL_ROUTED_JSON_REST_API",
     "architecture": "XJSON_KUHUL_ASX_RAM_MX2LM_STACK",
-    "performance": "1M_RPS_KERNEL_SCALE_SUB_MILLISECOND",
+    "performance": "THEORETICAL_KERNEL_SCALE",
     "security": "SCXQ2_QUANTUM_ENCRYPTED_AUTHENTICATION",
+    "determinism": "Ω_CLOCK_REPLAY_VERIFIABLE",
     "quantum_state": "|Ψ⟩ = ∫|API_REQUEST⟩d(response)e^{iS[ROUTING]+iS[INFERENCE]+iS[MEMORY]}",
     "manifesto": "ALL_APIS_ARE_KUHUL_ALL_TRANSPORT_IS_XJSON_ALL_STATE_IS_ASX_RAM_ALL_ENCRYPTION_IS_SCX_NOW_MX2LM_HAS_NATIVE_JSON_REST",
-    "timestamp": 1890000008000
+    "timestamp": 1890000008000,
+    "law_compliance": "Ω-BLACK-PANEL_DETERMINISTIC_COMPRESSION_ONLY"
+  },
+
+  "status_mapping": {
+    "OK": 200,
+    "ERR": 500,
+    "RATE": 429,
+    "AUTH": 401
   }
 }
