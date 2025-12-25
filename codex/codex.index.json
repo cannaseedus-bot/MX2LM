@@ -1,10 +1,10 @@
 {
-  "version": 1,
-  "files": [
-    "kuhul_eternal_codex_ui_system.json",
-    "kuhul_codex_xcfe_webgl_3d_system.json",
-    "xcfe_vectors_omega.json",
-    "kuhul_law_eternal_architecture.json",
-    "kuhul_codex_supreme.json"
+  "@version": 1,
+  "@files": [
+   "@vision": "kuhul_eternal_codex_ui_system.json",
+    "@svg":"kuhul_codex_xcfe_webgl_3d_system.json",
+    "@vectors": "xcfe_vectors_omega.json",
+    "@law": "kuhul_law_eternal_architecture.json",
+    "@vision": "kuhul_codex_supreme.json"
   ]
 }
