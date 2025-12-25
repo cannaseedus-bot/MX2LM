@@ -710,7 +710,7 @@ self.addEventListener("activate", (e) => {
 
 async function loadCodex() {
   const codexFiles = [
-    "kuhul_ui_codex.json",
+    "kuhul_eternal_codex_ui_system.json",
     "kuhul_chat_codex.json",
     "kuhul_visualization_codex.json"
     // optionally auto-discovered
