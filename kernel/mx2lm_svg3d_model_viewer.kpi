@@ -1,0 +1,638 @@
+⟁ π_module mx2lm_svg3d_model_viewer
+  ⟁Wo⟁ version "1.0.0"
+  ⟁Wo⟁ role    "model_visualizer"
+  ⟁Wo⟁ desc    "K’UHUL π engine that turns tokenizer + checkpoint JSON into SVG-3D shells"
+
+  # -----------------------------------------------------
+  # 0. EXPECTED INPUT JSON SCHEMA (DOCUMENTATION)
+  # -----------------------------------------------------
+  # tokenizer.json:
+  # {
+  #   "vocab": [
+  #     { "id": 0, "token": "<BOS>", "freq": 123456, "class": "special" },
+  #     { "id": 1, "token": "the",   "freq": 987654, "class": "word"   },
+  #     ...
+  #   ],
+  #   "merges": [
+  #     { "id": 0, "left": "t", "right": "he", "count": 1234 },
+  #     ...
+  #   ],
+  #   "ngrams": {
+  #     "unigram_total": 100000000,
+  #     "bigram": { "the cat": 1023, "in the": 50621, ... },
+  #     "trigram": { "once upon a": 123, ... }
+  #   },
+  #   "embeddings": {
+  #     "dim": 128,
+  #     "vectors": { "0": [..128..], "1": [..], ... }
+  #   }
+  # }
+  #
+  # checkpoint.json:
+  # {
+  #   "layers": [
+  #     {
+  #       "id": 0,
+  #       "type": "transformer_block",
+  #       "heads": 16,
+  #       "params": 12345678,
+  #       "norms": { "attn": 12.3, "ffn": 19.4 },
+  #       "entropy": 3.28
+  #     },
+  #     ...
+  #   ],
+  #   "stats": {
+  #     "total_params": 1234567890,
+  #     "avg_entropy": 3.5,
+  #     "perplexity_eval": 7.2
+  #   }
+  # }
+
+  # -----------------------------------------------------
+  # 1. LOW-LEVEL MATH HELPERS (K’UHUL π)
+  # -----------------------------------------------------
+
+  ⟁ π_fn π_vec_norm(v) -> float
+    # L2 norm
+    ⟁ let sum_sq 0.0
+    ⟁ loop i 0 len(v)
+      ⟁ let sum_sq sum_sq + (v[i] * v[i])
+    ⟁ end
+    ⟁ return sqrt(sum_sq)
+  ⟁ end
+
+  ⟁ π_fn π_softmax(xs) -> list<float>
+    ⟁ let max_x max(xs)
+    ⟁ let exps []
+    ⟁ let sum_e 0.0
+    ⟁ loop x in xs
+      ⟁ let e exp(x - max_x)
+      ⟁ push exps e
+      ⟁ let sum_e sum_e + e
+    ⟁ end
+    ⟁ let probs []
+    ⟁ loop e in exps
+      ⟁ push probs (e / sum_e)
+    ⟁ end
+    ⟁ return probs
+  ⟁ end
+
+  ⟁ π_fn π_entropy(probs) -> float
+    # H(p) = -Σ p log2 p
+    ⟁ let H 0.0
+    ⟁ loop p in probs
+      ⟁ if p > 0.0
+        ⟁ let H H - (p * log2(p))
+      ⟁ end
+    ⟁ end
+    ⟁ return H
+  ⟁ end
+
+  ⟁ π_fn π_ngram_prob(count, total) -> float
+    # p = count / total (guarded)
+    ⟁ if total <= 0
+      ⟁ return 0.0
+    ⟁ end
+    ⟁ return (count / total)
+  ⟁ end
+
+  ⟁ π_fn π_pmi(p_xy, p_x, p_y) -> float
+    # Pointwise Mutual Information: log2(p(x,y) / (p(x)p(y)))
+    ⟁ if p_xy <= 0 or p_x <= 0 or p_y <= 0
+      ⟁ return 0.0
+    ⟁ end
+    ⟁ return log2(p_xy / (p_x * p_y))
+  ⟁ end
+
+  ⟁ π_fn π_angle_from_vec(v) -> float
+    # Map embedding vector → angle in [0, 2π)
+    ⟁ let x v[0]
+    ⟁ let y v[1]
+    ⟁ let θ atan2(y, x)
+    ⟁ if θ < 0
+      ⟁ let θ θ + (2 * PI)
+    ⟁ end
+    ⟁ return θ
+  ⟁ end
+
+  # -----------------------------------------------------
+  # 2. MODEL LOADING HELPERS
+  # -----------------------------------------------------
+
+  ⟁ π_fn π_load_json(url) -> json
+    ⟁ return rest.get_json(url)  # assume /trainer or /models endpoint
+  ⟁ end
+
+  ⟁ π_fn π_load_model_assets(model_id) -> dict
+    ⟁ let tokenizer π_load_json("/models/" + model_id + "/tokenizer.json")
+    ⟁ let checkpoint π_load_json("/models/" + model_id + "/checkpoint.json")
+    ⟁ return {
+      "tokenizer": tokenizer,
+      "checkpoint": checkpoint
+    }
+  ⟁ end
+
+  # -----------------------------------------------------
+  # 3. ORBITAL HALO DATA: VOCAB + EMBEDDINGS + N-GRAMS
+  # -----------------------------------------------------
+
+  ⟁ π_fn π_build_orbital_halo_data(tok) -> dict
+    ⟁ let vocab tok["vocab"]
+    ⟁ let total tok["ngrams"]["unigram_total"]
+    ⟁ let embeddings tok["embeddings"]["vectors"]
+
+    # Split into inner/mid/outer rings by frequency percentile
+    ⟁ let freqs [t["freq"] for t in vocab]
+    ⟁ let sorted_freqs sort(freqs, desc=true)
+    ⟁ let f_inner sorted_freqs[int(0.05 * len(sorted_freqs))]
+    ⟁ let f_mid   sorted_freqs[int(0.35 * len(sorted_freqs))]
+
+    ⟁ let inner []
+    ⟁ let mid   []
+    ⟁ let outer []
+
+    ⟁ loop t in vocab
+      ⟁ let freq t["freq"]
+      ⟁ let p    π_ngram_prob(freq, total)
+
+      # Probability-based size (log scale)
+      ⟁ let size (log10(freq + 10) * 2.0)
+
+      # Embedding → angle
+      ⟁ let v embeddings[str(t["id"])]
+      ⟁ let θ π_angle_from_vec(v)
+
+      # Simple “elevation” from entropy proxy: smaller p → higher elevation
+      ⟁ let elev (1.0 - p) * 60.0
+
+      ⟁ let glyph {
+        "id": t["id"],
+        "token": t["token"],
+        "theta": θ,
+        "phi": elev,
+        "color": π_class_to_color(t["class"]),
+        "size": size,
+        "prob": p
+      }
+
+      ⟁ if freq >= f_inner
+        ⟁ push inner glyph
+      ⟁ elif freq >= f_mid
+        ⟁ push mid glyph
+      ⟁ else
+        ⟁ push outer glyph
+      ⟁ end
+    ⟁ end
+
+    ⟁ return {
+      "halo": {
+        "inner": inner,
+        "mid": mid,
+        "outer": outer
+      }
+    }
+  ⟁ end
+
+  ⟁ π_fn π_class_to_color(clazz) -> string
+    ⟁ switch clazz
+      ⟁ case "special"  -> "#ff6b6b"
+      ⟁ case "punct"    -> "#feca57"
+      ⟁ case "number"   -> "#54a0ff"
+      ⟁ case "api"      -> "#5f27cd"
+      ⟁ default         -> "#1dd1a1"
+    ⟁ end
+  ⟁ end
+
+  # -----------------------------------------------------
+  # 4. STACK GRID DATA: LAYERS / HEADS / STATS
+  # -----------------------------------------------------
+
+  ⟁ π_fn π_build_stack_grid_data(ckpt) -> dict
+    ⟁ let layers ckpt["layers"]
+    ⟁ let blocks []
+
+    ⟁ let cols 4
+    ⟁ let rows 3
+
+    ⟁ loop i 0 len(layers)
+      ⟁ let L layers[i]
+      ⟁ let col (i % cols)
+      ⟁ let row ((i / cols) % rows)
+      ⟁ let layer_z (i / (cols * rows))
+
+      # Height proportional to log(params)
+      ⟁ let height log10(L["params"] + 10) * 6.0
+
+      # Tone based on entropy (normalized 0–1)
+      ⟁ let ent   L["entropy"]
+      ⟁ let tone  π_clamp(ent / 8.0, 0.0, 1.0)
+
+      ⟁ let block {
+        "col":   col,
+        "row":   row,
+        "layer": layer_z,
+        "height": height,
+        "tone": tone,
+        "glyph_id": "layer_" + str(L["id"])
+      }
+
+      ⟁ push blocks block
+    ⟁ end
+
+    ⟁ return { "blocks": blocks }
+  ⟁ end
+
+  ⟁ π_fn π_clamp(x, lo, hi) -> float
+    ⟁ if x < lo
+      ⟁ return lo
+    ⟁ elif x > hi
+      ⟁ return hi
+    ⟁ end
+    ⟁ return x
+  ⟁ end
+
+  # -----------------------------------------------------
+  # 5. TUNNEL RAIL DATA: N-GRAM PACKET STREAM
+  # -----------------------------------------------------
+
+  ⟁ π_fn π_build_tunnel_stream_data(tok) -> dict
+    ⟁ let ngrams tok["ngrams"]
+    ⟁ let bigram ngrams["bigram"]
+    ⟁ let total ngrams["unigram_total"]
+
+    # Convert bigram map → packet list sorted by PMI or freq
+    ⟁ let packets_left  []
+    ⟁ let packets_right []
+    ⟁ let packets_top   []
+
+    # Precompute unigram counts from vocab
+    ⟁ let vocab tok["vocab"]
+    ⟁ let uni_count {}
+    ⟁ loop t in vocab
+      ⟁ set uni_count[t["token"]] t["freq"]
+    ⟁ end
+
+    ⟁ let index 0
+    ⟁ loop key, count in bigram
+      ⟁ let parts split(key, " ")
+      ⟁ if len(parts) != 2
+        ⟁ continue
+      ⟁ end
+      ⟁ let x parts[0]
+      ⟁ let y parts[1]
+
+      ⟁ let p_xy π_ngram_prob(count, total)
+      ⟁ let p_x  π_ngram_prob(uni_count[x] or 1, total)
+      ⟁ let p_y  π_ngram_prob(uni_count[y] or 1, total)
+
+      ⟁ let pmi π_pmi(p_xy, p_x, p_y)
+
+      # Depth = sequence index (fake timeline)
+      ⟁ let depth (index * 4.0)
+
+      # Lane mapping: strong PMI to top lane, others left/right
+      ⟁ let packet {
+        "glyph": x + "→" + y,
+        "depth": depth,
+        "lane": 0,
+        "energy": abs(pmi)
+      }
+
+      ⟁ if pmi > 2.0
+        ⟁ let packet_top packet
+        ⟁ set packet_top["lane"] 0
+        ⟁ push packets_top packet_top
+      ⟁ elif pmi > 0.0
+        ⟁ let packet_left packet
+        ⟁ set packet_left["lane"] -1
+        ⟁ push packets_left packet_left
+      ⟁ else
+        ⟁ let packet_right packet
+        ⟁ set packet_right["lane"] 1
+        ⟁ push packets_right packet_right
+      ⟁ end
+
+      ⟁ let index index + 1
+      ⟁ if index > 256
+        ⟁ break
+      ⟁ end
+    ⟁ end
+
+    ⟁ return {
+      "left_stream":  packets_left,
+      "right_stream": packets_right,
+      "top_stream":   packets_top
+    }
+  ⟁ end
+
+  # -----------------------------------------------------
+  # 6. FRACTAL TREE DATA: MERGE GRAPH
+  # -----------------------------------------------------
+
+  ⟁ π_fn π_build_fractal_tree_data(tok) -> dict
+    ⟁ let merges tok["merges"]
+    ⟁ let nodes {}
+    ⟁ let root_id "ROOT"
+
+    # Root node
+    ⟁ set nodes[root_id] {
+      "id": root_id,
+      "parent": null,
+      "depth": 0,
+      "weight": 0,
+      "glyph_id": "root"
+    }
+
+    ⟁ loop i 0 len(merges)
+      ⟁ let m merges[i]
+      ⟁ let id "m" + str(i)
+      ⟁ let parent root_id
+      ⟁ let depth i / 64  # coarse depth grouping
+
+      ⟁ set nodes[id] {
+        "id": id,
+        "parent": parent,
+        "depth": depth,
+        "weight": log10(m["count"] + 10),
+        "glyph_id": m["left"] + "+" + m["right"]
+      }
+    ⟁ end
+
+    ⟁ return {
+      "root": root_id,
+      "nodes": nodes
+    }
+  ⟁ end
+
+  # -----------------------------------------------------
+  # 7. HUD RING DATA: RUNTIME + CHECKPOINT HEALTH
+  # -----------------------------------------------------
+
+  ⟁ π_fn π_build_hud_ring_data(ckpt, tok) -> dict
+    ⟁ let stats ckpt["stats"]
+
+    # Outer: shards
+    ⟁ let shards [
+      { "name": "CPU", "status": "ok",   "load": 0.4, "glyph_id": "CPU" },
+      { "name": "GPU", "status": "warn", "load": 0.7, "glyph_id": "GPU" },
+      { "name": "TPU", "status": "ok",   "load": 0.5, "glyph_id": "TPU" },
+      { "name": "RLHF","status": "ok",   "load": 0.3, "glyph_id": "RLHF" }
+    ]
+
+    # Mid: runtimes
+    ⟁ let runtimes [
+      { "name": "ASXR",     "status": "ok", "load": 0.5, "glyph_id": "ASXR" },
+      { "name": "ASXR-GPU", "status": "ok", "load": 0.6, "glyph_id": "ASXR-GPU" },
+      { "name": "TPU-OS",   "status": "warn", "load": 0.7, "glyph_id": "TPU-OS" },
+      { "name": "BROWSER",  "status": "ok", "load": 0.2, "glyph_id": "DOM" }
+    ]
+
+    # Inner: core modules
+    ⟁ let core [
+      { "name": "XJSON", "status": "ok", "load": 0.3, "glyph_id": "XJSON" },
+      { "name": "K'UHUL","status": "ok", "load": 0.4, "glyph_id": "KUHUL" },
+      { "name": "SCXQ2", "status": "ok", "load": 0.2, "glyph_id": "SCXQ2" },
+      { "name": "KLH",   "status": "ok", "load": 0.35, "glyph_id": "KLH" }
+    ]
+
+    # Center: current model/tokenizer
+    ⟁ let center {
+      "name": "MX2LM",
+      "status": "ok",
+      "load": π_clamp(stats["avg_entropy"] / 8.0, 0.0, 1.0),
+      "glyph_id": "MX2LM"
+    }
+
+    ⟁ return {
+      "shards": shards,
+      "runtimes": runtimes,
+      "core": core,
+      "center": center
+    }
+  ⟁ end
+
+  # -----------------------------------------------------
+  # 8. DOM RENDERING HELPERS (SHELLS)
+  # -----------------------------------------------------
+
+  ⟁ π_fn π_render_shell_orbital_halo(data)
+    # Mount template
+    ⟁ dom.template("#svg-orbital", "shell_orbital_halo")
+
+    ⟁ let halo data["halo"]
+
+    # For each ring → append glyph nodes
+    ⟁ π_render_ring("halo_inner", halo["inner"])
+    ⟁ π_render_ring("halo_mid",   halo["mid"])
+    ⟁ π_render_ring("halo_outer", halo["outer"])
+  ⟁ end
+
+  ⟁ π_fn π_render_ring(layer_id, glyphs)
+    ⟁ let selector "svg[data-shell='orbital_halo'] g[data-layer='" + layer_id + "']"
+    ⟁ let radius   dom.attr(selector, "data-radius") or 60
+
+    ⟁ loop g in glyphs
+      ⟁ let x (radius * cos(g["theta"]))
+      ⟁ let y (radius * sin(g["theta"]))
+      ⟁ dom.append(selector, "circle", {
+        "cx": x,
+        "cy": y,
+        "r": g["size"],
+        "class": "glyph-node",
+        "data-id": g["id"],
+        "data-token": g["token"],
+        "data-prob": g["prob"]
+      })
+    ⟁ end
+  ⟁ end
+
+  ⟁ π_fn π_render_shell_stack_grid(data)
+    ⟁ dom.template("#svg-stack", "shell_stack_grid")
+    ⟁ let blocks data["blocks"]
+    ⟁ let selector "svg[data-shell='stack_grid'] g.grid-stacks"
+
+    ⟁ loop b in blocks
+      # Convert (col,row,layer,height) to isometric coords via SVG-3D engine
+      ⟁ let iso π_iso_coords(b["col"], b["row"], b["layer"], b["height"])
+      ⟁ dom.append(selector, "g", {
+        "data-block": b["glyph_id"],
+        "transform": "translate(" + iso["x"] + "," + iso["y"] + ")"
+      }, [
+        {
+          "tag": "polygon",
+          "attrs": {
+            "points": iso["points"],
+            "class": "block-stack",
+            "data-tone": b["tone"]
+          }
+        }
+      ])
+    ⟁ end
+  ⟁ end
+
+  ⟁ π_fn π_iso_coords(col, row, layer, height) -> dict
+    # Simple isometric projection
+    ⟁ let cell 32.0
+    ⟁ let x2d ((col - row) * (cell * 0.866))
+    ⟁ let y2d ((col + row) * (cell * 0.5) - (layer * 22.0) - height)
+    ⟁ let points "-10,0 0,-" + str(height) + " 10,0 0," + str(height)
+    ⟁ return { "x": x2d, "y": y2d, "points": points }
+  ⟁ end
+
+  ⟁ π_fn π_render_shell_tunnel_rail(data)
+    ⟁ dom.template("#svg-tunnel", "shell_tunnel_rail")
+
+    ⟁ π_render_rail("left_stream",  data["left_stream"])
+    ⟁ π_render_rail("right_stream", data["right_stream"])
+    ⟁ π_render_rail("top_stream",   data["top_stream"])
+  ⟁ end
+
+  ⟁ π_fn π_render_rail(stream_id, packets)
+    ⟁ let selector "svg[data-shell='tunnel_rail'] g[data-rail='" + stream_id + "']"
+
+    ⟁ loop p in packets
+      # Perspective: depth → scale / y-offset
+      ⟁ let z p["depth"]
+      ⟁ let scale (1.0 - π_clamp(z / 600.0, 0.0, 0.9))
+      ⟁ let y (-40 + z * 0.1)
+      ⟁ let x (p["lane"] * 40)
+
+      ⟁ dom.append(selector, "rect", {
+        "x": x - 4,
+        "y": y,
+        "width":  8 * scale,
+        "height": 4 * scale,
+        "class": "packet",
+        "data-energy": p["energy"]
+      })
+    ⟁ end
+  ⟁ end
+
+  ⟁ π_fn π_render_shell_fractal_tree(data)
+    ⟁ dom.template("#svg-tree", "shell_fractal_tree")
+    ⟁ let root_id data["root"]
+    ⟁ let nodes data["nodes"]
+
+    # Start recursion at root
+    ⟁ π_render_tree_node("svg[data-shell='fractal_tree'] g.tree-root", root_id, 0, 0, -120, nodes)
+  ⟁ end
+
+  ⟁ π_fn π_render_tree_node(parent_selector, node_id, depth, x, y, nodes)
+    ⟁ let node nodes[node_id]
+
+    ⟁ let selector parent_selector
+
+    # Draw node
+    ⟁ dom.append(selector, "circle", {
+      "cx": x,
+      "cy": y,
+      "r":  3 + node["weight"],
+      "class": "tree-node",
+      "data-id": node_id,
+      "data-depth": depth
+    })
+
+    # Children: all merges whose parent == node_id
+    ⟁ let children []
+    ⟁ loop id, n in nodes
+      ⟁ if n["parent"] == node_id
+        ⟁ push children id
+      ⟁ end
+    ⟁ end
+
+    ⟁ let angle_start -40
+    ⟁ let angle_step  (80.0 / max(1, len(children)))
+
+    ⟁ let index 0
+    ⟁ loop cid in children
+      ⟁ let a angle_start + (index * angle_step)
+      ⟁ let rad (a * PI / 180.0)
+
+      ⟁ let length 40 * (0.8 ** depth)
+      ⟁ let x2 x + length * cos(rad)
+      ⟁ let y2 y + length * sin(rad)
+
+      # Line from parent → child
+      ⟁ dom.append(selector, "line", {
+        "x1": x,
+        "y1": y,
+        "x2": x2,
+        "y2": y2,
+        "class": "tree-branch"
+      })
+
+      ⟁ π_render_tree_node(selector, cid, depth + 1, x2, y2, nodes)
+      ⟁ let index index + 1
+    ⟁ end
+  ⟁ end
+
+  ⟁ π_fn π_render_shell_hud_ring(data)
+    ⟁ dom.template("#svg-hud", "shell_hud_ring")
+
+    ⟁ π_render_hud_ring("outer_status", data["shards"])
+    ⟁ π_render_hud_ring("mid_runtime",  data["runtimes"])
+    ⟁ π_render_hud_ring("inner_core",   data["core"])
+    ⟁ π_render_hud_center(data["center"])
+  ⟁ end
+
+  ⟁ π_fn π_render_hud_ring(ring_id, items)
+    ⟁ let selector "svg[data-shell='hud_ring'] g[data-ring='" + ring_id + "']"
+    ⟁ let radius dom.attr(selector, "data-radius") or 100
+    ⟁ let n len(items)
+    ⟁ if n == 0
+      ⟁ return
+    ⟁ end
+
+    ⟁ loop i 0 n
+      ⟁ let item items[i]
+      ⟁ let θ  (2 * PI * i / n)
+      ⟁ let θ2 (2 * PI * (i + 1) / n)
+
+      ⟁ let x1 radius * cos(θ)
+      ⟁ let y1 radius * sin(θ)
+      ⟁ let x2 radius * cos(θ2)
+      ⟁ let y2 radius * sin(θ2)
+
+      ⟁ let load item["load"]
+
+      ⟁ dom.append(selector, "path", {
+        "d": "M " + x1 + " " + y1 + " A " + radius + " " + radius + " 0 0 1 " + x2 + " " + y2,
+        "class": "hud-segment",
+        "data-name": item["name"],
+        "data-status": item["status"],
+        "data-load": load
+      })
+    ⟁ end
+  ⟁ end
+
+  ⟁ π_fn π_render_hud_center(center)
+    ⟁ let selector "svg[data-shell='hud_ring'] g.hud-center text"
+    ⟁ dom.set_text(selector, center["name"])
+    ⟁ dom.attr("svg[data-shell='hud_ring'] g.hud-center circle", "data-load", center["load"])
+  ⟁ end
+
+  # -----------------------------------------------------
+  # 9. MASTER ENTRYPOINT
+  # -----------------------------------------------------
+
+  ⟁ π_fn π_render_model_shells(model_id)
+    ⟁ let assets π_load_model_assets(model_id)
+    ⟁ let tok   assets["tokenizer"]
+    ⟁ let ckpt  assets["checkpoint"]
+
+    # Build data views
+    ⟁ let halo_data    π_build_orbital_halo_data(tok)
+    ⟁ let grid_data    π_build_stack_grid_data(ckpt)
+    ⟁ let tunnel_data  π_build_tunnel_stream_data(tok)
+    ⟁ let tree_data    π_build_fractal_tree_data(tok)
+    ⟁ let hud_data     π_build_hud_ring_data(ckpt, tok)
+
+    # Render all shells
+    ⟁ π_render_shell_orbital_halo(halo_data)
+    ⟁ π_render_shell_stack_grid(grid_data)
+    ⟁ π_render_shell_tunnel_rail(tunnel_data)
+    ⟁ π_render_shell_fractal_tree(tree_data)
+    ⟁ π_render_shell_hud_ring(hud_data)
+  ⟁ end
+
+⟁ end π_module
