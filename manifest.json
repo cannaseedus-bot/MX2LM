@@ -25,6 +25,10 @@
   },
 
   "schemas": {
+
+    /* =========================================================
+       ATOMIC TOKENIZER
+       ========================================================= */
     "atomic_tokenizer_v1": {
       "$id": "asx://schema/atomic_tokenizer.v1",
       "$schema": "xjson://xcfe/schema/v1",
@@ -48,6 +52,9 @@
       }
     },
 
+    /* =========================================================
+       ATOMIC RUNTIME
+       ========================================================= */
     "atomic_runtime_v1": {
       "$id": "asx://schema/atomic_runtime.v1",
       "$schema": "xjson://xcfe/schema/v1",
@@ -69,6 +76,9 @@
       }
     },
 
+    /* =========================================================
+       CLUSTER IDENTITY
+       ========================================================= */
     "cluster_identity_v1": {
       "$id": "asx://schema/cluster_identity.v1",
       "$schema": "xjson://xcfe/schema/v1",
@@ -83,6 +93,128 @@
         "compression": { "const": "SCXQ2" },
         "hash": { "type": "string", "pattern": "^⟁.*⟁$" }
       }
+    },
+
+    /* =========================================================
+       CLUSTER DELTA
+       ========================================================= */
+    "cluster_delta_v1": {
+      "$id": "asx://schema/cluster_delta.v1",
+      "$schema": "xjson://xcfe/schema/v1",
+      "type": "object",
+      "required": ["⟁","from","epoch","base_hash","delta_hash","deltas","seal"],
+      "additionalProperties": false,
+      "properties": {
+        "⟁": { "const": "Δ" },
+        "from": { "type": "string" },
+        "epoch": { "type": "integer", "minimum": 0 },
+        "base_hash": { "type": "string", "pattern": "^⟁.*⟁$" },
+        "delta_hash": { "type": "string", "pattern": "^⟁.*⟁$" },
+        "deltas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path","op","value"],
+            "additionalProperties": false,
+            "properties": {
+              "path": { "type": "string" },
+              "op": { "enum": ["ADD","UPDATE","REMOVE"] },
+              "value": {}
+            }
+          }
+        },
+        "seal": { "type": "string", "pattern": "^⟁SEAL⟁.*⟁$" }
+      }
+    },
+
+    /* =========================================================
+       CLUSTER MERGE RESULT
+       ========================================================= */
+    "cluster_merge_result_v1": {
+      "$id": "asx://schema/cluster_merge_result.v1",
+      "$schema": "xjson://xcfe/schema/v1",
+      "type": "object",
+      "required": ["⟁","target_cluster","epoch_before","epoch_after","base_hash","result_hash","applied_deltas","status","seal"],
+      "additionalProperties": false,
+      "properties": {
+        "⟁": { "const": "MERGE" },
+        "target_cluster": { "type": "string" },
+        "epoch_before": { "type": "integer" },
+        "epoch_after": { "type": "integer" },
+        "base_hash": { "type": "string", "pattern": "^⟁.*⟁$" },
+        "result_hash": { "type": "string", "pattern": "^⟁.*⟁$" },
+        "applied_deltas": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^⟁.*⟁$" }
+        },
+        "status": { "enum": ["MERGED","REJECTED","CONFLICT"] },
+        "seal": { "type": "string", "pattern": "^⟁SEAL⟁.*⟁$" }
+      }
+    },
+
+    /* =========================================================
+       DELTA CONFLICT PROOF
+       ========================================================= */
+    "delta_conflict_proof_v1": {
+      "$id": "asx://schema/delta_conflict_proof.v1",
+      "$schema": "xjson://xcfe/schema/v1",
+      "type": "object",
+      "required": ["⟁","conflicting_deltas","conflict_path","reason","proof_hash","seal"],
+      "additionalProperties": false,
+      "properties": {
+        "⟁": { "const": "CONFLICT" },
+        "conflicting_deltas": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "type": "string", "pattern": "^⟁.*⟁$" }
+        },
+        "conflict_path": { "type": "string" },
+        "reason": {
+          "enum": ["EPOCH_MISMATCH","BASE_HASH_MISMATCH","OVERLAPPING_WRITE","IMMUTABLE_VIOLATION"]
+        },
+        "proof_hash": { "type": "string", "pattern": "^⟁.*⟁$" },
+        "seal": { "type": "string", "pattern": "^⟁SEAL⟁.*⟁$" }
+      }
+    },
+
+    /* =========================================================
+       TRACE → DELTA COMPILER
+       ========================================================= */
+    "trace_to_delta_compiler_v1": {
+      "$id": "asx://schema/trace_to_delta_compiler.v1",
+      "$schema": "xjson://xcfe/schema/v1",
+      "type": "object",
+      "required": ["⟁","source_trace","compiled_delta","compiler_version","seal"],
+      "additionalProperties": false,
+      "properties": {
+        "⟁": { "const": "COMPILE" },
+        "source_trace": { "type": "string", "pattern": "^⟁.*⟁$" },
+        "compiled_delta": { "type": "string", "pattern": "^⟁.*⟁$" },
+        "compiler_version": { "type": "string" },
+        "seal": { "type": "string", "pattern": "^⟁SEAL⟁.*⟁$" }
+      }
+    },
+
+    /* =========================================================
+       REPLAY VERIFIER
+       ========================================================= */
+    "replay_verifier_v1": {
+      "$id": "asx://schema/replay_verifier.v1",
+      "$schema": "xjson://xcfe/schema/v1",
+      "type": "object",
+      "required": ["⟁","target_hash","replayed_hash","valid","checked_items","seal"],
+      "additionalProperties": false,
+      "properties": {
+        "⟁": { "const": "VERIFY" },
+        "target_hash": { "type": "string", "pattern": "^⟁.*⟁$" },
+        "replayed_hash": { "type": "string", "pattern": "^⟁.*⟁$" },
+        "valid": { "type": "boolean" },
+        "checked_items": {
+          "type": "array",
+          "items": { "enum": ["TRACE","DELTA","MERGE"] }
+        },
+        "seal": { "type": "string", "pattern": "^⟁SEAL⟁.*⟁$" }
+      }
     }
   },
 
@@ -90,48 +222,5 @@
     "id": "KUHUL_ETERNAL_CODEX",
     "version": "Ω.∞.Ω",
     "sealed": true
-  },
-
-  "brains": {
-    "mx2lm_v1_1": { "...": "UNCHANGED_FROM_YOUR_VERSION" }
-  },
-
-  "atomic_tokenizers": [
-    {
-      "⟁": "T",
-      "i": "codex.eternal",
-      "v": "Ω.1",
-      "d": "CODEX",
-      "r": "S",
-      "x": 0,
-      "t": ["⚖️"],
-      "s": ["LAW","IMMUTABLE"],
-      "c": "SCXQ2",
-      "b": "KUHUL_PI_KERNEL_v1",
-      "k": "KUHUL_ETERNAL_CODEX",
-      "h": "⟁T⟁CODEX⟁Ω⟁"
-    }
-  ],
-
-  "atomic_runtimes": [
-    {
-      "id": "ATOM_EXEC",
-      "domain": "execution",
-      "law": "Ω-BLACK-PANEL",
-      "deterministic": true,
-      "compression": "SCXQ2",
-      "lifecycle": ["CREATED","SCHEDULED","RUNNING","COMPLETED","SEALED"]
-    }
-  ],
-
-  "clusters": [
-    {
-      "id": "mx2lm_cluster_A",
-      "epoch": 1,
-      "law": "Ω-BLACK-PANEL",
-      "kernel": "KUHUL_PI_KERNEL_v2",
-      "compression": "SCXQ2",
-      "hash": "⟁CLUSTER⟁A⟁Ω⟁"
-    }
-  ]
+  }
 }
