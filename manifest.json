@@ -33,7 +33,6 @@
       "type": "object",
       "required": ["⟁", "i", "v", "d", "r", "x", "t", "c", "b", "k", "h"],
       "additionalProperties": false,
-
       "properties": {
         "⟁": { "const": "T" },
         "i": { "type": "string", "minLength": 1 },
@@ -87,7 +86,7 @@
         "⟁G": "token"
       },
 
-       "layers_def": [
+      "layers_def": [
         {
           "@scxq2": "layer_block",
           "id": "layer_01_identity",
@@ -212,8 +211,7 @@
         { "id": "n30", "glyph": "⟁N", "bind": { "node": "COMPRESSION_MANIFEST_v3", "layer": "meta", "index": 30 }, "tokens": ["π", "Ω"] }
       ]
     }
-  }
-},
+  },
 
   "atomic_tokenizers": [
     {
