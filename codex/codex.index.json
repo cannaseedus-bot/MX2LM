@@ -11,7 +11,8 @@
     "@vectors": "xcfe_vectors_omega.json"
     "@vision": "kuhul_codex_supreme_vision.json",
     "@ui": "kuhul_eternal_codex_ui_system.json",
-    "@webgl": "kuhul_codex_xcfe_webgl_3d_system.json"
+    "@webgl": "kuhul_codex_xcfe_webgl_3d_system.json",
+    "@scxq2": "scxq2_svg_encoder_spec_v1.json"
   },
 
   "@rules": {
