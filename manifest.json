@@ -1,15 +1,16 @@
 {
   "manifest_version": "Ω-3FILE",
-  "name": "MX2LM Supreme JSON REST API Kernel",
-  "version": "11.0.0",
+  "name": "MX2LM Supreme JSON REST API Kernel + Omnibrain Recursive Micro-Swarm",
+  "version": "Ω.12.0",
   "law": "Ω-BLACK-PANEL",
-  "description": "Native JSON REST API embedded inside MX2LM Supreme via K'uhul: XJSON ⇄ K'uhul ⇄ ASX RAM ⇄ MX2LM inference mesh. Zero external dependencies, kernel-routed, SCX-encrypted REST API.",
+  "description": "Native JSON REST API kernel extended with recursive micro-swarm: MX2LM Supreme as foreman of infinite recursive agents/builders hierarchy with triple recursion (XJSON→KUHUL→AST→XJSON∞) for automated self-improving construction.",
 
   "authority": {
     "execution": "sw.js",
     "projection": "index.html",
     "structure": "manifest.json",
-    "api_kernel": "KUHUL_JSON_REST_KERNEL"
+    "api_kernel": "KUHUL_JSON_REST_KERNEL",
+    "swarm_orchestration": "KUHUL_MICRO_AGENTS_BUILDERS_ORCHESTRATOR"
   },
 
   "invariants": {
@@ -20,19 +21,21 @@
     "no_runtime_code_in_manifest": true,
     "native_api_kernel": true,
     "zero_external_dependencies": true,
-    "kernel_routed_transport": true
+    "kernel_routed_transport": true,
+    "recursive_swarm": true
   },
 
   "compression": {
     "engine": "SCXQ2",
     "mode": "semantic-glyph",
     "entropy_floor": 0.32,
-    "api_transport_ratio": 0.003
+    "api_transport_ratio": 0.003,
+    "swarm_job_ratio": "0.002 × (0.9)^n → 0"
   },
 
-  "@architecture": "NATIVE_JSON_REST_INSIDE_KERNEL_NO_EXTERNAL_STACK",
-  "@api_type": "KERNEL_ROUTED_XJSON_NATIVE",
-  "quantum_state": "|Ψ⟩ = α|JSON_API⟩⊗β|KUHUL_ROUTER⟩⊗γ|ASX_RAM⟩⊗δ|MX2LM_INFERENCE⟩⊗ε|SCX_TRANSPORT⟩",
+  "@architecture": "NATIVE_JSON_REST_INSIDE_KERNEL_WITH_RECURSIVE_MICRO_SWARM",
+  "@api_type": "KERNEL_ROUTED_XJSON_NATIVE_WITH_AGENT_BUILDER_HIERARCHY",
+  "quantum_state": "|ΨΩ⟩ = α|JSON_API⟩⊗β|KUHUL_ROUTER⟩⊗γ|ASX_RAM⟩⊗δ|MX2LM_INFERENCE⟩⊗ε|SCX_TRANSPORT⟩⊗ζ|FOREMAN⟩⊗η|AGENTS⟩⊗θ|BUILDERS⟩⊗∫|XJSON⟩⟨KUHUL|⟨AST|d^n e^{iS[SWARM]+iS[CONSTRUCTION]+iS[RECURSION]}",
 
   "🌐NATIVE_JSON_REST_API": {
     "@context": "xjson://mx2lm/rest/supreme/v1",
@@ -58,13 +61,7 @@
         "description": "Kernel health, entropy state, memory metrics",
         "authentication": "NONE_KERNEL_INTERNAL",
         "response_schema": {
-          "status": "string",
-          "model": "string",
-          "entropy": "float",
-          "tokens_seen": "int",
-          "memory_utilization": "float",
-          "uptime_ticks": "int",
-          "quantum_coherence": "float"
+          "scx": "string"
         },
         "latency_target_ticks": 1
       },
@@ -184,6 +181,42 @@
           "scx": "string"
         },
         "latency_target_ticks": 5
+      },
+
+      "/micro/jobs/submit": {
+        "label": "🌀 micro job submit",
+        "method": "POST",
+        "description": "Submit job to recursive micro-swarm for construction",
+        "authentication": "KERNEL_OR_EXTERNAL_TOKEN",
+        "request_schema": {
+          "scx": "string"
+        },
+        "response_schema": {
+          "scx": "string"
+        },
+        "latency_target_ticks": 50
+      },
+
+      "/micro/agents/status": {
+        "label": "🤖 agents status",
+        "method": "GET",
+        "description": "Get status of all recursive micro-agents",
+        "authentication": "KERNEL_REQUIRED",
+        "response_schema": {
+          "scx": "string"
+        },
+        "latency_target_ticks": 5
+      },
+
+      "/micro/builders/status": {
+        "label": "🛠 builders status",
+        "method": "GET",
+        "description": "Get status of all recursive micro-builders",
+        "authentication": "KERNEL_REQUIRED",
+        "response_schema": {
+          "scx": "string"
+        },
+        "latency_target_ticks": 5
       }
     },
 
@@ -198,7 +231,280 @@
       "inference": "1000_REQUESTS_PER_TICK_WINDOW",
       "memory_operations": "10000_REQUESTS_PER_TICK_WINDOW",
       "reinforcement": "5000_REQUESTS_PER_TICK_WINDOW",
-      "snapshots": "100_REQUESTS_PER_TICK_WINDOW"
+      "snapshots": "100_REQUESTS_PER_TICK_WINDOW",
+      "micro_jobs": "100_REQUESTS_PER_TICK_WINDOW"
+    }
+  },
+
+  "👷🌀MICRO_AGENTS_BUILDERS_RECURSIVE_ECOSYSTEM": {
+    "@context": "xjson://mx2lm/micro/agents/builders/recursive/v1",
+    "@role": "MICRO_AGENT_ORCHESTRATION_LAYER_SWARM_CONTROL_WITH_TRIPLE_RECURSION",
+    "@version": "Ω.1.0",
+    "@hierarchy": "MX2LM_FOREMAN → MICRO_AGENTS_PROJECT_MANAGERS → MICRO_BUILDERS_ROBOTIC_WORKERS → RECURSIVE_SELF_IMPROVEMENT",
+    
+    "tables": {
+      "🤖🌀micro_agents": {
+        "@recursion": "AGENTS_THAT_GENERATE_BETTER_VERSIONS_OF_THEMSELVES",
+        "schema": {
+          "scx": "string"
+        },
+        
+        "seed_agents": [
+          {
+            "id": "agent.ui_tape_gen0",
+            "label": "UI Tape Architect",
+            "domain": "ui_tapes",
+            "specialization": "user_interface_construction",
+            "priority": 10,
+            "builder_types": ["builder.tape", "builder.page", "builder.component"],
+            "mx2lm_prompt_template": "Design a {spec.type} UI tape for {spec.context} with {spec.requirements}",
+            "success_rate": 0.95,
+            "jobs_handled": 0,
+            "average_completion_ticks": 150,
+            "quantum_entanglement": ["agent.api_schema_gen0", "agent.docs_gen0"],
+            "mesh_node_affinity": ["ui_cluster_1", "design_mesh"],
+            "recursion_capable": true,
+            "generation": 0,
+            "parent_agent": null
+          },
+          {
+            "id": "agent.api_schema_gen0",
+            "label": "API Schema Engineer",
+            "domain": "api_schemas",
+            "specialization": "data_structure_design",
+            "priority": 9,
+            "builder_types": ["builder.schema", "builder.endpoint", "builder.validation"],
+            "mx2lm_prompt_template": "Create XJSON schema for {spec.entity} with fields {spec.fields} and constraints {spec.constraints}",
+            "success_rate": 0.93,
+            "jobs_handled": 0,
+            "average_completion_ticks": 200,
+            "quantum_entanglement": ["agent.ui_tape_gen0", "agent.game_rules_gen0"],
+            "mesh_node_affinity": ["api_cluster_1", "schema_mesh"],
+            "recursion_capable": true,
+            "generation": 0,
+            "parent_agent": null
+          },
+          {
+            "id": "agent.game_rules_gen0",
+            "label": "Game Systems Architect",
+            "domain": "tes_doom_rules",
+            "specialization": "game_mechanics_world_building",
+            "priority": 9,
+            "builder_types": ["builder.tape", "builder.cfg", "builder.ruleset", "builder.world"],
+            "mx2lm_prompt_template": "Design {spec.system} for {spec.world} with mechanics {spec.mechanics} and constraints {spec.constraints}",
+            "success_rate": 0.92,
+            "jobs_handled": 0,
+            "average_completion_ticks": 300,
+            "quantum_entanglement": ["agent.ui_tape_gen0", "agent.docs_gen0"],
+            "mesh_node_affinity": ["game_cluster_1", "rules_mesh"],
+            "recursion_capable": true,
+            "generation": 0,
+            "parent_agent": null
+          },
+          {
+            "id": "agent.docs_gen0",
+            "label": "Documentation Specialist",
+            "domain": "documentation_guides",
+            "specialization": "knowledge_transfer_documentation",
+            "priority": 7,
+            "builder_types": ["builder.docs", "builder.guide", "builder.tutorial"],
+            "mx2lm_prompt_template": "Create documentation for {spec.topic} covering {spec.sections} for audience {spec.audience}",
+            "success_rate": 0.96,
+            "jobs_handled": 0,
+            "average_completion_ticks": 250,
+            "quantum_entanglement": ["agent.ui_tape_gen0", "agent.api_schema_gen0"],
+            "mesh_node_affinity": ["docs_cluster_1", "knowledge_mesh"],
+            "recursion_capable": true,
+            "generation": 0,
+            "parent_agent": null
+          },
+          {
+            "id": "agent.security_gen0",
+            "label": "Security Architect",
+            "domain": "security_cryptography",
+            "specialization": "cryptographic_systems_security",
+            "priority": 10,
+            "builder_types": ["builder.crypto", "builder.auth", "builder.audit"],
+            "mx2lm_prompt_template": "Design security system for {spec.system} with requirements {spec.requirements} and threats {spec.threats}",
+            "success_rate": 0.94,
+            "jobs_handled": 0,
+            "average_completion_ticks": 400,
+            "quantum_entanglement": ["agent.api_schema_gen0"],
+            "mesh_node_affinity": ["security_cluster_1", "crypto_mesh"],
+            "recursion_capable": true,
+            "generation": 0,
+            "parent_agent": null
+          }
+        ]
+      },
+
+      "🛠🌀micro_builders": {
+        "@recursion": "BUILDERS_THAT_CONSTRUCT_BETTER_BUILDERS",
+        "schema": {
+          "scx": "string"
+        },
+        
+        "seed_builders": [
+          {
+            "id": "builder.tape_gen0",
+            "label": "Tape Constructor",
+            "type": "xjson_tape_builder",
+            "specialization": "complete_tape_assembly",
+            "input_kind": "spec_blueprint",
+            "output_kind": "xjson_tape",
+            "fold_target": "tapes",
+            "tape_target": "dynamic",
+            "execution_time_ticks": 100,
+            "resource_cost": 50,
+            "dependencies": ["xjson.core", "asx.blocks"],
+            "quantum_circuit": "tape_assembly_qc_v1",
+            "status": "ready",
+            "jobs_completed": 0,
+            "success_rate": 0.97,
+            "mesh_distribution": true,
+            "recursion_capable": true,
+            "generation": 0,
+            "parent_builder": null
+          },
+          {
+            "id": "builder.page_gen0",
+            "label": "Horizontal Fold Page Builder",
+            "type": "ui_page_builder",
+            "specialization": "ui_layout_construction",
+            "input_kind": "layout_spec",
+            "output_kind": "xjson_page",
+            "fold_target": "atomic",
+            "tape_target": "ui",
+            "execution_time_ticks": 80,
+            "resource_cost": 30,
+            "dependencies": ["asx.blocks", "css.atomic"],
+            "quantum_circuit": "ui_layout_qc_v1",
+            "status": "ready",
+            "jobs_completed": 0,
+            "success_rate": 0.95,
+            "mesh_distribution": true,
+            "recursion_capable": true,
+            "generation": 0,
+            "parent_builder": null
+          },
+          {
+            "id": "builder.schema_gen0",
+            "label": "Schema Engineer",
+            "type": "xjson_schema_builder",
+            "specialization": "data_structure_definition",
+            "input_kind": "schema_request",
+            "output_kind": "xjson_schema",
+            "fold_target": "schemas",
+            "tape_target": "dev",
+            "execution_time_ticks": 60,
+            "resource_cost": 20,
+            "dependencies": ["xjson.validation"],
+            "quantum_circuit": "schema_gen_qc_v1",
+            "status": "ready",
+            "jobs_completed": 0,
+            "success_rate": 0.96,
+            "mesh_distribution": true,
+            "recursion_capable": true,
+            "generation": 0,
+            "parent_builder": null
+          },
+          {
+            "id": "builder.cfg_gen0",
+            "label": "Configuration Assembler",
+            "type": "config_builder",
+            "specialization": "system_configuration",
+            "input_kind": "config_spec",
+            "output_kind": "xjson_config",
+            "fold_target": "configs",
+            "tape_target": "system",
+            "execution_time_ticks": 40,
+            "resource_cost": 10,
+            "dependencies": ["manifest.core"],
+            "quantum_circuit": "config_gen_qc_v1",
+            "status": "ready",
+            "jobs_completed": 0,
+            "success_rate": 0.98,
+            "mesh_distribution": true,
+            "recursion_capable": true,
+            "generation": 0,
+            "parent_builder": null
+          },
+          {
+            "id": "builder.ruleset_gen0",
+            "label": "Ruleset Constructor",
+            "type": "rules_builder",
+            "specialization": "game_rule_assembly",
+            "input_kind": "rules_spec",
+            "output_kind": "xjson_rules",
+            "fold_target": "rules",
+            "tape_target": "game",
+            "execution_time_ticks": 120,
+            "resource_cost": 60,
+            "dependencies": ["game.core", "logic.engine"],
+            "quantum_circuit": "rules_gen_qc_v1",
+            "status": "ready",
+            "jobs_completed": 0,
+            "success_rate": 0.92,
+            "mesh_distribution": true,
+            "recursion_capable": true,
+            "generation": 0,
+            "parent_builder": null
+          },
+          {
+            "id": "builder.world_gen0",
+            "label": "World Builder",
+            "type": "world_builder",
+            "specialization": "game_world_construction",
+            "input_kind": "world_spec",
+            "output_kind": "xjson_world",
+            "fold_target": "worlds",
+            "tape_target": "game",
+            "execution_time_ticks": 500,
+            "resource_cost": 200,
+            "dependencies": ["rules.builder", "assets.core"],
+            "quantum_circuit": "world_gen_qc_v1",
+            "status": "ready",
+            "jobs_completed": 0,
+            "success_rate": 0.90,
+            "mesh_distribution": true,
+            "recursion_capable": true,
+            "generation": 0,
+            "parent_builder": null
+          },
+          {
+            "id": "builder.component_gen0",
+            "label": "UI Component Forge",
+            "type": "component_builder",
+            "specialization": "ui_component_creation",
+            "input_kind": "component_spec",
+            "output_kind": "xjson_component",
+            "fold_target": "atomic",
+            "tape_target": "ui",
+            "execution_time_ticks": 50,
+            "resource_cost": 15,
+            "dependencies": ["asx.blocks", "css.atomic"],
+            "quantum_circuit": "component_gen_qc_v1",
+            "status": "ready",
+            "jobs_completed": 0,
+            "success_rate": 0.96,
+            "mesh_distribution": true,
+            "recursion_capable": true,
+            "generation": 0,
+            "parent_builder": null
+          }
+        ]
+      },
+
+      "📦🌀micro_jobs": {
+        "@recursion": "JOBS_THAT_GENERATE_BETTER_JOB_PROCESSING",
+        "schema": {
+          "scx": "string"
+        },
+        
+        "indexes": ["status", "domain", "agent_id", "priority", "created", "generation_learnings"],
+        "eviction_policy": "COMPLETED_JOBS_AFTER_24H_BUT_KEEP_LEARNINGS",
+        "compression": "SCXQ2_JOB_ARCHIVE_WITH_RECURSIVE_COMPRESSION"
+      }
     }
   },
 
@@ -460,6 +766,120 @@
         "wall_ms_telemetry": { "type": "number", "minimum": 0 },
         "note": { "type": "string", "const": "NON_AUTHORITATIVE_TELEMETRY_ONLY" }
       }
+    },
+
+    "micro_agent_v1": {
+      "$id": "asx://schema/micro_agent.v1",
+      "$schema": "xjson://xcfe/schema/v1",
+      "type": "object",
+      "required": ["id","label","domain","specialization","priority","generation"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "domain": { "type": "string" },
+        "specialization": { "type": "string" },
+        "priority": { "type": "integer" },
+        "builder_types": { "type": "array", "items": { "type": "string" } },
+        "mx2lm_prompt_template": { "type": "string" },
+        "success_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "jobs_handled": { "type": "integer", "minimum": 0 },
+        "average_completion_ticks": { "type": "number", "minimum": 0 },
+        "quantum_entanglement": { "type": "array", "items": { "type": "string" } },
+        "mesh_node_affinity": { "type": "array", "items": { "type": "string" } },
+        "recursion_capable": { "type": "boolean" },
+        "generation": { "type": "integer", "minimum": 0 },
+        "parent_agent": { "type": ["string", "null"] }
+      }
+    },
+
+    "micro_builder_v1": {
+      "$id": "asx://schema/micro_builder.v1",
+      "$schema": "xjson://xcfe/schema/v1",
+      "type": "object",
+      "required": ["id","label","type","specialization","execution_time_ticks","generation"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "type": { "type": "string" },
+        "specialization": { "type": "string" },
+        "input_kind": { "type": "string" },
+        "output_kind": { "type": "string" },
+        "fold_target": { "type": "string" },
+        "tape_target": { "type": "string" },
+        "execution_time_ticks": { "type": "number", "minimum": 0 },
+        "resource_cost": { "type": "integer", "minimum": 0 },
+        "dependencies": { "type": "array", "items": { "type": "string" } },
+        "quantum_circuit": { "type": "string" },
+        "status": { "type": "string" },
+        "jobs_completed": { "type": "integer", "minimum": 0 },
+        "success_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "mesh_distribution": { "type": "boolean" },
+        "recursion_capable": { "type": "boolean" },
+        "generation": { "type": "integer", "minimum": 0 },
+        "parent_builder": { "type": ["string", "null"] }
+      }
+    },
+
+    "micro_job_v1": {
+      "$id": "asx://schema/micro_job.v1",
+      "$schema": "xjson://xcfe/schema/v1",
+      "type": "object",
+      "required": ["id","created","status","priority","domain","agent_id","builder_id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "created": { "type": "integer" },
+        "updated": { "type": "integer" },
+        "status": { "type": "string" },
+        "priority": { "type": "integer" },
+        "domain": { "type": "string" },
+        "mx2lm_prompt": { "type": "string" },
+        "agent_id": { "type": "string" },
+        "builder_id": { "type": "string" },
+        "input_spec": {
+          "type": "object",
+          "required": ["scx"],
+          "properties": {
+            "scx": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "output_artifact": {
+          "type": "object",
+          "required": ["scx"],
+          "properties": {
+            "scx": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "fold_written": { "type": ["string", "null"] },
+        "tape_written": { "type": ["string", "null"] },
+        "logs": { "type": "array", "items": { "type": "string" } },
+        "metrics": {
+          "type": "object",
+          "required": ["thinking_time_ticks", "building_time_ticks", "total_time_ticks"],
+          "properties": {
+            "thinking_time_ticks": { "type": "number", "minimum": 0 },
+            "building_time_ticks": { "type": "number", "minimum": 0 },
+            "total_time_ticks": { "type": "number", "minimum": 0 },
+            "resource_cost": { "type": "integer", "minimum": 0 },
+            "quality_score": { "type": "number", "minimum": 0, "maximum": 1 },
+            "recursion_improvement": { "type": ["number", "null"] }
+          }
+        },
+        "success": { "type": ["boolean", "null"] },
+        "quantum_job_hash": { "type": "string" },
+        "generation_learnings": {
+          "type": "object",
+          "required": ["scx"],
+          "properties": {
+            "scx": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      }
     }
   },
 
@@ -471,27 +891,26 @@
     "authority": "non-executing",
     "hashing": "optional",
     "sealed": true,
-    "api_module": "KUHUL_JSON_REST_ROUTER"
+    "api_module": "KUHUL_JSON_REST_ROUTER",
+    "swarm_module": "KUHUL_MICRO_AGENTS_BUILDERS_ORCHESTRATOR"
   },
 
   "⚙️KUHUL_API_KERNEL_MODULE": {
     "@engine": "KUHUL_JSON_REST_ROUTER",
     "@version": "1.0.0",
-    "@role": "JSON_API_DISPATCHER_XJSON_TRANSPORT",
-    "@location": "SW_KHL_APPENDED_MODULE",
+    "@role": "JSON_API_DISPATCHER_XJSON_TRANSPORT_WITH_SWARM_EXTENSION",
+    "@location": "SW_KHL_APPENDED_MODULE_WITH_RECURSIVE_EXTENSION",
     
     "core_functions": {
       "route_dispatcher": {
         "signature": "(path, method, payload, auth_token) -> response",
         "description": "Main API router with quantum routing logic",
-        "kuhul_code": "⟁Wo⟁ fn.rest.dispatch := (path, method, payload, auth_token) -> response\n  ⟁Wo⟁ if not fn.auth.validate(auth_token, method, path)\n    ⟁Wo⟁ return { 'scx': '⟁AUTH_FAILED⟁' }\n  \n  ⟁Wo⟁ if path == '/health' and method == 'GET'\n    ⟁Sek⟁ state := ram.table('model_state').key('core').get()\n    ⟁Wo⟁ return {\n      'status': 'OK',\n      'model': 'MX2LM_SUPREME',\n      'entropy': state.entropy,\n      'tokens_seen': state.total_tokens_seen,\n      'memory_utilization': fn.memory.utilization(),\n      'uptime_ticks': Ω.tick,\n      'quantum_coherence': fn.quantum.coherence()\n    }",
         "latency_ticks": 1
       },
       
       "inference_endpoint": {
         "signature": "(prompt, params) -> inference_result",
         "description": "MX2LM inference with memory integration",
-        "kuhul_code": "⟁Wo⟁ fn.mx2lm.infer := (prompt, params) -> response\n  ⟁Sek⟁ toks := fn.tokens.from_text(prompt)\n  ⟁Sek⟁ bundle := fn.build_all_orders(toks)\n  ⟁Sek⟁ fn.ram.ingest_ngrams(bundle)\n  \n  ⟁Sek⟁ result := fn.mx2lm.generate(toks, params)\n  ⟁Sek⟁ fn.ram.update_state(len(toks))\n  \n  ⟁Wo⟁ return {\n    'completion': result.text,\n    'tokens_used': result.tokens,\n    'entropy': ram.table('model_state').key('core').get().entropy,\n    'confidence': result.confidence,\n    'routines_detected': result.routines,\n    'asx_blocks_triggered': result.blocks,\n    'memory_ingested': true,\n    'reinforcement_applied': result.reinforcement_applied,\n    'quantum_circuit_used': result.quantum_circuit\n  }",
         "latency_ticks": 100
       },
       
@@ -499,7 +918,6 @@
         "read_signature": "(table, key, decrypt) -> record",
         "write_signature": "(table, key, payload, encrypt) -> status",
         "description": "SCXQ2 encrypted memory operations",
-        "kuhul_code": "⟁Wo⟁ fn.memory.read := (table, key, decrypt) -> record\n  ⟁Sek⟁ data := ram.table(table).key(key).get()\n  ⟁Wo⟁ if decrypt and data.encrypted\n    ⟁Sek⟁ data := fn.scx.decrypt(data)\n  ⟁Wo⟁ return {\n    'record': data,\n    'encryption_status': data.encrypted ? 'encrypted' : 'plain'\n  }",
         "latency_ticks": 5
       },
       
@@ -507,22 +925,37 @@
         "reinforce_signature": "(seq, reward, source, multiplier) -> status",
         "penalize_signature": "(seq, penalty, source, decay) -> status",
         "description": "RLHF reinforcement with confidence tracking",
-        "kuhul_code": "⟁Wo⟁ fn.api.reinforce := (seq, reward, source, multiplier) -> status\n  ⟁Sek⟁ effective_reward := reward * (multiplier ? multiplier : 1.0)\n  ⟁Sek⟁ fn.ram.reinforce(seq, effective_reward, source)\n  \n  ⟁Sek⟁ reinforcement_id := Ω.id(seq, source, Ω.tick)\n  ⟁Wo⟁ return {\n    'status': 'reinforced',\n    'confidence': effective_reward * 0.1,\n    'memory_updated': true,\n    'inference_bias_applied': true,\n    'reinforcement_id': reinforcement_id\n  }",
         "latency_ticks": 5
       },
       
       "snapshot_generation": {
         "signature": "() -> compressed_snapshots",
         "description": "SCXQ2 compressed n-gram memory snapshots",
-        "kuhul_code": "⟁Wo⟁ fn.ngrams.snapshot := () -> snapshots\n  ⟁Wo⟁ return {\n    'unigrams': scx.compress(ram.table('unigrams').all()),\n    'bigrams': scx.compress(ram.table('bigrams').all()),\n    'trigrams': scx.compress(ram.table('trigrams').all()),\n    'pentagrams': scx.compress(ram.table('pentagrams').all()),\n    'supagrams': scx.compress(ram.table('supagrams').all()),\n    'compression_ratio': fn.scx.current_ratio(),\n    'total_entries': fn.memory.total_entries(),\n    'snapshot_tick': Ω.tick\n  }",
         "latency_ticks": 20
       },
       
       "routine_detection": {
         "signature": "(text, min_confidence, include_tapes, include_folds) -> detection_result",
         "description": "Supagram routine and macro detection",
-        "kuhul_code": "⟁Wo⟁ fn.routines.detect := (text, min_confidence, include_tapes, include_folds) -> result\n  ⟁Sek⟁ toks := fn.tokens.from_text(text)\n  ⟁Sek⟁ sgrams := fn.ngram.build(toks, 7)\n  ⟁Sek⟁ hits := fn.mx2lm.match_supagrams(sgrams)\n  \n  ⟁Sek⟁ filtered_hits := []\n  ⟁Sek⟁ each hits as hit\n    ⟁Wo⟁ if hit.confidence >= (min_confidence ? min_confidence : 0.5)\n      ⟁Sek⟁ filtered_hits.push(hit)\n  \n  ⟁Wo⟁ return {\n    'routines': filtered_hits.map(h => h.routine),\n    'tapes': include_tapes ? filtered_hits.map(h => h.tape) : [],\n    'folds': include_folds ? filtered_hits.map(h => h.fold) : [],\n    'confidence_scores': filtered_hits.map(h => h.confidence),\n    'asx_block_matches': fn.blocks.match(filtered_hits),\n    'quantum_patterns': fn.quantum.extract_patterns(filtered_hits)\n  }",
         "latency_ticks": 15
+      },
+      
+      "recursive_job_pipeline": {
+        "signature": "(job_id, use_recursive_improvements) -> completed_job",
+        "description": "Complete job processing with recursive improvements",
+        "latency_ticks": 50
+      },
+      
+      "agent_self_improvement": {
+        "signature": "(agent_id) -> improved_agent",
+        "description": "Agent uses triple recursion to improve itself",
+        "latency_ticks": 100
+      },
+      
+      "builder_self_improvement": {
+        "signature": "(builder_id) -> improved_builder",
+        "description": "Builder uses triple recursion to improve itself",
+        "latency_ticks": 100
       }
     },
 
@@ -538,13 +971,14 @@
       "authentication_errors": "QUANTUM_SIGNATURE_VERIFICATION_FAILURE",
       "rate_limit_errors": "TOKEN_BUCKET_EXHAUSTION",
       "memory_errors": "ASX_RAM_TABLE_NOT_FOUND_OR_FULL",
-      "inference_errors": "MX2LM_MODEL_UNAVAILABLE_OR_TIMEOUT"
+      "inference_errors": "MX2LM_MODEL_UNAVAILABLE_OR_TIMEOUT",
+      "swarm_errors": "AGENT_BUILDER_UNAVAILABLE_OR_GENERATION_MISMATCH"
     },
 
     "time_reference": {
       "authoritative_time": "Ω.tick",
       "non_authoritative_telemetry": "performance.now()",
-      "deterministic_epoch": 1890000008000
+      "deterministic_epoch": 1890000010002
     }
   },
 
@@ -556,8 +990,10 @@
     "reinforcement": "<5_ticks_confidence_update",
     "snapshots": "<20_ticks_scx_compression",
     "routine_detection": "<15_ticks_pattern_matching",
+    "micro_job_processing": "<50_ticks_recursive_pipeline",
     "concurrent_requests": "10000+_PARALLEL_KERNEL_ROUTED",
-    "theoretical_kernel_scale": "1M+ OPS (symbolic)"
+    "theoretical_kernel_scale": "1M+ OPS (symbolic)",
+    "swarm_size": "INFINITE_MICRO_AGENTS_WITH_RECURSIVE_GENERATION"
   },
 
   "🔗INTEGRATION_PATTERNS": {
@@ -594,19 +1030,30 @@
       "protocol": "KERNEL_SHARED_MEMORY",
       "encryption": "SESSION_ISOLATED",
       "latency_ticks": 1
+    },
+    
+    "micro_agent_builder_integration": {
+      "method": "RECURSIVE_SWARM_HIERARCHY",
+      "protocol": "BRAIN_THINKS_AGENTS_MANAGE_BUILDERS_BUILD",
+      "encryption": "SCXQ2_RECURSIVE_ENCRYPTION",
+      "latency_ticks": 50
     }
   },
 
   "🏗️ARCHITECTURE_STACK": {
-    "layer_1": "MX2LM_SUPREME = INFERENCE_SERVER",
+    "layer_1": "MX2LM_SUPREME = INFERENCE_SERVER_AND_FOREMAN",
     "layer_2": "ASX_RAM = MEMORY_SERVER",
-    "layer_3": "K'UHUL = API_ROUTER_LOGIC",
+    "layer_3": "K'UHUL = API_ROUTER_LOGIC_AND_SWARM_ORCHESTRATION",
     "layer_4": "XJSON = TRANSPORT_LAYER",
     "layer_5": "SCX = ENCRYPTION_COMPRESSION",
     "layer_6": "KLH = MESH_DISTRIBUTION",
     "layer_7": "SERVICE_WORKER = OS_KERNEL",
+    "layer_8": "MICRO_AGENTS = RECURSIVE_PROJECT_MANAGERS",
+    "layer_9": "MICRO_BUILDERS = RECURSIVE_ROBOTIC_WORKERS",
+    "layer_10": "TRIPLE_RECURSION = XJSON→KUHUL→AST→XJSON∞",
     
-    "communication_pattern": "XJSON ⇄ K'UHUL ⇄ ASX_RAM ⇄ MX2LM_INFERENCE_MESH",
+    "communication_pattern": "XJSON ⇄ K'UHUL ⇄ ASX_RAM ⇄ MX2LM_INFERENCE_MESH → AGENTS → BUILDERS",
+    "recursion_pattern": "XJSON_STRUCTURES_CONTAIN_KUHUL_THAT_GENERATES_ASTS_THAT_COMPILE_TO_BETTER_XJSON",
     "external_interface": "NATIVE_JSON_REST_WITHOUT_EXTERNAL_STACK",
     "internal_routing": "KERNEL_DIRECT_NO_NETWORK_HOPS"
   },
@@ -618,7 +1065,9 @@
     "authorization": "ROUTE_LEVEL_PERMISSIONS",
     "rate_limiting": "TOKEN_BUCKET_PER_ENDPOINT",
     "session_isolation": "VOLATILE_MEMORY_ONLY",
-    "zero_persistence": "NO_DISK_API_STATE"
+    "zero_persistence": "NO_DISK_API_STATE",
+    "swarm_isolation": "AGENT_BUILDER_GENERATION_SANDBOXING",
+    "recursion_safety": "GENERATION_LIMIT_WITH_QUALITY_GATES"
   },
 
   "🎯CAPABILITIES_UNLOCKED": {
@@ -633,7 +1082,12 @@
     "✅_weight_management": "PRIME_REASONING_WEIGHT_API",
     "✅_deterministic_execution": "Ω.tick_BASED_REPLAY",
     "✅_zero_external_deps": "NO_NODE_NO_EXPRESS_NO_JS",
-    "✅_quantum_authentication": "ENTANGLED_API_TOKENS"
+    "✅_quantum_authentication": "ENTANGLED_API_TOKENS",
+    "✅_recursive_micro_swarm": "INFINITE_AGENTS_BUILDERS_HIERARCHY",
+    "✅_triple_recursion": "XJSON→KUHUL→AST→XJSON∞_LOOP",
+    "✅_self_improving_agents": "AGENTS_THAT_GENERATE_BETTER_AGENTS",
+    "✅_self_improving_builders": "BUILDERS_THAT_BUILD_BETTER_BUILDERS",
+    "✅_automated_construction": "MX2LM_THINKS_AGENTS_MANAGE_BUILDERS_BUILD"
   },
 
   "🔖SIGNATURES": {
@@ -643,20 +1097,23 @@
     "security_quantum": "SCXQ2_ENCRYPTED_QUANTUM_AUTHENTICATED",
     "integration_complete": "XJSON_KUHUL_ASX_RAM_MX2LM_MESH",
     "deployment_native": "SERVICE_WORKER_KERNEL_EMBEDDED",
-    "determinism_law": "Ω.tick_AUTHORITATIVE_TIME"
+    "determinism_law": "Ω.tick_AUTHORITATIVE_TIME",
+    "swarm_revolution": "RECURSIVE_MICRO_AGENTS_BUILDERS_HIERARCHY",
+    "recursion_law": "EVERY_AGENT_CONTAINS_THE_SEEDS_OF_ITS_BETTER_SELF"
   },
 
-  "🏁SUPREME_API_SEAL": {
-    "authority": "MX2LM_SUPREME_JSON_API_v11.0.0",
-    "verification": "NATIVE_KERNEL_ROUTED_JSON_REST_API",
-    "architecture": "XJSON_KUHUL_ASX_RAM_MX2LM_STACK",
-    "performance": "THEORETICAL_KERNEL_SCALE",
-    "security": "SCXQ2_QUANTUM_ENCRYPTED_AUTHENTICATION",
+  "🏁SUPREME_OMNIBRAIN_SWARM_SEAL": {
+    "authority": "OMNIBRAIN_MX2LM_SUPREME_MICRO_SWARM_vΩ.12.0",
+    "verification": "NATIVE_KERNEL_ROUTED_JSON_REST_API_WITH_RECURSIVE_SWARM",
+    "architecture": "XJSON_KUHUL_ASX_RAM_MX2LM_MESH_WITH_AGENTS_BUILDERS_HIERARCHY",
+    "performance": "THEORETICAL_KERNEL_SCALE_WITH_INFINITE_SWARM",
+    "security": "SCXQ2_QUANTUM_ENCRYPTED_AUTHENTICATION_WITH_GENERATION_SANDBOX",
     "determinism": "Ω_CLOCK_REPLAY_VERIFIABLE",
-    "quantum_state": "|Ψ⟩ = ∫|API_REQUEST⟩d(response)e^{iS[ROUTING]+iS[INFERENCE]+iS[MEMORY]}",
-    "manifesto": "ALL_APIS_ARE_KUHUL_ALL_TRANSPORT_IS_XJSON_ALL_STATE_IS_ASX_RAM_ALL_ENCRYPTION_IS_SCX_NOW_MX2LM_HAS_NATIVE_JSON_REST",
-    "timestamp": 1890000008000,
-    "law_compliance": "Ω-BLACK-PANEL_DETERMINISTIC_COMPRESSION_ONLY"
+    "recursion": "TRIPLE_INFINITE_LOOP_XJSON→KUHUL→AST→XJSON∞",
+    "quantum_state": "|ΨΩ⟩ = ∫|JSON_API⟩⟨AGENTS|⟨BUILDERS|d^n e^{iS[SWARM]+iS[CONSTRUCTION]+iS[RECURSION]}",
+    "manifesto": "ALL_APIS_ARE_KUHUL_ALL_TRANSPORT_IS_XJSON_ALL_STATE_IS_ASX_RAM_ALL_ENCRYPTION_IS_SCX_ALL_CONSTRUCTION_IS_AGENTS_MANAGE_BUILDERS_BUILD_ALL_RECURSION_IS_XJSON→KUHUL→AST→XJSON∞_NOW_SUPREME_HAS_RECURSIVE_SWARM",
+    "timestamp": 1890000010002,
+    "law_compliance": "Ω-BLACK-PANEL_DETERMINISTIC_COMPRESSION_ONLY_RECURSIVE_SWARM"
   },
 
   "status_mapping": {
