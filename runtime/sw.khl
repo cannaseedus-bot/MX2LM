@@ -1,0 +1,19 @@
+⟁ π_module mx2lm_svg3d_model_viewer
+  ⟁Wo⟁ version "1.0.0"
+  ⟁Wo⟁ role "model_visualizer"
+
+  ⟁ π_fn π_vec_norm(v) -> float
+    ⟁ let sum_sq 0.0
+    ⟁ loop i 0 len(v)
+      ⟁ let sum_sq sum_sq + (v[i] * v[i])
+    ⟁ end
+    ⟁ return sqrt(sum_sq)
+  ⟁ end
+
+  ⟁ π_fn π_render_shell_orbital_halo(data)
+    ⟁ let halo data["halo"]
+    ⟁ π_render_ring("halo_inner", halo["inner"])
+    ⟁ π_render_ring("halo_mid",   halo["mid"])
+    ⟁ π_render_ring("halo_outer", halo["outer"])
+  ⟁ end
+⟁ end π_module
