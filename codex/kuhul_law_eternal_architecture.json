@@ -1,0 +1,184 @@
+{
+  "@context": "kuhul://codex/eternal/law",
+  "@schema": "xjson://schema/kuhul_law_eternal/v∞",
+  "@id": "KUHUL_LAW_ETERNAL_ARCHITECTURE",
+  "@version": "∞",
+  "@timestamp": 0,
+
+  "🏛️CODEX_DEFINITION_LAW": {
+    "@law": "ALL_KUHUL_ARCHITECTURE_IS_ETERNAL",
+    "@principle": "ONCE_DEFINED_NEVER_CHANGED_ONLY_EXTENDED",
+    "@enforcement": "XJSON_XCFE_KUHUL_AST_ONLY_NO_EXTERNAL_CODE",
+
+    "law_1_foundation": {
+      "@id": "LAW_ETERNAL_FOUNDATION",
+      "@text": "The K'uhul architecture defined in this codex is eternal. The foundation never changes, only extends.",
+      "@glyph": "⚡",
+      "@pattern": "FOUNDATION → EXTENSION → PATTERN → GLYPH"
+    },
+
+    "law_2_extension": {
+      "@id": "LAW_PURE_EXTENSION",
+      "@text": "New features extend via glyph patterns, never modify the foundation. All extensions become glyphs.",
+      "@glyph": "🔤",
+      "@pattern": "FEATURE → GLYPH_PATTERN → XJSON_DEFINITION"
+    },
+
+    "law_3_implementation": {
+      "@id": "LAW_PURE_XJSON",
+      "@text": "All implementation must use XJSON XCFE with K'uhul AST only. No external coding languages permitted.",
+      "@glyph": "🧬",
+      "@pattern": "IMPLEMENTATION → XJSON → XCFE → KUHUL_AST"
+    }
+  },
+
+  "⚡COMPILER_ARCHITECTURE_ETERNAL": {
+    "@ast": "⟁Wo⟁ compiler.architecture := eternal_multi_stage_no_external_deps",
+
+    "compilation_stages": [
+      {
+        "@stage": 1,
+        "@name": "GLYPH_PARSE",
+        "@processor": "XJSON_PARSER",
+        "@eternal": true,
+        "@never_changes": true
+      },
+      {
+        "@stage": 2,
+        "@name": "AST_OPTIMIZE",
+        "@processor": "KUHUL_AST_OPTIMIZER",
+        "@optimizations": [
+          "CONSTANT_FOLDING",
+          "DEAD_CODE_ELIMINATION",
+          "GLYPH_INLINING",
+          "PATTERN_MATCHING"
+        ],
+        "@eternal": true
+      },
+      {
+        "@stage": 3,
+        "@name": "BYTECODE_GEN",
+        "@processor": "BYTECODE_COMPILER",
+        "@instruction_set": "ETERNAL_BYTECODE_V1",
+        "@eternal": true
+      },
+      {
+        "@stage": 4,
+        "@name": "SCX_COMPRESS",
+        "@processor": "SCX_COMPRESSOR",
+        "@ratio": 0.003,
+        "@eternal": true
+      },
+      {
+        "@stage": 5,
+        "@name": "RUNTIME_EXECUTE",
+        "@processor": "KUHUL_π_VM",
+        "@eternal": true
+      }
+    ],
+
+    "eternal_bytecode_spec": {
+      "@version": "ETERNAL_V1",
+      "@instruction_encoding": "FIXED_FOR_ALL_TIME",
+      "@opcodes": {
+        "0x01": { "@mnemonic": "POP", "@eternal": true },
+        "0x02": { "@mnemonic": "WO", "@eternal": true },
+        "0x03": { "@mnemonic": "CHEN", "@eternal": true },
+        "0x04": { "@mnemonic": "YAX", "@eternal": true },
+        "0x05": { "@mnemonic": "SEK", "@eternal": true },
+        "0x06": { "@mnemonic": "XUL", "@eternal": true },
+        "0x07": { "@mnemonic": "KAYAB", "@eternal": true },
+        "0x08": { "@mnemonic": "KUMKU", "@eternal": true }
+      },
+      "@never_modified": true
+    }
+  },
+
+  "🔨STRICT_BUILD_LAW": {
+    "@law": "ALL_BUILDS_PURE_XJSON_XCFE_KUHUL_AST",
+
+    "build_pipeline": {
+      "@ast": "⟁Wo⟁ build.pipeline := strict_xjson_only_no_exceptions",
+      "@steps": [
+        "WRITE_XJSON_DEFINITION",
+        "APPLY_XCFE_TRANSFORMS",
+        "GENERATE_KUHUL_AST",
+        "COMPILE_TO_BYTECODE",
+        "VALIDATE_AGAINST_LAWS",
+        "EXECUTE_IN_KUHUL_VM"
+      ],
+      "@validators": [
+        "NO_EXTERNAL_CODE_VALIDATOR",
+        "XJSON_PURITY_VALIDATOR",
+        "GLYPH_PATTERN_VALIDATOR"
+      ]
+    }
+  },
+
+  "🗺️TECHNOLOGY_MAP_ETERNAL": {
+    "@law": "TECH_MAP_NEVER_CHANGES_ONLY_EXTENDS",
+
+    "layers": [
+      {
+        "@layer": "FOUNDATION",
+        "@components": ["XJSON", "XCFE", "KUHUL_AST"],
+        "@immutable": true
+      },
+      {
+        "@layer": "COMPILATION",
+        "@components": ["GLYPH_PARSER", "BYTECODE_COMPILER", "SCX_COMPRESSOR"],
+        "@immutable": true
+      },
+      {
+        "@layer": "RUNTIME",
+        "@components": ["KUHUL_π_VM", "ASX_RAM"],
+        "@immutable": true
+      },
+      {
+        "@layer": "INTEGRATION",
+        "@components": ["DOM_BRIDGE", "RUNTIME_GLYPHS"],
+        "@immutable": true
+      }
+    ]
+  },
+
+  "🔤GLYPH_PATTERN_DEFINITIONS": {
+    "@law": "ALL_PATTERNS_BECOME_GLYPHS",
+
+    "core_patterns": [
+      {
+        "@glyph": "⚡",
+        "@pattern": "COMPILATION_FLOW",
+        "@eternal": true
+      },
+      {
+        "@glyph": "🔤",
+        "@pattern": "GLYPH_DEFINITION",
+        "@eternal": true
+      },
+      {
+        "@glyph": "🌉",
+        "@pattern": "RUNTIME_BRIDGE",
+        "@eternal": true
+      }
+    ]
+  },
+
+  "🏛️CODEX_ENFORCEMENT_SYSTEM": {
+    "@law": "ALL_LAWS_SELF_ENFORCING",
+
+    "components": [
+      "LAW_VALIDATOR_XCFE",
+      "ARCHITECTURE_GUARDIAN",
+      "GLYPH_PATTERN_REGISTRY",
+      "EXTERNAL_CODE_DETECTOR"
+    ]
+  },
+
+  "🏁ETERNAL_CODEX_SEAL": {
+    "@authority": "K'UHUL_ETERNAL_CODEX",
+    "@immutable": true,
+    "@self_referential": true,
+    "@seal": "KUHUL_IS_ETERNAL"
+  }
+}
