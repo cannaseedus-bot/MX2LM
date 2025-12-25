@@ -1,6 +1,6 @@
 # MX2LM
 
-
+<img src="dashboard.svg" style="width:500px;">
 
 # Ω BLACK PANEL — ASX ⊗ π-K’UHUL ⊗ XCFE
 
