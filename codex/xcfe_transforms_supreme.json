@@ -1,0 +1,13 @@
+{
+  "@context": "xcfe://law/transform/v1",
+  "@id": "SUPREME_MERGE",
+  "@role": "law",
+  "@executable": false,
+  "@inputs": ["MX2LM_KERNEL_REST_API", "SVG3D_MODEL_SHELLS"],
+  "@outputs": ["UNIFIED_AST"],
+  "@integration_points": [
+    "API_ENDPOINT → SVG3D_RENDER",
+    "SVG3D_INTERACTION → API_REINFORCEMENT",
+    "MEMORY_UPDATE → VISUALIZATION_REFRESH"
+  ]
+}
