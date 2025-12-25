@@ -687,25 +687,9 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
-/* ---------------------------
-   10) SW LIFECYCLE: boot substrate
---------------------------- */
-self.addEventListener("install", (e) => {
-  e.waitUntil((async () => {
-    await mx2_mem_boot();
-    self.skipWaiting();
-  })());
-});
-
-self.addEventListener("activate", (e) => {
-  e.waitUntil((async () => {
-    await mx2_mem_boot();
-    await self.clients.claim();
-  })());
-});
 
 /* ---------------------------
-   11) Codex loader (SAFE VERSION)
+   10) Codex loader (SAFE VERSION)
 --------------------------- */
 
 async function loadCodex() {
