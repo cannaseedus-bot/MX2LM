@@ -1,0 +1,218 @@
+{
+  "@context": "xjson://xcfe/registry/brain_topology/v1",
+  "@law": "Ω-BLACK-PANEL",
+  "@version": 1,
+
+  "brains": [
+    { "id": "identity_root", "domain": "cluster", "svg_ref": "brains/identity_root.svg",
+      "metrics": [
+        { "key": "stability", "type": "float", "value": 0.99 },
+        { "key": "merge_weight", "type": "float", "value": 0.85 }
+      ],
+      "bindings": { "pi_inputs": ["epoch"], "cluster_inputs": ["truth_hash"], "runtime_outputs": ["identity_seal"] }
+    },
+
+    { "id": "invariant_seal", "domain": "verification", "svg_ref": "brains/invariant_seal.svg",
+      "metrics": [
+        { "key": "strictness", "type": "float", "value": 1.0 }
+      ],
+      "bindings": { "pi_inputs": ["delta"], "cluster_inputs": ["base_hash"], "runtime_outputs": ["seal"] }
+    },
+
+    { "id": "truth_merge", "domain": "cluster", "svg_ref": "brains/truth_merge.svg",
+      "metrics": [
+        { "key": "conflict_bias", "type": "float", "value": 0.7 }
+      ],
+      "bindings": { "pi_inputs": ["deltas"], "cluster_inputs": ["epochs"], "runtime_outputs": ["merge_result"] }
+    },
+
+    { "id": "meshchain_core", "domain": "runtime", "svg_ref": "brains/meshchain_core.svg",
+      "metrics": [
+        { "key": "propagation_rate", "type": "float", "value": 0.92 }
+      ],
+      "bindings": { "pi_inputs": ["payload"], "cluster_inputs": ["peers"], "runtime_outputs": ["broadcast"] }
+    },
+
+    { "id": "meshchain_proof", "domain": "verification", "svg_ref": "brains/meshchain_proof.svg",
+      "metrics": [
+        { "key": "proof_depth", "type": "int", "value": 3 }
+      ],
+      "bindings": { "pi_inputs": ["trace"], "cluster_inputs": ["state_hash"], "runtime_outputs": ["proof"] }
+    },
+
+    { "id": "meshchain_gossip", "domain": "runtime", "svg_ref": "brains/meshchain_gossip.svg",
+      "metrics": [
+        { "key": "fanout", "type": "int", "value": 6 }
+      ],
+      "bindings": { "pi_inputs": ["message"], "cluster_inputs": ["peer_table"], "runtime_outputs": ["relay"] }
+    },
+
+    { "id": "atomic_cluster_runtime", "domain": "atomic", "svg_ref": "brains/atomic_cluster.svg",
+      "metrics": [
+        { "key": "tick_rate", "type": "int", "value": 1 }
+      ],
+      "bindings": { "pi_inputs": ["instructions"], "cluster_inputs": ["epoch"], "runtime_outputs": ["trace"] }
+    },
+
+    { "id": "cluster_integration", "domain": "cluster", "svg_ref": "brains/cluster_integration.svg",
+      "metrics": [
+        { "key": "sync_weight", "type": "float", "value": 0.8 }
+      ],
+      "bindings": { "pi_inputs": ["trace"], "cluster_inputs": ["cluster_id"], "runtime_outputs": ["delta"] }
+    },
+
+    { "id": "atomic_exec", "domain": "atomic", "svg_ref": "brains/atomic_exec.svg",
+      "metrics": [
+        { "key": "determinism", "type": "float", "value": 1.0 }
+      ],
+      "bindings": { "pi_inputs": ["state"], "cluster_inputs": [], "runtime_outputs": ["output_hash"] }
+    },
+
+    { "id": "atomic_io", "domain": "atomic", "svg_ref": "brains/atomic_io.svg",
+      "metrics": [
+        { "key": "io_latency", "type": "float", "value": 0.02 }
+      ],
+      "bindings": { "pi_inputs": ["request"], "cluster_inputs": [], "runtime_outputs": ["response"] }
+    },
+
+    { "id": "atomic_lifecycle", "domain": "atomic", "svg_ref": "brains/atomic_lifecycle.svg",
+      "metrics": [
+        { "key": "states", "type": "int", "value": 5 }
+      ],
+      "bindings": { "pi_inputs": ["state"], "cluster_inputs": [], "runtime_outputs": ["lifecycle_event"] }
+    },
+
+    { "id": "asx_block_core", "domain": "runtime", "svg_ref": "brains/asx_block_core.svg",
+      "metrics": [
+        { "key": "node_degree", "type": "int", "value": 4 }
+      ],
+      "bindings": { "pi_inputs": ["block"], "cluster_inputs": [], "runtime_outputs": ["graph"] }
+    },
+
+    { "id": "asx_block_scheduler", "domain": "runtime", "svg_ref": "brains/asx_block_scheduler.svg",
+      "metrics": [
+        { "key": "priority_bias", "type": "float", "value": 0.6 }
+      ],
+      "bindings": { "pi_inputs": ["tasks"], "cluster_inputs": [], "runtime_outputs": ["schedule"] }
+    },
+
+    { "id": "asx_block_flow", "domain": "runtime", "svg_ref": "brains/asx_block_flow.svg",
+      "metrics": [
+        { "key": "throughput", "type": "float", "value": 0.9 }
+      ],
+      "bindings": { "pi_inputs": ["edges"], "cluster_inputs": [], "runtime_outputs": ["flow"] }
+    },
+
+    { "id": "mu_vector_ctrl", "domain": "runtime", "svg_ref": "brains/mu_vector_ctrl.svg",
+      "metrics": [
+        { "key": "global_gain", "type": "float", "value": 1.1 }
+      ],
+      "bindings": { "pi_inputs": ["vectors"], "cluster_inputs": [], "runtime_outputs": ["control_signal"] }
+    },
+
+    { "id": "mu_code_exec", "domain": "runtime", "svg_ref": "brains/mu_code_exec.svg",
+      "metrics": [
+        { "key": "execution_bias", "type": "float", "value": 0.75 }
+      ],
+      "bindings": { "pi_inputs": ["ast"], "cluster_inputs": [], "runtime_outputs": ["exec_trace"] }
+    },
+
+    { "id": "mu_db_master", "domain": "runtime", "svg_ref": "brains/mu_db_master.svg",
+      "metrics": [
+        { "key": "write_weight", "type": "float", "value": 0.65 }
+      ],
+      "bindings": { "pi_inputs": ["query"], "cluster_inputs": [], "runtime_outputs": ["db_delta"] }
+    },
+
+    { "id": "mu_lang_parse", "domain": "runtime", "svg_ref": "brains/mu_lang_parse.svg",
+      "metrics": [
+        { "key": "parse_depth", "type": "int", "value": 7 }
+      ],
+      "bindings": { "pi_inputs": ["tokens"], "cluster_inputs": [], "runtime_outputs": ["syntax_tree"] }
+    },
+
+    { "id": "mu_pattern_match", "domain": "training", "svg_ref": "brains/mu_pattern_match.svg",
+      "metrics": [
+        { "key": "confidence_floor", "type": "float", "value": 0.5 }
+      ],
+      "bindings": { "pi_inputs": ["ngrams"], "cluster_inputs": [], "runtime_outputs": ["matches"] }
+    },
+
+    { "id": "mu_ast_gen", "domain": "training", "svg_ref": "brains/mu_ast_gen.svg",
+      "metrics": [
+        { "key": "rewrite_passes", "type": "int", "value": 2 }
+      ],
+      "bindings": { "pi_inputs": ["syntax"], "cluster_inputs": [], "runtime_outputs": ["ast"] }
+    },
+
+    { "id": "comp_universe_core", "domain": "runtime", "svg_ref": "brains/comp_core.svg",
+      "metrics": [
+        { "key": "compression_ratio", "type": "float", "value": 0.003 }
+      ],
+      "bindings": { "pi_inputs": ["data"], "cluster_inputs": [], "runtime_outputs": ["compressed"] }
+    },
+
+    { "id": "comp_universe_views", "domain": "runtime", "svg_ref": "brains/comp_views.svg",
+      "metrics": [
+        { "key": "view_count", "type": "int", "value": 3 }
+      ],
+      "bindings": { "pi_inputs": ["compressed"], "cluster_inputs": [], "runtime_outputs": ["views"] }
+    },
+
+    { "id": "comp_universe_bridges", "domain": "runtime", "svg_ref": "brains/comp_bridges.svg",
+      "metrics": [
+        { "key": "bridge_weight", "type": "float", "value": 0.8 }
+      ],
+      "bindings": { "pi_inputs": ["views"], "cluster_inputs": [], "runtime_outputs": ["mapped"] }
+    },
+
+    { "id": "codex_code", "domain": "runtime", "svg_ref": "brains/codex_code.svg",
+      "metrics": [
+        { "key": "ir_passes", "type": "int", "value": 3 }
+      ],
+      "bindings": { "pi_inputs": ["code"], "cluster_inputs": [], "runtime_outputs": ["ir"] }
+    },
+
+    { "id": "codex_db", "domain": "runtime", "svg_ref": "brains/codex_db.svg",
+      "metrics": [
+        { "key": "query_cost", "type": "float", "value": 0.4 }
+      ],
+      "bindings": { "pi_inputs": ["query"], "cluster_inputs": [], "runtime_outputs": ["plan"] }
+    },
+
+    { "id": "codex_lang", "domain": "runtime", "svg_ref": "brains/codex_lang.svg",
+      "metrics": [
+        { "key": "semantic_weight", "type": "float", "value": 0.9 }
+      ],
+      "bindings": { "pi_inputs": ["syntax"], "cluster_inputs": [], "runtime_outputs": ["intent"] }
+    },
+
+    { "id": "glyph_db_root", "domain": "runtime", "svg_ref": "brains/glyph_db.svg",
+      "metrics": [
+        { "key": "symbol_count", "type": "int", "value": 128 }
+      ],
+      "bindings": { "pi_inputs": ["symbols"], "cluster_inputs": [], "runtime_outputs": ["db_view"] }
+    },
+
+    { "id": "glyph_code_root", "domain": "runtime", "svg_ref": "brains/glyph_code.svg",
+      "metrics": [
+        { "key": "opcode_count", "type": "int", "value": 64 }
+      ],
+      "bindings": { "pi_inputs": ["opcodes"], "cluster_inputs": [], "runtime_outputs": ["code_view"] }
+    },
+
+    { "id": "glyph_lang_root", "domain": "runtime", "svg_ref": "brains/glyph_lang.svg",
+      "metrics": [
+        { "key": "token_count", "type": "int", "value": 512 }
+      ],
+      "bindings": { "pi_inputs": ["tokens"], "cluster_inputs": [], "runtime_outputs": ["lang_view"] }
+    },
+
+    { "id": "compression_manifest", "domain": "verification", "svg_ref": "brains/compression_manifest.svg",
+      "metrics": [
+        { "key": "law_strength", "type": "float", "value": 1.0 }
+      ],
+      "bindings": { "pi_inputs": ["all"], "cluster_inputs": ["all"], "runtime_outputs": ["seal"] }
+    }
+  ]
+}
