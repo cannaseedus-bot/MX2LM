@@ -270,6 +270,62 @@ This is an execution constraint (not aesthetic).
 
 ---
 
+Minimal Brain Topology Schema (shared by all 30)
+
+This is the unifying atomic schema they all obey:
+
+{
+  "$id": "asx://schema/brain_topology.v1",
+  "$schema": "xjson://xcfe/schema/v1",
+  "type": "object",
+  "required": ["id","domain","svg","bindings"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string" },
+    "domain": {
+      "enum": [
+        "atomic",
+        "cluster",
+        "training",
+        "replay",
+        "verification",
+        "runtime"
+      ]
+    },
+    "svg": {
+      "type": "string",
+      "description": "Sanitized SVG fragment (no scripts)"
+    },
+    "bindings": {
+      "type": "object",
+      "description": "What runtime data attaches here"
+    }
+  }
+}
+
+
+Every one of the 30 brains is just an instance of this.
+
+How Models Fit (this answers your original concern)
+
+Models do not add new brains.
+
+They bind like this:
+
+{
+  "models": {
+    "mx2lm_qf1": {
+      "topology": "orbital_halo",
+      "weights": "stack_grid",
+      "confidence": "confidence_rings"
+    }
+  }
+}
+
+
+Same brains.
+Different data.
+
 The 30 SVG Brain Topologies (Canonical Set)
 
 These are not optional, and they are shared across everything:
