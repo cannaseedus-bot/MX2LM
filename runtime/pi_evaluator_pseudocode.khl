@@ -1,0 +1,55 @@
+π_EVALUATE(brain_row, input_state):
+
+  # Load immutable metric rows
+  metrics ← brain_row.metrics
+
+  # Initialize effect accumulators
+  effects = {
+    weight_multiplier: 1.0,
+    merge_bias: 0.0,
+    entropy_scale: 1.0,
+    scheduler_step: 1,
+    compress_gain: 1.0,
+    filter_threshold: 0.0,
+    vector_gain: 1.0
+  }
+
+  # Interpret metrics
+  for each metric in metrics:
+    rule ← PI_METRIC_TABLE[metric.key]
+
+    switch rule.pi_effect:
+      case "weight_multiplier":
+        effects.weight_multiplier *= metric.value
+
+      case "merge_bias":
+        effects.merge_bias += metric.value
+
+      case "entropy_scale":
+        effects.entropy_scale *= metric.value
+
+      case "scheduler_step":
+        effects.scheduler_step = max(1, metric.value)
+
+      case "compress_gain":
+        effects.compress_gain *= metric.value
+
+      case "filter_threshold":
+        effects.filter_threshold = max(
+          effects.filter_threshold,
+          metric.value
+        )
+
+      case "vector_gain":
+        effects.vector_gain *= metric.value
+
+  # Apply effects deterministically
+  result = APPLY_EFFECTS(effects, input_state)
+
+  return {
+    brain_id: brain_row.id,
+    domain: brain_row.domain,
+    effects: effects,
+    output: result,
+    seal: HASH(brain_row.id, effects, result)
+  }
