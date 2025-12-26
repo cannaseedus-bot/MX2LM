@@ -270,7 +270,87 @@ This is an execution constraint (not aesthetic).
 
 ---
 
+The 30 SVG Brain Topologies (Canonical Set)
 
+These are not optional, and they are shared across everything:
+clusters, atomic runtimes, replay, trainers, deltas, verification, dashboards.
+
+I’ll group them by runtime domain.
+
+🧠 CORE COGNITION (ATOMIC / PRIME)
+
+orbital_halo – token attention / activation field
+
+stack_grid – layered cognition / blocks
+
+fractal_lattice – recursive reasoning
+
+weight_flow_river – PRIME structural weights
+
+confidence_rings – certainty / entropy bands
+
+decision_fork – XCFE @if/@then/@else
+
+collapse_cone – answer collapse
+
+entropy_field – disorder visualization
+
+🔗 CLUSTER & FEDERATION
+
+cluster_constellation – multi-node cluster map
+
+delta_stream – structural deltas in flight
+
+merge_weave – merge resolution
+
+conflict_knot – delta conflicts
+
+epoch_ladder – epoch progression
+
+hash_anchor – deterministic anchors
+
+🧪 TRAINING / RLHF
+
+reward_gradient – reinforcement field
+
+penalty_sink – negative feedback
+
+pattern_miner – supagram discovery
+
+routine_spiral – habit formation
+
+memory_strata – ASX RAM layers
+
+🔁 REPLAY / VERIFICATION
+
+trace_timeline – execution trace
+
+replay_mirror – deterministic replay
+
+proof_chain – cryptographic seals
+
+verification_gate – pass/fail auditor
+
+causality_graph – cause → effect
+
+🖥️ RUNTIME / UI / OPS
+
+hud_ring – live metrics HUD
+
+tunnel_rail – inference pipeline
+
+api_mesh – REST / agent routing
+
+io_portal – external interfaces
+
+security_shell – auth / signatures
+
+system_singularity – Ω overview (Black Panel)
+
+That’s the 30.
+
+No more. No less.
+This set is Ω-stable.
 
 
 # Ω BLACK PANEL — ASX ⊗ π-K’UHUL ⊗ XCFE
