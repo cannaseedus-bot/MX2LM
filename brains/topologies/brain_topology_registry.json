@@ -1,0 +1,73 @@
+{
+  "@context": "asx://brain/topology/registry/v1",
+  "@version": "1.0.0",
+  "@authority": "KUHUL_XCFE_OMEGA",
+  "@mutation": "forbidden",
+  "@extension": "append_only",
+  "@count": 30,
+
+  "@domains": {
+    "atomic": "Core cognition & PRIME reasoning",
+    "cluster": "Federation & multi-node logic",
+    "training": "RLHF & learning dynamics",
+    "replay": "Deterministic trace & verification",
+    "runtime": "UI, API, ops & system state"
+  },
+
+  "@brains": [
+    /* ============================= */
+    /* ATOMIC / PRIME COGNITION (1–8) */
+    /* ============================= */
+
+    { "id": "orbital_halo",        "domain": "atomic" },
+    { "id": "stack_grid",          "domain": "atomic" },
+    { "id": "fractal_lattice",     "domain": "atomic" },
+    { "id": "weight_flow_river",   "domain": "atomic" },
+    { "id": "confidence_rings",    "domain": "atomic" },
+    { "id": "decision_fork",       "domain": "atomic" },
+    { "id": "collapse_cone",       "domain": "atomic" },
+    { "id": "entropy_field",       "domain": "atomic" },
+
+    /* ============================= */
+    /* CLUSTER & FEDERATION (9–14)   */
+    /* ============================= */
+
+    { "id": "cluster_constellation", "domain": "cluster" },
+    { "id": "delta_stream",          "domain": "cluster" },
+    { "id": "merge_weave",           "domain": "cluster" },
+    { "id": "conflict_knot",         "domain": "cluster" },
+    { "id": "epoch_ladder",           "domain": "cluster" },
+    { "id": "hash_anchor",            "domain": "cluster" },
+
+    /* ============================= */
+    /* TRAINING / RLHF (15–19)       */
+    /* ============================= */
+
+    { "id": "reward_gradient",    "domain": "training" },
+    { "id": "penalty_sink",       "domain": "training" },
+    { "id": "pattern_miner",      "domain": "training" },
+    { "id": "routine_spiral",     "domain": "training" },
+    { "id": "memory_strata",      "domain": "training" },
+
+    /* ============================= */
+    /* REPLAY / VERIFICATION (20–24) */
+    /* ============================= */
+
+    { "id": "trace_timeline",     "domain": "replay" },
+    { "id": "replay_mirror",      "domain": "replay" },
+    { "id": "proof_chain",        "domain": "replay" },
+    { "id": "verification_gate", "domain": "replay" },
+    { "id": "causality_graph",    "domain": "replay" },
+
+    /* ============================= */
+    /* RUNTIME / UI / OPS (25–30)   */
+    /* ============================= */
+
+    { "id": "hud_ring",            "domain": "runtime" },
+    { "id": "tunnel_rail",         "domain": "runtime" },
+    { "id": "api_mesh",            "domain": "runtime" },
+    { "id": "io_portal",           "domain": "runtime" },
+    { "id": "security_shell",      "domain": "runtime" },
+    { "id": "system_singularity",  "domain": "runtime" }
+  ]
+}
