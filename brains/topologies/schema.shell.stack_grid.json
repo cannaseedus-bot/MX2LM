@@ -1,0 +1,14 @@
+{
+  "$id": "asx://schema/shell/stack_grid.v1",
+  "$schema": "xjson://xcfe/schema/v1",
+  "type": "object",
+  "required": ["rows","cols","weights"],
+  "properties": {
+    "rows": { "type": "integer", "minimum": 1 },
+    "cols": { "type": "integer", "minimum": 1 },
+    "weights": {
+      "type": "array",
+      "items": { "type": "array" }
+    }
+  }
+}
