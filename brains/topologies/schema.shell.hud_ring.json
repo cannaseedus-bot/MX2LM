@@ -1,0 +1,20 @@
+{
+  "$id": "asx://schema/shell/hud_ring.v1",
+  "$schema": "xjson://xcfe/schema/v1",
+  "type": "object",
+  "required": ["arcs"],
+  "properties": {
+    "arcs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["start","end","label"],
+        "properties": {
+          "start": { "type": "number" },
+          "end":   { "type": "number" },
+          "label": { "type": "string" }
+        }
+      }
+    }
+  }
+}
