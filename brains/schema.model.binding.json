@@ -1,0 +1,17 @@
+{
+  "$id": "asx://schema/model_binding.v1",
+  "$schema": "xjson://xcfe/schema/v1",
+  "type": "object",
+  "required": ["shell"],
+  "properties": {
+    "shell": {
+      "enum": [
+        "orbital_halo",
+        "stack_grid",
+        "tunnel_rail",
+        "hud_ring",
+        "fractal_lattice"
+      ]
+    }
+  }
+}

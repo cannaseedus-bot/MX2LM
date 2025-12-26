@@ -1,0 +1,21 @@
+{
+  "$id": "asx://schema/shell/orbital_halo.v1",
+  "$schema": "xjson://xcfe/schema/v1",
+  "type": "object",
+  "required": ["inner","mid","outer"],
+  "properties": {
+    "inner": { "$ref": "#/defs/ring" },
+    "mid":   { "$ref": "#/defs/ring" },
+    "outer": { "$ref": "#/defs/ring" }
+  },
+  "defs": {
+    "ring": {
+      "type": "object",
+      "required": ["radius"],
+      "properties": {
+        "radius": { "type": "number", "minimum": 0 },
+        "weights": { "type": "array" }
+      }
+    }
+  }
+}
