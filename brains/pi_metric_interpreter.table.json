@@ -1,0 +1,49 @@
+{
+  "@context": "kuhul://pi/metric/interpreter/v1",
+  "@law": "Ω-BLACK-PANEL",
+
+  "metric_table": [
+    {
+      "key": "stability",
+      "type": "float",
+      "pi_effect": "weight_multiplier",
+      "description": "Scales acceptance threshold"
+    },
+    {
+      "key": "merge_weight",
+      "type": "float",
+      "pi_effect": "merge_bias",
+      "description": "Biases conflict resolution"
+    },
+    {
+      "key": "tick_rate",
+      "type": "int",
+      "pi_effect": "scheduler_step",
+      "description": "Controls kernel tick advancement"
+    },
+    {
+      "key": "entropy_weight",
+      "type": "float",
+      "pi_effect": "entropy_scale",
+      "description": "Scales entropy contribution"
+    },
+    {
+      "key": "compression_ratio",
+      "type": "float",
+      "pi_effect": "compress_gain",
+      "description": "Adjusts compression calculus"
+    },
+    {
+      "key": "confidence_floor",
+      "type": "float",
+      "pi_effect": "filter_threshold",
+      "description": "Minimum confidence for matches"
+    },
+    {
+      "key": "global_gain",
+      "type": "float",
+      "pi_effect": "vector_gain",
+      "description": "Global control vector amplification"
+    }
+  ]
+}
