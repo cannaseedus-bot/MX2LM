@@ -1,0 +1,31 @@
+{
+  "@context": "xjson://ui/brain_inspector/v1",
+  "@projection": "read_only",
+
+  "columns": [
+    { "key": "id", "label": "Brain ID", "type": "string" },
+    { "key": "domain", "label": "Domain", "type": "enum" },
+    { "key": "metrics", "label": "Metric Count", "type": "int" },
+    { "key": "effects", "label": "π Effects", "type": "summary" },
+    { "key": "bindings", "label": "Bindings", "type": "summary" },
+    { "key": "svg_ref", "label": "SVG Shell", "type": "path" }
+  ],
+
+  "row_projection": {
+    "metrics": "count(metrics)",
+    "effects": "derive_from(metrics)",
+    "bindings": "keys(bindings)",
+    "svg_ref": "svg_ref"
+  },
+
+  "filters": [
+    { "by": "domain", "values": ["atomic","cluster","runtime","verification","training"] },
+    { "by": "metric.key", "operator": "contains" }
+  ],
+
+  "sorting": [
+    "id",
+    "domain",
+    "metrics"
+  ]
+}
