@@ -1,0 +1,10 @@
+{
+  "$id": "asx://schema/shell/fractal_lattice.v1",
+  "$schema": "xjson://xcfe/schema/v1",
+  "type": "object",
+  "required": ["levels","branch_factor"],
+  "properties": {
+    "levels": { "type": "integer", "minimum": 1 },
+    "branch_factor": { "type": "integer", "minimum": 1 }
+  }
+}
