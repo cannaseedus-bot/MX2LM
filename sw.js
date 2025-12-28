@@ -1644,6 +1644,733 @@ self.addEventListener("activate", (e) => {
 });
 
 /* ============================================================
+   BRAIN TOPOLOGY EXECUTION ENGINE
+   Implements π_EVALUATE from pi_evaluator_pseudocode.khl
+   ============================================================ */
+
+// PI Metric Interpretation Table
+const PI_METRIC_TABLE = Object.freeze({
+  stability: { pi_effect: "weight_multiplier", description: "Scales acceptance threshold" },
+  merge_weight: { pi_effect: "merge_bias", description: "Biases conflict resolution" },
+  tick_rate: { pi_effect: "scheduler_step", description: "Controls kernel tick advancement" },
+  entropy_weight: { pi_effect: "entropy_scale", description: "Scales entropy contribution" },
+  compression_ratio: { pi_effect: "compress_gain", description: "Adjusts compression calculus" },
+  confidence_floor: { pi_effect: "filter_threshold", description: "Minimum confidence for matches" },
+  global_gain: { pi_effect: "vector_gain", description: "Global control vector amplification" },
+  strictness: { pi_effect: "weight_multiplier", description: "Strictness level" },
+  conflict_bias: { pi_effect: "merge_bias", description: "Conflict resolution bias" },
+  propagation_rate: { pi_effect: "vector_gain", description: "Propagation speed" },
+  sync_weight: { pi_effect: "merge_bias", description: "Synchronization weight" },
+  determinism: { pi_effect: "weight_multiplier", description: "Determinism level" },
+  io_latency: { pi_effect: "scheduler_step", description: "IO latency factor" },
+  node_degree: { pi_effect: "compress_gain", description: "Node connectivity degree" },
+  priority_bias: { pi_effect: "merge_bias", description: "Priority scheduling bias" },
+  throughput: { pi_effect: "vector_gain", description: "Throughput multiplier" },
+  execution_bias: { pi_effect: "weight_multiplier", description: "Execution priority" },
+  write_weight: { pi_effect: "merge_bias", description: "Write operation weight" },
+  parse_depth: { pi_effect: "scheduler_step", description: "Parser recursion depth" },
+  rewrite_passes: { pi_effect: "scheduler_step", description: "AST rewrite passes" },
+  view_count: { pi_effect: "compress_gain", description: "View count" },
+  bridge_weight: { pi_effect: "merge_bias", description: "Bridge weight" },
+  ir_passes: { pi_effect: "scheduler_step", description: "IR compilation passes" },
+  query_cost: { pi_effect: "compress_gain", description: "Query cost factor" },
+  semantic_weight: { pi_effect: "weight_multiplier", description: "Semantic weight" },
+  symbol_count: { pi_effect: "compress_gain", description: "Symbol table size" },
+  opcode_count: { pi_effect: "compress_gain", description: "Opcode count" },
+  token_count: { pi_effect: "compress_gain", description: "Token count" },
+  law_strength: { pi_effect: "weight_multiplier", description: "Law enforcement strength" },
+  fanout: { pi_effect: "vector_gain", description: "Gossip fanout" },
+  proof_depth: { pi_effect: "scheduler_step", description: "Proof depth" },
+  states: { pi_effect: "scheduler_step", description: "Lifecycle states" }
+});
+
+// Brain Topology State
+const BRAIN_ENGINE = {
+  registry: null,
+  activebrains: new Map(),
+  evaluationCache: new Map(),
+  lastEvalTick: 0
+};
+
+// Load Brain Topology Registry
+async function loadBrainTopology() {
+  try {
+    const res = await fetch('./brains/brain_topology.registry.json', { cache: 'no-store' });
+    if (!res.ok) return null;
+    const registry = await res.json();
+    BRAIN_ENGINE.registry = registry;
+    return registry;
+  } catch (e) {
+    console.error('Ω: Brain topology load failed:', e);
+    return null;
+  }
+}
+
+// π_EVALUATE Implementation - Core execution from pseudocode
+function π_EVALUATE(brain_row, input_state = {}) {
+  // Initialize effect accumulators
+  const effects = {
+    weight_multiplier: 1.0,
+    merge_bias: 0.0,
+    entropy_scale: 1.0,
+    scheduler_step: 1,
+    compress_gain: 1.0,
+    filter_threshold: 0.0,
+    vector_gain: 1.0
+  };
+
+  const metrics = brain_row.metrics || [];
+
+  // Interpret metrics
+  for (const metric of metrics) {
+    const rule = PI_METRIC_TABLE[metric.key];
+    if (!rule) continue;
+
+    const value = metric.value;
+
+    switch (rule.pi_effect) {
+      case "weight_multiplier":
+        effects.weight_multiplier *= value;
+        break;
+      case "merge_bias":
+        effects.merge_bias += value;
+        break;
+      case "entropy_scale":
+        effects.entropy_scale *= value;
+        break;
+      case "scheduler_step":
+        effects.scheduler_step = Math.max(1, Math.floor(value));
+        break;
+      case "compress_gain":
+        effects.compress_gain *= value;
+        break;
+      case "filter_threshold":
+        effects.filter_threshold = Math.max(effects.filter_threshold, value);
+        break;
+      case "vector_gain":
+        effects.vector_gain *= value;
+        break;
+    }
+  }
+
+  // Apply effects deterministically
+  const result = π_APPLY_EFFECTS(effects, input_state, brain_row);
+
+  // Generate deterministic seal
+  const sealStr = `${brain_row.id}|${JSON.stringify(effects)}|${JSON.stringify(result)}`;
+  const seal = Ω_hash32(sealStr);
+
+  return {
+    brain_id: brain_row.id,
+    domain: brain_row.domain,
+    effects,
+    output: result,
+    seal: `⟁${seal}⟁`,
+    tick: ΩCLOCK.tick,
+    bindings: brain_row.bindings || {}
+  };
+}
+
+// Apply computed effects to input state
+function π_APPLY_EFFECTS(effects, input_state, brain_row) {
+  const tokens = input_state.tokens || [];
+  const prompt = input_state.prompt || '';
+
+  // Compute weighted compression
+  const baseCompression = compressionDelta(tokens);
+  const weightedCompression = baseCompression * effects.compress_gain * effects.weight_multiplier;
+
+  // Compute symbolic weight with gain
+  const baseWeight = symbolicWeight(tokens);
+  const adjustedWeight = baseWeight * effects.vector_gain;
+
+  // Apply entropy scaling
+  const scaledEntropy = KERNEL_STATE.entropy * effects.entropy_scale;
+
+  // Apply filter threshold
+  const confidence = Math.max(effects.filter_threshold, weightedCompression);
+
+  // Generate output based on brain domain
+  const domain = brain_row.domain || 'runtime';
+  let domainOutput = {};
+
+  switch (domain) {
+    case 'atomic':
+      domainOutput = {
+        execution_trace: Ω_id('trace', brain_row.id, ΩCLOCK.tick.toString()),
+        determinism_score: effects.weight_multiplier
+      };
+      break;
+    case 'cluster':
+      domainOutput = {
+        merge_result: effects.merge_bias > 0.5 ? 'ACCEPT' : 'DEFER',
+        sync_weight: effects.merge_bias
+      };
+      break;
+    case 'runtime':
+      domainOutput = {
+        schedule_priority: effects.scheduler_step,
+        throughput_factor: effects.vector_gain
+      };
+      break;
+    case 'verification':
+      domainOutput = {
+        proof_valid: effects.weight_multiplier >= 1.0,
+        strictness: effects.weight_multiplier
+      };
+      break;
+    case 'training':
+      domainOutput = {
+        pattern_confidence: confidence,
+        learning_rate: effects.entropy_scale * 0.01
+      };
+      break;
+    default:
+      domainOutput = {};
+  }
+
+  return {
+    compression_delta: weightedCompression,
+    symbolic_weight: adjustedWeight,
+    entropy: scaledEntropy,
+    confidence,
+    domain_output: domainOutput,
+    tokens_processed: tokens.length,
+    quantum_state: `|Ψ⟩ = |${brain_row.id}⟩⊗|EFFECTS_APPLIED⟩`
+  };
+}
+
+// Get brain by ID
+function getBrainById(brainId) {
+  if (!BRAIN_ENGINE.registry?.brains) return null;
+  return BRAIN_ENGINE.registry.brains.find(b => b.id === brainId);
+}
+
+// Activate a brain
+function activateBrain(brainId, input_state = {}) {
+  const brain = getBrainById(brainId);
+  if (!brain) {
+    return { error: 'brain_not_found', brain_id: brainId };
+  }
+
+  // Run π evaluation
+  const result = π_EVALUATE(brain, input_state);
+
+  // Track activation
+  BRAIN_ENGINE.activebrains.set(brainId, {
+    activated_tick: ΩCLOCK.tick,
+    last_result: result
+  });
+
+  // Record in memory substrate
+  try {
+    mx2_record_activation({
+      node: brainId,
+      layer: brain.domain,
+      token: 'BRAIN_ACTIVATE',
+      weight: result.effects.weight_multiplier,
+      tokens: input_state.tokens || []
+    });
+  } catch (_) {}
+
+  kuhulTick();
+
+  return result;
+}
+
+/* ============================================================
+   MICRO-AGENT/BUILDER SWARM ORCHESTRATION
+   ============================================================ */
+
+const SWARM_ENGINE = {
+  agents: new Map(),
+  builders: new Map(),
+  jobs: [],
+  jobCounter: 0
+};
+
+// Initialize swarm from manifest
+function initializeSwarm(manifest) {
+  const ecosystem = manifest['👷🌀MICRO_AGENTS_BUILDERS_RECURSIVE_ECOSYSTEM'];
+  if (!ecosystem?.tables) return;
+
+  // Load seed agents
+  const agentTable = ecosystem.tables['🤖🌀micro_agents'];
+  if (agentTable?.seed_agents) {
+    for (const agent of agentTable.seed_agents) {
+      SWARM_ENGINE.agents.set(agent.id, {
+        ...agent,
+        status: 'ready',
+        current_job: null
+      });
+    }
+  }
+
+  // Load seed builders
+  const builderTable = ecosystem.tables['🛠🌀micro_builders'];
+  if (builderTable?.seed_builders) {
+    for (const builder of builderTable.seed_builders) {
+      SWARM_ENGINE.builders.set(builder.id, {
+        ...builder,
+        status: 'ready',
+        current_job: null
+      });
+    }
+  }
+}
+
+// Submit job to swarm
+function submitSwarmJob(spec) {
+  const jobId = Ω_id('job', (++SWARM_ENGINE.jobCounter).toString(), ΩCLOCK.tick.toString());
+
+  const job = {
+    id: jobId,
+    spec,
+    status: 'pending',
+    created_tick: ΩCLOCK.tick,
+    assigned_agent: null,
+    assigned_builder: null,
+    result: null
+  };
+
+  // Find matching agent
+  for (const [id, agent] of SWARM_ENGINE.agents) {
+    if (agent.status === 'ready' && agent.domain === spec.domain) {
+      job.assigned_agent = id;
+      agent.status = 'busy';
+      agent.current_job = jobId;
+      break;
+    }
+  }
+
+  // Find matching builder
+  if (job.assigned_agent) {
+    const agent = SWARM_ENGINE.agents.get(job.assigned_agent);
+    for (const builderType of (agent.builder_types || [])) {
+      const builder = SWARM_ENGINE.builders.get(`${builderType}_gen0`);
+      if (builder && builder.status === 'ready') {
+        job.assigned_builder = builder.id;
+        builder.status = 'busy';
+        builder.current_job = jobId;
+        break;
+      }
+    }
+  }
+
+  job.status = job.assigned_agent ? 'assigned' : 'queued';
+  SWARM_ENGINE.jobs.push(job);
+
+  return {
+    job_id: jobId,
+    status: job.status,
+    assigned_agent: job.assigned_agent,
+    assigned_builder: job.assigned_builder,
+    quantum_state: '|Ψ⟩ = |JOB_SUBMITTED⟩⊗|SWARM_PROCESSING⟩'
+  };
+}
+
+// Get agent status
+function getAgentsStatus() {
+  const agents = [];
+  for (const [id, agent] of SWARM_ENGINE.agents) {
+    agents.push({
+      id,
+      label: agent.label,
+      domain: agent.domain,
+      status: agent.status,
+      generation: agent.generation,
+      success_rate: agent.success_rate,
+      jobs_handled: agent.jobs_handled,
+      current_job: agent.current_job,
+      recursion_capable: agent.recursion_capable
+    });
+  }
+  return agents;
+}
+
+// Get builder status
+function getBuildersStatus() {
+  const builders = [];
+  for (const [id, builder] of SWARM_ENGINE.builders) {
+    builders.push({
+      id,
+      label: builder.label,
+      type: builder.type,
+      status: builder.status,
+      generation: builder.generation,
+      success_rate: builder.success_rate,
+      jobs_completed: builder.jobs_completed,
+      current_job: builder.current_job,
+      recursion_capable: builder.recursion_capable
+    });
+  }
+  return builders;
+}
+
+/* ============================================================
+   SVG3D VISUALIZATION PIPELINE
+   ============================================================ */
+
+// Generate brain topology SVG
+function generateBrainTopologySVG(brainId) {
+  const brain = getBrainById(brainId);
+  if (!brain) return null;
+
+  const metrics = brain.metrics || [];
+  const bindings = brain.bindings || {};
+
+  // Create orbital halo shell for brain visualization
+  const centerX = 300;
+  const centerY = 200;
+  const radius = 80;
+
+  let svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
+      <defs>
+        <radialGradient id="brain-glow-${brainId}" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.4"/>
+          <stop offset="100%" stop-color="#00d4ff" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="glow-filter">
+          <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#070b12"/>
+
+      <!-- Background constellation -->
+      <circle cx="${centerX}" cy="${centerY}" r="${radius + 60}" fill="url(#brain-glow-${brainId})"/>
+
+      <!-- Central brain node -->
+      <circle cx="${centerX}" cy="${centerY}" r="${radius}" fill="#0b1322" stroke="#00d4ff" stroke-width="2" filter="url(#glow-filter)"/>
+      <text x="${centerX}" y="${centerY - 10}" text-anchor="middle" fill="#00d4ff" font-size="12" font-family="monospace" font-weight="bold">${brain.id}</text>
+      <text x="${centerX}" y="${centerY + 10}" text-anchor="middle" fill="#8ba4c0" font-size="10" font-family="monospace">${brain.domain}</text>
+  `;
+
+  // Add metric orbitals
+  metrics.forEach((metric, i) => {
+    const angle = (i / metrics.length) * Math.PI * 2 - Math.PI / 2;
+    const orbitRadius = radius + 50;
+    const x = centerX + Math.cos(angle) * orbitRadius;
+    const y = centerY + Math.sin(angle) * orbitRadius;
+
+    svg += `
+      <line x1="${centerX}" y1="${centerY}" x2="${x}" y2="${y}" stroke="#1a2b44" stroke-width="1" stroke-dasharray="4,2"/>
+      <circle cx="${x}" cy="${y}" r="30" fill="#101828" stroke="#a855f7" stroke-width="1.5"/>
+      <text x="${x}" y="${y - 5}" text-anchor="middle" fill="#a855f7" font-size="9" font-family="monospace">${metric.key}</text>
+      <text x="${x}" y="${y + 10}" text-anchor="middle" fill="#e8f5ff" font-size="11" font-family="monospace" font-weight="bold">${metric.value}</text>
+    `;
+  });
+
+  // Add binding connections
+  const piInputs = bindings.pi_inputs || [];
+  const clusterInputs = bindings.cluster_inputs || [];
+  const runtimeOutputs = bindings.runtime_outputs || [];
+
+  svg += `
+    <!-- Binding legend -->
+    <g transform="translate(20, 320)">
+      <text fill="#00d4ff" font-size="10" font-family="monospace">π Inputs: ${piInputs.join(', ') || 'none'}</text>
+    </g>
+    <g transform="translate(20, 340)">
+      <text fill="#ff8800" font-size="10" font-family="monospace">Cluster: ${clusterInputs.join(', ') || 'none'}</text>
+    </g>
+    <g transform="translate(20, 360)">
+      <text fill="#00ff88" font-size="10" font-family="monospace">Outputs: ${runtimeOutputs.join(', ') || 'none'}</text>
+    </g>
+
+    <!-- Domain badge -->
+    <rect x="450" y="20" width="130" height="30" rx="6" fill="#101828" stroke="#1a2b44"/>
+    <text x="515" y="40" text-anchor="middle" fill="#8ba4c0" font-size="10" font-family="monospace">${brain.domain.toUpperCase()}</text>
+
+    </svg>
+  `;
+
+  return svg;
+}
+
+// Generate full topology constellation SVG
+function generateTopologyConstellationSVG() {
+  if (!BRAIN_ENGINE.registry?.brains) return null;
+
+  const brains = BRAIN_ENGINE.registry.brains;
+  const width = 1200;
+  const height = 800;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  // Group brains by domain
+  const domains = {};
+  brains.forEach(b => {
+    if (!domains[b.domain]) domains[b.domain] = [];
+    domains[b.domain].push(b);
+  });
+
+  const domainColors = {
+    cluster: '#00d4ff',
+    verification: '#ff4444',
+    runtime: '#00ff88',
+    atomic: '#a855f7',
+    training: '#ff8800'
+  };
+
+  let svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+      <defs>
+        <radialGradient id="center-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.2"/>
+          <stop offset="100%" stop-color="#00d4ff" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#070b12"/>
+      <circle cx="${centerX}" cy="${centerY}" r="300" fill="url(#center-glow)"/>
+  `;
+
+  // Place domains in orbital rings
+  const domainList = Object.keys(domains);
+  domainList.forEach((domain, di) => {
+    const domainAngle = (di / domainList.length) * Math.PI * 2;
+    const domainRadius = 250;
+    const domainX = centerX + Math.cos(domainAngle) * domainRadius;
+    const domainY = centerY + Math.sin(domainAngle) * domainRadius;
+    const color = domainColors[domain] || '#8ba4c0';
+
+    // Domain cluster
+    svg += `<circle cx="${domainX}" cy="${domainY}" r="100" fill="none" stroke="${color}" stroke-width="1" stroke-dasharray="4,4" opacity="0.3"/>`;
+
+    // Brain nodes in domain
+    const domainBrains = domains[domain];
+    domainBrains.forEach((brain, bi) => {
+      const brainAngle = (bi / domainBrains.length) * Math.PI * 2;
+      const brainRadius = 60;
+      const bx = domainX + Math.cos(brainAngle) * brainRadius;
+      const by = domainY + Math.sin(brainAngle) * brainRadius;
+
+      svg += `
+        <circle cx="${bx}" cy="${by}" r="20" fill="#0b1322" stroke="${color}" stroke-width="1.5"/>
+        <text x="${bx}" y="${by + 4}" text-anchor="middle" fill="${color}" font-size="7" font-family="monospace">${brain.id.substring(0, 10)}</text>
+      `;
+    });
+
+    // Domain label
+    svg += `<text x="${domainX}" y="${domainY + 120}" text-anchor="middle" fill="${color}" font-size="11" font-family="monospace" font-weight="bold">${domain.toUpperCase()}</text>`;
+  });
+
+  svg += '</svg>';
+  return svg;
+}
+
+/* ============================================================
+   EXTENDED API ROUTES FOR BRAIN & SWARM
+   ============================================================ */
+
+// Extended API paths
+const EXTENDED_API_PATHS = new Set([
+  '/brain/list', '/brain/activate', '/brain/status', '/brain/svg',
+  '/micro/jobs/submit', '/micro/agents/status', '/micro/builders/status',
+  '/topology/svg'
+]);
+
+async function handleExtendedAPI(url, request) {
+  const path = url.pathname;
+  const method = request.method;
+
+  // Ensure brain topology is loaded
+  if (!BRAIN_ENGINE.registry) {
+    await loadBrainTopology();
+  }
+
+  // Ensure swarm is initialized
+  if (SWARM_ENGINE.agents.size === 0 && KERNEL_STATE.manifest) {
+    initializeSwarm(KERNEL_STATE.manifest);
+  }
+
+  let payload = {};
+  if (method === 'POST') {
+    try { payload = await request.json(); } catch (_) {}
+  }
+
+  switch (path) {
+    case '/brain/list':
+      return mx2_json({
+        ok: true,
+        brains: BRAIN_ENGINE.registry?.brains || [],
+        total: BRAIN_ENGINE.registry?.brains?.length || 0,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/brain/activate':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      const activationResult = activateBrain(payload.brain_id, payload.input_state || {});
+      return mx2_json({
+        ok: !activationResult.error,
+        ...activationResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/brain/status':
+      const brainId = url.searchParams.get('id');
+      const brain = getBrainById(brainId);
+      const activeInfo = BRAIN_ENGINE.activebrains.get(brainId);
+      return mx2_json({
+        ok: !!brain,
+        brain: brain || null,
+        active: !!activeInfo,
+        last_activation: activeInfo || null,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/brain/svg':
+      const svgBrainId = url.searchParams.get('id');
+      const brainSVG = generateBrainTopologySVG(svgBrainId);
+      if (!brainSVG) {
+        return mx2_json({ error: 'brain_not_found' }, 404);
+      }
+      return new Response(brainSVG, {
+        status: 200,
+        headers: { 'content-type': 'image/svg+xml' }
+      });
+
+    case '/topology/svg':
+      const topoSVG = generateTopologyConstellationSVG();
+      if (!topoSVG) {
+        return mx2_json({ error: 'topology_not_loaded' }, 500);
+      }
+      return new Response(topoSVG, {
+        status: 200,
+        headers: { 'content-type': 'image/svg+xml' }
+      });
+
+    case '/micro/jobs/submit':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      const jobResult = submitSwarmJob(payload);
+      return mx2_json({
+        ok: true,
+        ...jobResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/micro/agents/status':
+      return mx2_json({
+        ok: true,
+        agents: getAgentsStatus(),
+        total: SWARM_ENGINE.agents.size,
+        tick: ΩCLOCK.tick,
+        quantum_state: '|Ψ⟩ = Σ|AGENT_i⟩⊗|STATUS⟩'
+      });
+
+    case '/micro/builders/status':
+      return mx2_json({
+        ok: true,
+        builders: getBuildersStatus(),
+        total: SWARM_ENGINE.builders.size,
+        tick: ΩCLOCK.tick,
+        quantum_state: '|Ψ⟩ = Σ|BUILDER_i⟩⊗|READY⟩'
+      });
+
+    default:
+      return null;
+  }
+}
+
+/* ============================================================
+   ENHANCED FETCH HANDLER
+   ============================================================ */
+
+// Update fetch handler to include extended routes
+const originalFetch = self.onfetch;
+
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+
+  // Only handle same-origin
+  if (url.origin !== self.location.origin) return;
+
+  // Check extended API paths
+  if (EXTENDED_API_PATHS.has(url.pathname)) {
+    event.respondWith(handleExtendedAPI(url, event.request));
+    return;
+  }
+});
+
+/* ============================================================
+   ENHANCED MESSAGE HANDLER
+   ============================================================ */
+
+// Extend message handler for brain operations
+self.addEventListener("message", async (event) => {
+  const msg = event.data || {};
+  const type = msg.type;
+
+  // Brain topology messages
+  if (type === "brain.load_topology") {
+    const registry = await loadBrainTopology();
+    postBack(event.source, {
+      type: "brain.topology_loaded",
+      ok: !!registry,
+      brain_count: registry?.brains?.length || 0
+    });
+    return;
+  }
+
+  if (type === "brain.activate") {
+    const result = activateBrain(msg.brain_id, msg.input_state || {});
+    postBack(event.source, {
+      type: "brain.activated",
+      ...result
+    });
+    return;
+  }
+
+  if (type === "brain.get_svg") {
+    const svg = generateBrainTopologySVG(msg.brain_id);
+    postBack(event.source, {
+      type: "brain.svg_ready",
+      brain_id: msg.brain_id,
+      svg
+    });
+    return;
+  }
+
+  if (type === "swarm.submit_job") {
+    const result = submitSwarmJob(msg.spec || {});
+    postBack(event.source, {
+      type: "swarm.job_submitted",
+      ...result
+    });
+    return;
+  }
+});
+
+/* ============================================================
+   INITIALIZATION ENHANCEMENT
+   ============================================================ */
+
+// Enhanced init - load brain topology on boot
+async function enhancedBoot() {
+  await mx2_mem_boot();
+  await loadBrainTopology();
+
+  if (KERNEL_STATE.manifest) {
+    initializeSwarm(KERNEL_STATE.manifest);
+  }
+}
+
+// Hook into install
+self.addEventListener("install", (e) => {
+  e.waitUntil(enhancedBoot().then(() => self.skipWaiting()));
+});
+
+/* ============================================================
    SUPREME API SEAL
    ============================================================ */
 
