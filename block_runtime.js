@@ -913,7 +913,596 @@ class BlockExecutor {
   }
 }
 
+/**
+ * ExecutionStack - Enhanced stack with call frames for nested execution
+ * Supports variable scoping and execution context management
+ */
+class ExecutionStack {
+  constructor() {
+    this.stack = [];
+    this.variables = {};
+    this.callStack = [];
+    this.frameId = 0;
+  }
+
+  push(value) {
+    this.stack.push(value);
+    return this;
+  }
+
+  pop() {
+    return this.stack.pop();
+  }
+
+  peek() {
+    return this.stack[this.stack.length - 1];
+  }
+
+  size() {
+    return this.stack.length;
+  }
+
+  clear() {
+    this.stack = [];
+    return this;
+  }
+
+  setVariable(name, value) {
+    this.variables[name] = value;
+    return this;
+  }
+
+  getVariable(name) {
+    return this.variables[name];
+  }
+
+  hasVariable(name) {
+    return name in this.variables;
+  }
+
+  pushFrame(metadata = {}) {
+    this.frameId++;
+    this.callStack.push({
+      id: this.frameId,
+      stack: [...this.stack],
+      variables: { ...this.variables },
+      timestamp: Date.now(),
+      ...metadata
+    });
+    return this.frameId;
+  }
+
+  popFrame() {
+    const frame = this.callStack.pop();
+    if (frame) {
+      this.stack = frame.stack;
+      this.variables = frame.variables;
+    }
+    return frame;
+  }
+
+  getFrame(index = -1) {
+    if (index < 0) {
+      index = this.callStack.length + index;
+    }
+    return this.callStack[index];
+  }
+
+  getCallDepth() {
+    return this.callStack.length;
+  }
+
+  exportState() {
+    return {
+      stack: [...this.stack],
+      variables: { ...this.variables },
+      callStack: this.callStack.map(f => ({ ...f })),
+      frameId: this.frameId
+    };
+  }
+}
+
+/**
+ * AtomicToGlyphMapper - Maps Atomic Block types to GlyphVM bytecode sequences
+ * Bridges high-level block workflows to low-level glyph execution
+ */
+class AtomicToGlyphMapper {
+  constructor(glyphVM = null) {
+    this.glyphVM = glyphVM;
+
+    // Block type to glyph mapping
+    this.typeMappings = {
+      'math/operation': this.mapMath.bind(this),
+      'math/expression': this.mapExpression.bind(this),
+      'math/compare': this.mapCompare.bind(this),
+      'π/physics': this.mapPhysics.bind(this),
+      'π/wave': this.mapWave.bind(this),
+      'π/transform': this.mapTransform.bind(this),
+      'data/input': this.mapDataInput.bind(this),
+      'data/store': this.mapDataStore.bind(this),
+      'control/if': this.mapIf.bind(this),
+      'control/loop': this.mapLoop.bind(this),
+      'control/sequence': this.mapSequence.bind(this),
+      'glyph/execute': this.mapGlyphExecute.bind(this)
+    };
+
+    // Operation to glyph mappings
+    this.operationGlyphs = {
+      'add': '➕',
+      'subtract': '➖',
+      'multiply': '✖',
+      'divide': '➗',
+      'power': '🔺',
+      'sqrt': '√',
+      'modulo': '%',
+      'negate': '±'
+    };
+
+    // Comparison to glyph mappings
+    this.comparisonGlyphs = {
+      'equal': '⚖',
+      'not_equal': '≠',
+      'less_than': '⊂',
+      'greater_than': '⊃',
+      'less_equal': '⊆',
+      'greater_equal': '⊇'
+    };
+
+    // Physics equation mappings
+    this.physicsGlyphs = {
+      'wave_equation': '🌊',
+      'heat_equation': '🔥∇²',
+      'schrodinger': '⚛',
+      'maxwell': '⚡∇',
+      'fractal': '🌀'
+    };
+  }
+
+  /**
+   * Map a block to its glyph bytecode sequence
+   */
+  blockToGlyphs(block, inputs = {}) {
+    const type = block['@type'];
+    const mapper = this.typeMappings[type];
+
+    if (!mapper) {
+      return { error: 'no_mapping', type, glyph: '❓' };
+    }
+
+    try {
+      const bytecode = mapper(block, inputs);
+      return {
+        type,
+        bytecode,
+        executable: true
+      };
+    } catch (e) {
+      return {
+        type,
+        error: e.message,
+        executable: false
+      };
+    }
+  }
+
+  /**
+   * Execute a block via GlyphVM
+   */
+  executeBlock(block, inputs = {}) {
+    if (!this.glyphVM) {
+      return { error: 'no_glyphvm', executed: false };
+    }
+
+    const mapping = this.blockToGlyphs(block, inputs);
+    if (!mapping.executable) {
+      return mapping;
+    }
+
+    const result = this.glyphVM.execute(mapping.bytecode);
+    return {
+      ...mapping,
+      result,
+      executed: true
+    };
+  }
+
+  // ==================== MATH MAPPINGS ====================
+
+  mapMath(block, inputs) {
+    const data = block['@data'] || {};
+    const operation = data.operation;
+    const blockInputs = data.inputs || [];
+
+    // Resolve input values to glyphs
+    const inputGlyphs = blockInputs.map(i => this.valueToGlyph(inputs[i] ?? i));
+    const opGlyph = this.operationGlyphs[operation] || '➕';
+
+    return inputGlyphs.join(' ') + ' ' + opGlyph;
+  }
+
+  mapExpression(block, inputs) {
+    const data = block['@data'] || {};
+    const expression = data.expression || '';
+
+    // Use GlyphCompiler if available
+    if (this.glyphVM && typeof GlyphCompiler !== 'undefined') {
+      const compiler = new GlyphCompiler();
+      return compiler.compile(expression);
+    }
+
+    return expression;
+  }
+
+  mapCompare(block, inputs) {
+    const data = block['@data'] || {};
+    const operation = data.operation || 'equal';
+    const left = this.valueToGlyph(inputs[data.left] ?? data.left);
+    const right = this.valueToGlyph(inputs[data.right] ?? data.right);
+    const opGlyph = this.comparisonGlyphs[operation] || '⚖';
+
+    return `${left} ${right} ${opGlyph}`;
+  }
+
+  // ==================== PHYSICS MAPPINGS ====================
+
+  mapPhysics(block, inputs) {
+    const data = block['@data'] || {};
+    const equation = data.equation;
+    const field = this.valueToGlyph(inputs[data.field] ?? data.field);
+    const constants = data.constants || {};
+
+    const eqGlyph = this.physicsGlyphs[equation] || '🌊';
+
+    let bytecode = field;
+    for (const [key, value] of Object.entries(constants)) {
+      bytecode += ` ${this.valueToGlyph(value)}`;
+    }
+    bytecode += ` ${eqGlyph}`;
+
+    return bytecode;
+  }
+
+  mapWave(block, inputs) {
+    const data = block['@data'] || {};
+    const x = this.valueToGlyph(inputs[data.x] ?? data.x);
+    const amplitude = this.valueToGlyph(data.amplitude ?? 1);
+    const frequency = this.valueToGlyph(data.frequency ?? 1);
+
+    return `${frequency} ${amplitude} ${x} 🌊π`;
+  }
+
+  mapTransform(block, inputs) {
+    const data = block['@data'] || {};
+    const transform = data.transform || 'scale';
+    const value = this.valueToGlyph(inputs[data.value] ?? data.value);
+
+    switch (transform) {
+      case 'golden_scale': return `${value} φ⚡`;
+      case 'inverse_golden': return `${value} φ⁻¹`;
+      case 'spiral': return `${value} φ🌀`;
+      case 'wave': return `${value} 🌊`;
+      default: return `${value} π ✖`;
+    }
+  }
+
+  // ==================== DATA MAPPINGS ====================
+
+  mapDataInput(block, inputs) {
+    const data = block['@data'] || {};
+    const value = inputs[data.name] ?? data.default ?? 0;
+    return this.valueToGlyph(value);
+  }
+
+  mapDataStore(block, inputs) {
+    const data = block['@data'] || {};
+    const value = this.valueToGlyph(inputs[data.value] ?? data.value);
+    return `${value} 🗃`;
+  }
+
+  // ==================== CONTROL FLOW MAPPINGS ====================
+
+  mapIf(block, inputs) {
+    const data = block['@data'] || {};
+    const condition = this.valueToGlyph(inputs[data.condition] ?? data.condition);
+    const thenBlock = data.then ? this.blockToGlyphs(data.then, inputs).bytecode : '⚡';
+    const elseBlock = data.else ? this.blockToGlyphs(data.else, inputs).bytecode : '❄';
+
+    return `${condition} ❓ ⟨${thenBlock}⟩ ▶ ⟨${elseBlock}⟩`;
+  }
+
+  mapLoop(block, inputs) {
+    const data = block['@data'] || {};
+    const iterations = this.valueToGlyph(data.iterations ?? 10);
+    const body = data.body ? this.blockToGlyphs(data.body, inputs).bytecode : '⚡';
+
+    return `${iterations} 🔄 ⟨${body}⟩`;
+  }
+
+  mapSequence(block, inputs) {
+    const data = block['@data'] || {};
+    const steps = data.steps || [];
+
+    const bytecodes = steps.map(step => {
+      const mapping = this.blockToGlyphs(step, inputs);
+      return mapping.bytecode || '';
+    });
+
+    return bytecodes.join(' ');
+  }
+
+  mapGlyphExecute(block, inputs) {
+    const data = block['@data'] || {};
+    return data.glyph || data.bytecode || '';
+  }
+
+  // ==================== UTILITY METHODS ====================
+
+  valueToGlyph(value) {
+    if (value === null || value === undefined) return '❄';
+
+    if (typeof value === 'number') {
+      // Special constants
+      if (value === Math.PI) return 'π';
+      if (value === 1.6180339887498948) return 'φ';
+      if (value === Math.E) return '⚡e';
+      if (value === 0) return '❄';
+      if (value === 1) return '⚡';
+      if (Number.isInteger(value) && value >= 0 && value <= 10) {
+        return `⚡${value}`;
+      }
+      return String(value);
+    }
+
+    if (typeof value === 'boolean') {
+      return value ? '⚡' : '❄';
+    }
+
+    if (typeof value === 'string') {
+      // Check for π constants
+      if (value === 'π' || value === 'pi') return 'π';
+      if (value === 'φ' || value === 'phi') return 'φ';
+      if (value === 'τ' || value === 'tau') return 'τ';
+      if (value === 'e') return '⚡e';
+      return value;
+    }
+
+    return '📦';
+  }
+
+  /**
+   * Get available mappings
+   */
+  getAvailableMappings() {
+    return {
+      blockTypes: Object.keys(this.typeMappings),
+      operations: this.operationGlyphs,
+      comparisons: this.comparisonGlyphs,
+      physics: this.physicsGlyphs
+    };
+  }
+}
+
+/**
+ * AtomicBlockRuntime - Unified runtime integrating BlockExecutor and GlyphVM
+ * High-level API for executing Atomic Blocks via glyph bytecode
+ */
+class AtomicBlockRuntime {
+  constructor(config = {}) {
+    // Initialize GlyphVM if available
+    this.glyphVM = config.glyphVM || (typeof GlyphVM !== 'undefined' ? new GlyphVM() : null);
+
+    // Initialize PiKUHUL if available
+    this.piKuhul = config.piKuhul || (typeof PiKUHUL !== 'undefined' ? new PiKUHUL() : null);
+
+    // Initialize BlockExecutor with GlyphVM integration
+    this.executor = new BlockExecutor(this.glyphVM, this.piKuhul);
+
+    // Initialize mapper
+    this.mapper = new AtomicToGlyphMapper(this.glyphVM);
+
+    // Execution stack for nested calls
+    this.stack = new ExecutionStack();
+
+    // Block registry
+    this.blocks = new Map();
+
+    // Execution mode: 'block' or 'glyph'
+    this.mode = config.mode || 'hybrid';
+
+    // Self-modifying rules
+    this.selfModifyingRules = [];
+  }
+
+  /**
+   * Register a block with optional glyph bindings
+   */
+  registerBlock(block) {
+    const id = block['@id'] || block.id;
+    this.blocks.set(id, block);
+    this.executor.registerBlock(id, block);
+
+    // Register custom glyphs if defined
+    if (block.glyphs && this.glyphVM) {
+      for (const [glyph, handler] of Object.entries(block.glyphs)) {
+        if (typeof handler === 'function') {
+          this.glyphVM.registerOpcode(glyph, handler);
+        } else if (typeof handler === 'string') {
+          // Handler is bytecode string - create macro
+          const bytecode = handler;
+          this.glyphVM.registerOpcode(glyph, () => {
+            this.glyphVM.execute(bytecode);
+          });
+        }
+      }
+    }
+
+    return this;
+  }
+
+  /**
+   * Execute a block by ID or block object
+   */
+  async executeBlock(blockOrId, inputs = {}) {
+    let block;
+    if (typeof blockOrId === 'string') {
+      block = this.blocks.get(blockOrId);
+      if (!block) {
+        return { error: 'block_not_found', id: blockOrId };
+      }
+    } else {
+      block = blockOrId;
+    }
+
+    // Push execution frame
+    const frameId = this.stack.pushFrame({
+      blockId: block['@id'] || 'anonymous',
+      mode: this.mode
+    });
+
+    // Set input variables
+    for (const [key, value] of Object.entries(inputs)) {
+      this.stack.setVariable(key, value);
+      this.executor.setVariable(key, value);
+    }
+
+    try {
+      let result;
+
+      if (this.mode === 'glyph' && this.glyphVM) {
+        // Execute via GlyphVM
+        const mapping = this.mapper.blockToGlyphs(block, inputs);
+        if (mapping.executable) {
+          result = this.glyphVM.execute(mapping.bytecode);
+        } else {
+          result = { error: mapping.error, mode: 'glyph' };
+        }
+      } else if (this.mode === 'block') {
+        // Execute via BlockExecutor
+        result = this.executor.execute(block);
+      } else {
+        // Hybrid mode: try glyph first, fall back to block
+        const mapping = this.mapper.blockToGlyphs(block, inputs);
+        if (mapping.executable && this.glyphVM) {
+          result = this.glyphVM.execute(mapping.bytecode);
+          result = { ...result, mode: 'glyph' };
+        } else {
+          result = this.executor.execute(block);
+          result = typeof result === 'object' ? { ...result, mode: 'block' } : { value: result, mode: 'block' };
+        }
+      }
+
+      // Apply self-modifying rules
+      this.applySelfModifyingRules(block, result);
+
+      return result;
+    } finally {
+      this.stack.popFrame();
+    }
+  }
+
+  /**
+   * Execute glyph bytecode directly
+   */
+  executeGlyph(bytecode) {
+    if (!this.glyphVM) {
+      return { error: 'no_glyphvm', bytecode };
+    }
+    return this.glyphVM.execute(bytecode);
+  }
+
+  /**
+   * Compile expression to glyph bytecode
+   */
+  compile(expression) {
+    if (typeof GlyphCompiler !== 'undefined') {
+      const compiler = new GlyphCompiler();
+      return compiler.compile(expression);
+    }
+    return expression;
+  }
+
+  /**
+   * Add a self-modifying rule
+   */
+  addSelfModifyingRule(condition, action, priority = 0) {
+    this.selfModifyingRules.push({
+      id: `rule_${this.selfModifyingRules.length}`,
+      condition,
+      action,
+      priority,
+      active: true
+    });
+    this.selfModifyingRules.sort((a, b) => b.priority - a.priority);
+  }
+
+  /**
+   * Apply self-modifying rules after execution
+   */
+  applySelfModifyingRules(block, result) {
+    for (const rule of this.selfModifyingRules) {
+      if (rule.active && rule.condition(block, result, this)) {
+        rule.action(this, block, result);
+      }
+    }
+  }
+
+  /**
+   * Get π-KUHUL calculation
+   */
+  piMath(operation, ...args) {
+    if (!this.piKuhul) {
+      return { error: 'no_pikuhul' };
+    }
+
+    const method = this.piKuhul[operation];
+    if (typeof method !== 'function') {
+      return { error: 'unknown_operation', operation };
+    }
+
+    return method.apply(this.piKuhul, args);
+  }
+
+  /**
+   * Get execution trace
+   */
+  getTrace() {
+    return {
+      executor: this.executor.getTrace(),
+      glyphVM: this.glyphVM?.getTrace() || [],
+      stack: this.stack.exportState()
+    };
+  }
+
+  /**
+   * Get statistics
+   */
+  getStats() {
+    return {
+      blocks: this.blocks.size,
+      executorStats: this.executor.getStats(),
+      vmStats: this.glyphVM?.getStats() || {},
+      stackDepth: this.stack.getCallDepth(),
+      rules: this.selfModifyingRules.length,
+      mode: this.mode
+    };
+  }
+
+  /**
+   * Reset runtime state
+   */
+  reset() {
+    this.executor.reset();
+    this.glyphVM?.reset();
+    this.stack = new ExecutionStack();
+    this.blocks.clear();
+    return this;
+  }
+}
+
 // Export for Service Worker
 if (typeof self !== 'undefined') {
   self.BlockExecutor = BlockExecutor;
+  self.ExecutionStack = ExecutionStack;
+  self.AtomicToGlyphMapper = AtomicToGlyphMapper;
+  self.AtomicBlockRuntime = AtomicBlockRuntime;
 }

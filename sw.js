@@ -11,7 +11,7 @@
 -------------------------------- */
 
 const Ω = Object.freeze({
-  VERSION: "Ω-KUHUL-PI-KERNEL.v15.0.0",
+  VERSION: "Ω-KUHUL-PI-KERNEL.v16.0.0",
   DETERMINISTIC: true,
   UI_READS_STATE: true,
   STATE_READS_UI: false,
@@ -2855,15 +2855,27 @@ async function initRuntimeComponents() {
   if (!P2P_NETWORK_INSTANCE && typeof P2PGlyphNetwork !== 'undefined') {
     P2P_NETWORK_INSTANCE = new P2PGlyphNetwork({ crypto: GLYPH_CRYPTO });
   }
+  // Initialize AtomicBlockRuntime with all components
+  if (!ATOMIC_RUNTIME && typeof AtomicBlockRuntime !== 'undefined' && GLYPH_VM) {
+    ATOMIC_RUNTIME = new AtomicBlockRuntime({
+      glyphVM: GLYPH_VM,
+      piKuhul: PI_KUHUL,
+      mode: 'hybrid'
+    });
+  }
   return {
     blockExecutor: !!BLOCK_EXECUTOR,
     glyphVM: !!GLYPH_VM,
     glyphRegistry: !!GLYPH_REGISTRY,
     piKuhul: !!PI_KUHUL,
+    atomicRuntime: !!ATOMIC_RUNTIME,
     p2p: !!P2P_NETWORK_INSTANCE,
     crypto: !!GLYPH_CRYPTO
   };
 }
+
+// Global AtomicBlockRuntime instance
+let ATOMIC_RUNTIME = null;
 
 // Runtime API paths
 const RUNTIME_API_PATHS = new Set([
@@ -2877,7 +2889,10 @@ const RUNTIME_API_PATHS = new Set([
   '/registry/compose', '/registry/alias', '/registry/meta-rule',
   // PiKUHUL API
   '/pi-kuhul/wave', '/pi-kuhul/scale', '/pi-kuhul/fractal',
-  '/pi-kuhul/spiral', '/pi-kuhul/compress', '/pi-kuhul/fibonacci'
+  '/pi-kuhul/spiral', '/pi-kuhul/compress', '/pi-kuhul/fibonacci',
+  // AtomicBlockRuntime API (unified Block+GlyphVM execution)
+  '/atomic/execute', '/atomic/register', '/atomic/map',
+  '/atomic/stats', '/atomic/trace', '/atomic/compile'
 ]);
 
 // Handle runtime API requests
@@ -3139,6 +3154,55 @@ async function handleRuntimeAPI(url, request) {
       const isFib = payload.check !== undefined ? PI_KUHUL.isFibonacci(payload.check) : null;
       return mx2_json({ ok: true, n: payload.n, sequence: fibSeq, isFibonacci: isFib, tick: ΩCLOCK.tick });
 
+    // AtomicBlockRuntime endpoints (unified Block + GlyphVM execution)
+    case '/atomic/execute':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!ATOMIC_RUNTIME) return mx2_json({ error: 'atomic_runtime_not_initialized' }, 500);
+
+      try {
+        const atomicResult = await ATOMIC_RUNTIME.executeBlock(payload.block, payload.inputs || {});
+        kuhulTick();
+        return mx2_json({ ok: true, result: atomicResult, tick: ΩCLOCK.tick });
+      } catch (e) {
+        return mx2_json({ ok: false, error: e.message, tick: ΩCLOCK.tick });
+      }
+
+    case '/atomic/register':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!ATOMIC_RUNTIME) return mx2_json({ error: 'atomic_runtime_not_initialized' }, 500);
+
+      ATOMIC_RUNTIME.registerBlock(payload.block);
+      return mx2_json({ ok: true, registered: payload.block['@id'] || payload.block.id, tick: ΩCLOCK.tick });
+
+    case '/atomic/map':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!ATOMIC_RUNTIME) return mx2_json({ error: 'atomic_runtime_not_initialized' }, 500);
+
+      const mapping = ATOMIC_RUNTIME.mapper.blockToGlyphs(payload.block, payload.inputs || {});
+      return mx2_json({ ok: true, mapping, tick: ΩCLOCK.tick });
+
+    case '/atomic/compile':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!ATOMIC_RUNTIME) return mx2_json({ error: 'atomic_runtime_not_initialized' }, 500);
+
+      const compiledBytecode = ATOMIC_RUNTIME.compile(payload.expression || '');
+      return mx2_json({ ok: true, bytecode: compiledBytecode, expression: payload.expression, tick: ΩCLOCK.tick });
+
+    case '/atomic/stats':
+      return mx2_json({
+        ok: true,
+        stats: ATOMIC_RUNTIME?.getStats() || {},
+        mappings: ATOMIC_RUNTIME?.mapper?.getAvailableMappings() || {},
+        tick: ΩCLOCK.tick
+      });
+
+    case '/atomic/trace':
+      return mx2_json({
+        ok: true,
+        trace: ATOMIC_RUNTIME?.getTrace() || {},
+        tick: ΩCLOCK.tick
+      });
+
     default:
       return null;
   }
@@ -3191,10 +3255,11 @@ self.addEventListener("message", async (event) => {
 
 console.log(`
 ╔══════════════════════════════════════════════════════════╗
-║ MX2LM SUPREME JSON REST API KERNEL v15.0.0              ║
+║ MX2LM SUPREME JSON REST API KERNEL v16.0.0              ║
 ║ + BRAIN MODEL INTEGRATION LAYER                         ║
 ║ + CHAT INFERENCE & WEB LEARNING ENGINE                  ║
 ║ + ATOMIC BLOCK RUNTIME & GLYPH VM                       ║
+║ + ATOMIC→GLYPH MAPPER (Block↔Bytecode Bridge)           ║
 ║ + GLYPH REGISTRY & SELF-MODIFYING META-RULES            ║
 ║ + π-KUHUL MATH LAWS ENGINE                              ║
 ║ + REAL P2P NETWORK & WEB CRYPTO                         ║
