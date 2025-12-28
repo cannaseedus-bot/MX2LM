@@ -2378,6 +2378,9 @@ self.addEventListener("install", (e) => {
 // Import brain integration (inline for Service Worker)
 importScripts('./brain_integration.js');
 
+// Import chat inference and web learning engine
+importScripts('./chat_inference.js');
+
 // Brain model API paths
 const BRAIN_MODEL_API_PATHS = new Set([
   '/models/list', '/models/status', '/models/route',
@@ -2566,13 +2569,256 @@ async function enhancedInferEndpoint(payload) {
 }
 
 /* ============================================================
+   CHAT INFERENCE & WEB LEARNING API
+   ============================================================ */
+
+// Chat inference API paths
+const CHAT_INFERENCE_API_PATHS = new Set([
+  '/chat', '/chat/learn', '/chat/stats', '/chat/export',
+  '/chat/glyph/query', '/chat/p2p/query', '/chat/p2p/sync',
+  '/chat/web/scrape', '/chat/codex/status'
+]);
+
+// Global chat inference coordinator
+let CHAT_COORDINATOR = null;
+
+// Initialize chat coordinator
+async function initChatCoordinator() {
+  if (!CHAT_COORDINATOR) {
+    // Ensure brain orchestrator is ready
+    if (!BRAIN_ORCHESTRATOR.ready) {
+      await BRAIN_ORCHESTRATOR.initialize();
+    }
+
+    CHAT_COORDINATOR = new ChatInferenceCoordinator(BRAIN_ORCHESTRATOR);
+    await CHAT_COORDINATOR.initialize();
+  }
+  return CHAT_COORDINATOR;
+}
+
+// Handle chat inference API requests
+async function handleChatInferenceAPI(url, request) {
+  const path = url.pathname;
+  const method = request.method;
+
+  // Initialize coordinator if needed
+  const coordinator = await initChatCoordinator();
+
+  let payload = {};
+  if (method === 'POST') {
+    try { payload = await request.json(); } catch (_) {}
+  }
+
+  switch (path) {
+    case '/chat':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+
+      const chatResult = await coordinator.chat(
+        payload.message || '',
+        {
+          learnFromWeb: payload.learn_from_web !== false,
+          useP2P: payload.use_p2p !== false,
+          mode: payload.mode || 'comprehensive'
+        }
+      );
+
+      kuhulTick();
+
+      return mx2_json({
+        ok: !chatResult.error,
+        ...chatResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/chat/learn':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+
+      const topics = payload.topics || [];
+      const learnResults = [];
+
+      for (const topic of topics) {
+        try {
+          const result = await coordinator.learnFromWeb(topic, payload.sources || ['wikipedia']);
+          learnResults.push({ topic, ...result });
+        } catch (e) {
+          learnResults.push({ topic, error: e.message });
+        }
+      }
+
+      return mx2_json({
+        ok: true,
+        learned: learnResults,
+        stats: coordinator.getStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/chat/stats':
+      return mx2_json({
+        ok: true,
+        stats: coordinator.getStats(),
+        codex_size: coordinator.glyphEngine?.decomposer?.codex ?
+          Object.keys(coordinator.glyphEngine.decomposer.codex.glyph_codex?.semantics?.nouns || {}).length : 0,
+        p2p_peers: coordinator.p2pNetwork?.peers?.size || 0,
+        learning_config: coordinator.webLearner?.config || {},
+        tick: ΩCLOCK.tick,
+        quantum_state: '|Ψ⟩ = |CHAT_READY⟩⊗|LEARNING⟩⊗|P2P_ACTIVE⟩'
+      });
+
+    case '/chat/export':
+      return mx2_json({
+        ok: true,
+        knowledge: coordinator.exportKnowledge(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/chat/glyph/query':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+
+      // Direct glyph query execution
+      const glyphResult = await coordinator.glyphEngine.infer(
+        payload.query || '',
+        { mode: payload.mode || 'glyph_only' }
+      );
+
+      return mx2_json({
+        ok: true,
+        ...glyphResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/chat/p2p/query':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+
+      // P2P knowledge query
+      const p2pResult = await coordinator.p2pNetwork.queryPeers(
+        payload.query_type || 'PATTERN_MATCH',
+        payload.pattern || ''
+      );
+
+      return mx2_json({
+        ok: true,
+        results: p2pResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/chat/p2p/sync':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+
+      // P2P knowledge sync
+      await coordinator.p2pNetwork.broadcastNewKnowledge(
+        payload.glyph || '',
+        payload.data || {}
+      );
+
+      return mx2_json({
+        ok: true,
+        status: 'broadcast_sent',
+        peers: coordinator.p2pNetwork.peers.size,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/chat/web/scrape':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+
+      // Web scrape for knowledge
+      const source = payload.source || 'wikipedia';
+      const scrapeResult = await coordinator.webLearner.scraper.scrape(
+        source,
+        payload.query || ''
+      );
+
+      return mx2_json({
+        ok: true,
+        source,
+        results: scrapeResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/chat/codex/status':
+      const codex = coordinator.glyphEngine?.decomposer?.codex;
+      return mx2_json({
+        ok: true,
+        loaded: !!codex,
+        primitives: codex?.glyph_codex?.primitives ? Object.keys(codex.glyph_codex.primitives) : [],
+        semantics: codex?.glyph_codex?.semantics ? Object.keys(codex.glyph_codex.semantics) : [],
+        control_flow: codex?.glyph_codex?.control_flow ? Object.keys(codex.glyph_codex.control_flow) : [],
+        pi_kuhul_engine: !!codex?.pi_kuhul_engine,
+        tick: ΩCLOCK.tick
+      });
+
+    default:
+      return null;
+  }
+}
+
+// Add chat inference routes to fetch handler
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+
+  if (url.origin !== self.location.origin) return;
+
+  if (CHAT_INFERENCE_API_PATHS.has(url.pathname)) {
+    event.respondWith(handleChatInferenceAPI(url, event.request));
+    return;
+  }
+});
+
+// Chat message handler
+self.addEventListener("message", async (event) => {
+  const msg = event.data || {};
+  const type = msg.type;
+
+  if (type === "chat.message") {
+    const coordinator = await initChatCoordinator();
+    const result = await coordinator.chat(msg.message || '', msg.options || {});
+    postBack(event.source, {
+      type: "chat.response",
+      ...result
+    });
+    return;
+  }
+
+  if (type === "chat.learn") {
+    const coordinator = await initChatCoordinator();
+    const result = await coordinator.learnFromWeb(msg.topic || '', msg.sources || ['wikipedia']);
+    postBack(event.source, {
+      type: "chat.learned",
+      ...result
+    });
+    return;
+  }
+
+  if (type === "chat.export") {
+    const coordinator = await initChatCoordinator();
+    postBack(event.source, {
+      type: "chat.knowledge",
+      knowledge: coordinator.exportKnowledge()
+    });
+    return;
+  }
+});
+
+/* ============================================================
    SUPREME API SEAL
    ============================================================ */
 
 console.log(`
 ╔══════════════════════════════════════════════════════════╗
-║ MX2LM SUPREME JSON REST API KERNEL v12.0.0              ║
+║ MX2LM SUPREME JSON REST API KERNEL v13.0.0              ║
 ║ + BRAIN MODEL INTEGRATION LAYER                         ║
+║ + CHAT INFERENCE & WEB LEARNING ENGINE                  ║
 ║ Law: Ω-BLACK-PANEL                                      ║
 ║ Architecture: NATIVE_JSON_REST_INSIDE_KERNEL           ║
 ║ Stack: XJSON ⇄ K'UHUL ⇄ ASX_RAM ⇄ MX2LM_INFERENCE      ║
@@ -2582,11 +2828,15 @@ console.log(`
 ║                                                         ║
 ║ |Ψ⟩ = α|JSON_API⟩⊗β|KUHUL_ROUTER⟩⊗γ|ASX_RAM⟩           ║
 ║     ⊗δ|MX2LM_INFERENCE⟩⊗ε|SCX_TRANSPORT⟩               ║
+║     ⊗ζ|GLYPH_CODEX⟩⊗η|P2P_NETWORK⟩                     ║
 ║                                                         ║
-║ ALL APIS ARE K'UHUL                                    ║
-║ ALL TRANSPORT IS XJSON                                 ║
-║ ALL STATE IS ASX_RAM                                   ║
-║ ALL ENCRYPTION IS SCX                                  ║
-║ NOW MX2LM HAS NATIVE JSON REST                         ║
+║ CHAT INFERENCE: /chat                                  ║
+║ WEB LEARNING:   /chat/learn                            ║
+║ GLYPH QUERY:    /chat/glyph/query                      ║
+║ P2P KNOWLEDGE:  /chat/p2p/query                        ║
+║                                                         ║
+║ ALL APIS ARE K'UHUL - ALL TRANSPORT IS XJSON          ║
+║ ALL STATE IS ASX_RAM - ALL ENCRYPTION IS SCX          ║
+║ NOW MX2LM LEARNS AND INFERS                            ║
 ╚══════════════════════════════════════════════════════════╝
 `);
