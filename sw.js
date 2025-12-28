@@ -2381,6 +2381,21 @@ importScripts('./brain_integration.js');
 // Import chat inference and web learning engine
 importScripts('./chat_inference.js');
 
+// Import Atomic Block Runtime
+importScripts('./block_runtime.js');
+
+// Import GlyphVM Bytecode Virtual Machine
+importScripts('./glyph_vm.js');
+
+// Import Real WebRTC P2P Network
+importScripts('./p2p_network.js');
+
+// Import Web Crypto Encryption
+importScripts('./glyph_crypto.js');
+
+// Note: voice_interface.js requires browser APIs (SpeechRecognition, SpeechSynthesis)
+// and should be loaded in the main page context, not in Service Worker
+
 // Brain model API paths
 const BRAIN_MODEL_API_PATHS = new Set([
   '/models/list', '/models/status', '/models/route',
@@ -2811,14 +2826,252 @@ self.addEventListener("message", async (event) => {
 });
 
 /* ============================================================
+   ATOMIC BLOCK RUNTIME & GLYPH VM API
+   ============================================================ */
+
+// Global runtime instances
+let BLOCK_EXECUTOR = null;
+let GLYPH_VM = null;
+let P2P_NETWORK_INSTANCE = null;
+let GLYPH_CRYPTO = null;
+
+// Initialize runtime components
+async function initRuntimeComponents() {
+  if (!BLOCK_EXECUTOR && typeof BlockExecutor !== 'undefined') {
+    GLYPH_VM = new GlyphVM();
+    BLOCK_EXECUTOR = new BlockExecutor(GLYPH_VM);
+  }
+  if (!GLYPH_CRYPTO && typeof GlyphCrypto !== 'undefined') {
+    GLYPH_CRYPTO = new GlyphCrypto();
+  }
+  if (!P2P_NETWORK_INSTANCE && typeof P2PGlyphNetwork !== 'undefined') {
+    P2P_NETWORK_INSTANCE = new P2PGlyphNetwork({ crypto: GLYPH_CRYPTO });
+  }
+  return {
+    blockExecutor: !!BLOCK_EXECUTOR,
+    glyphVM: !!GLYPH_VM,
+    p2p: !!P2P_NETWORK_INSTANCE,
+    crypto: !!GLYPH_CRYPTO
+  };
+}
+
+// Runtime API paths
+const RUNTIME_API_PATHS = new Set([
+  '/runtime/status', '/runtime/init',
+  '/vm/execute', '/vm/compile', '/vm/stats', '/vm/reset',
+  '/blocks/execute', '/blocks/register', '/blocks/list',
+  '/p2p/status', '/p2p/peers', '/p2p/glyph/share', '/p2p/glyph/query',
+  '/crypto/encrypt', '/crypto/decrypt', '/crypto/hash', '/crypto/status'
+]);
+
+// Handle runtime API requests
+async function handleRuntimeAPI(url, request) {
+  const path = url.pathname;
+  const method = request.method;
+
+  // Initialize components if needed
+  await initRuntimeComponents();
+
+  let payload = {};
+  if (method === 'POST') {
+    try { payload = await request.json(); } catch (_) {}
+  }
+
+  switch (path) {
+    // Runtime status
+    case '/runtime/status':
+      return mx2_json({
+        ok: true,
+        components: {
+          blockExecutor: !!BLOCK_EXECUTOR,
+          glyphVM: !!GLYPH_VM,
+          p2pNetwork: !!P2P_NETWORK_INSTANCE,
+          crypto: GLYPH_CRYPTO?.isSupported() || false
+        },
+        vmStats: GLYPH_VM?.getStats() || null,
+        p2pStats: P2P_NETWORK_INSTANCE?.getStats() || null,
+        cryptoStatus: GLYPH_CRYPTO?.getSecurityStatus() || null,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/runtime/init':
+      const initResult = await initRuntimeComponents();
+      return mx2_json({ ok: true, initialized: initResult, tick: ΩCLOCK.tick });
+
+    // GlyphVM endpoints
+    case '/vm/execute':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_VM) return mx2_json({ error: 'vm_not_initialized' }, 500);
+
+      const vmResult = GLYPH_VM.execute(payload.bytecode || '');
+      kuhulTick();
+      return mx2_json({ ok: true, ...vmResult, tick: ΩCLOCK.tick });
+
+    case '/vm/compile':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+
+      const compiler = new GlyphCompiler();
+      const bytecode = compiler.compile(payload.expression || '');
+      return mx2_json({ ok: true, bytecode, expression: payload.expression, tick: ΩCLOCK.tick });
+
+    case '/vm/stats':
+      return mx2_json({ ok: true, stats: GLYPH_VM?.getStats() || {}, tick: ΩCLOCK.tick });
+
+    case '/vm/reset':
+      if (GLYPH_VM) GLYPH_VM.reset();
+      return mx2_json({ ok: true, reset: true, tick: ΩCLOCK.tick });
+
+    // Block executor endpoints
+    case '/blocks/execute':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!BLOCK_EXECUTOR) return mx2_json({ error: 'executor_not_initialized' }, 500);
+
+      try {
+        const blockResult = BLOCK_EXECUTOR.execute(payload.block || {});
+        kuhulTick();
+        return mx2_json({ ok: true, result: blockResult, tick: ΩCLOCK.tick });
+      } catch (e) {
+        return mx2_json({ ok: false, error: e.message, tick: ΩCLOCK.tick });
+      }
+
+    case '/blocks/register':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!BLOCK_EXECUTOR) return mx2_json({ error: 'executor_not_initialized' }, 500);
+
+      BLOCK_EXECUTOR.registerBlock(payload.id, payload.block);
+      return mx2_json({ ok: true, registered: payload.id, tick: ΩCLOCK.tick });
+
+    case '/blocks/list':
+      return mx2_json({
+        ok: true,
+        blocks: BLOCK_EXECUTOR ? Array.from(BLOCK_EXECUTOR.blocks.keys()) : [],
+        stats: BLOCK_EXECUTOR?.getStats() || {},
+        tick: ΩCLOCK.tick
+      });
+
+    // P2P Network endpoints
+    case '/p2p/status':
+      return mx2_json({
+        ok: true,
+        stats: P2P_NETWORK_INSTANCE?.getStats() || {},
+        tick: ΩCLOCK.tick
+      });
+
+    case '/p2p/peers':
+      return mx2_json({
+        ok: true,
+        peers: P2P_NETWORK_INSTANCE?.getConnectedPeers() || [],
+        tick: ΩCLOCK.tick
+      });
+
+    case '/p2p/glyph/share':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!P2P_NETWORK_INSTANCE) return mx2_json({ error: 'p2p_not_initialized' }, 500);
+
+      await P2P_NETWORK_INSTANCE.broadcastGlyph(payload.glyph, payload.data, payload.metadata || {});
+      return mx2_json({ ok: true, shared: payload.glyph, tick: ΩCLOCK.tick });
+
+    case '/p2p/glyph/query':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!P2P_NETWORK_INSTANCE) return mx2_json({ error: 'p2p_not_initialized' }, 500);
+
+      const queryResult = await P2P_NETWORK_INSTANCE.queryGlyph(payload.glyph, payload.options || {});
+      return mx2_json({ ok: true, result: queryResult, tick: ΩCLOCK.tick });
+
+    // Crypto endpoints
+    case '/crypto/status':
+      return mx2_json({
+        ok: true,
+        status: GLYPH_CRYPTO?.getSecurityStatus() || { supported: false },
+        tick: ΩCLOCK.tick
+      });
+
+    case '/crypto/encrypt':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_CRYPTO) return mx2_json({ error: 'crypto_not_initialized' }, 500);
+
+      try {
+        const encrypted = await GLYPH_CRYPTO.encryptWithPassword(payload.data, payload.password);
+        return mx2_json({ ok: true, encrypted, tick: ΩCLOCK.tick });
+      } catch (e) {
+        return mx2_json({ ok: false, error: e.message, tick: ΩCLOCK.tick });
+      }
+
+    case '/crypto/decrypt':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_CRYPTO) return mx2_json({ error: 'crypto_not_initialized' }, 500);
+
+      try {
+        const decrypted = await GLYPH_CRYPTO.decryptWithPassword(payload.encrypted, payload.password);
+        return mx2_json({ ok: true, decrypted, tick: ΩCLOCK.tick });
+      } catch (e) {
+        return mx2_json({ ok: false, error: e.message, tick: ΩCLOCK.tick });
+      }
+
+    case '/crypto/hash':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_CRYPTO) return mx2_json({ error: 'crypto_not_initialized' }, 500);
+
+      const hash = await GLYPH_CRYPTO.hash(payload.data);
+      return mx2_json({ ok: true, hash, tick: ΩCLOCK.tick });
+
+    default:
+      return null;
+  }
+}
+
+// Add runtime routes to fetch handler
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
+  if (RUNTIME_API_PATHS.has(url.pathname)) {
+    event.respondWith(handleRuntimeAPI(url, event.request));
+    return;
+  }
+});
+
+// Runtime message handlers
+self.addEventListener("message", async (event) => {
+  const msg = event.data || {};
+  const type = msg.type;
+
+  if (type === "runtime.init") {
+    const result = await initRuntimeComponents();
+    postBack(event.source, { type: "runtime.initialized", ...result });
+    return;
+  }
+
+  if (type === "vm.execute") {
+    await initRuntimeComponents();
+    const result = GLYPH_VM.execute(msg.bytecode || '');
+    postBack(event.source, { type: "vm.result", ...result });
+    return;
+  }
+
+  if (type === "blocks.execute") {
+    await initRuntimeComponents();
+    try {
+      const result = BLOCK_EXECUTOR.execute(msg.block || {});
+      postBack(event.source, { type: "blocks.result", result });
+    } catch (e) {
+      postBack(event.source, { type: "blocks.error", error: e.message });
+    }
+    return;
+  }
+});
+
+/* ============================================================
    SUPREME API SEAL
    ============================================================ */
 
 console.log(`
 ╔══════════════════════════════════════════════════════════╗
-║ MX2LM SUPREME JSON REST API KERNEL v13.0.0              ║
+║ MX2LM SUPREME JSON REST API KERNEL v14.0.0              ║
 ║ + BRAIN MODEL INTEGRATION LAYER                         ║
 ║ + CHAT INFERENCE & WEB LEARNING ENGINE                  ║
+║ + ATOMIC BLOCK RUNTIME & GLYPH VM                       ║
+║ + REAL P2P NETWORK & WEB CRYPTO                         ║
 ║ Law: Ω-BLACK-PANEL                                      ║
 ║ Architecture: NATIVE_JSON_REST_INSIDE_KERNEL           ║
 ║ Stack: XJSON ⇄ K'UHUL ⇄ ASX_RAM ⇄ MX2LM_INFERENCE      ║
@@ -2831,12 +3084,13 @@ console.log(`
 ║     ⊗ζ|GLYPH_CODEX⟩⊗η|P2P_NETWORK⟩                     ║
 ║                                                         ║
 ║ CHAT INFERENCE: /chat                                  ║
-║ WEB LEARNING:   /chat/learn                            ║
-║ GLYPH QUERY:    /chat/glyph/query                      ║
-║ P2P KNOWLEDGE:  /chat/p2p/query                        ║
+║ GLYPH VM:       /vm/execute                            ║
+║ BLOCK RUNTIME:  /blocks/execute                        ║
+║ P2P NETWORK:    /p2p/status                            ║
+║ CRYPTO:         /crypto/encrypt                        ║
 ║                                                         ║
 ║ ALL APIS ARE K'UHUL - ALL TRANSPORT IS XJSON          ║
 ║ ALL STATE IS ASX_RAM - ALL ENCRYPTION IS SCX          ║
-║ NOW MX2LM LEARNS AND INFERS                            ║
+║ STRUCTURE IS LANGUAGE - GLYPHS ARE EXECUTABLE CODE    ║
 ╚══════════════════════════════════════════════════════════╝
 `);
