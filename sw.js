@@ -11,7 +11,7 @@
 -------------------------------- */
 
 const Ω = Object.freeze({
-  VERSION: "Ω-KUHUL-PI-KERNEL.v17.0.0",
+  VERSION: "Ω-KUHUL-PI-KERNEL.v18.0.0",
   DETERMINISTIC: true,
   UI_READS_STATE: true,
   STATE_READS_UI: false,
@@ -2396,8 +2396,47 @@ importScripts('./glyph_crypto.js');
 // Import RLHF N-gram Engine
 importScripts('./rlhf_ngram_engine.js');
 
+// Import SCXQ2/CC-v1 Binding
+importScripts('./scxq2_binding.js');
+
+// Import ArXiv Research Paper Fetcher
+importScripts('./research/arxiv_fetcher.js');
+
+// Import Model Providers (Multi-API support)
+importScripts('./models/model_providers.js');
+
+// Import π-KUHUL Model Adapters
+importScripts('./models/janus/adapters/janus_pi_kuhul.js');
+importScripts('./models/deepseek/adapters/deepseek_pi_kuhul.js');
+
 // Note: voice_interface.js requires browser APIs (SpeechRecognition, SpeechSynthesis)
 // and should be loaded in the main page context, not in Service Worker
+
+// Initialize global instances
+let SCXQ2_ENCODER = null;
+let ARXIV_FETCHER = null;
+let MODEL_PROVIDER_MANAGER = null;
+let JANUS_ADAPTER = null;
+let DEEPSEEK_ADAPTER = null;
+
+// Lazy initialization for new components
+function initNewComponents() {
+  if (!SCXQ2_ENCODER && typeof SCXQ2 !== 'undefined') {
+    SCXQ2_ENCODER = new SCXQ2();
+  }
+  if (!ARXIV_FETCHER && typeof ArxivFetcher !== 'undefined') {
+    ARXIV_FETCHER = new ArxivFetcher();
+  }
+  if (!MODEL_PROVIDER_MANAGER && typeof ModelProviderManager !== 'undefined') {
+    MODEL_PROVIDER_MANAGER = new ModelProviderManager();
+  }
+  if (!JANUS_ADAPTER && typeof JanusPiKuhulAdapter !== 'undefined') {
+    JANUS_ADAPTER = new JanusPiKuhulAdapter();
+  }
+  if (!DEEPSEEK_ADAPTER && typeof DeepseekPiKuhulAdapter !== 'undefined') {
+    DEEPSEEK_ADAPTER = new DeepseekPiKuhulAdapter();
+  }
+}
 
 // Brain model API paths
 const BRAIN_MODEL_API_PATHS = new Set([
@@ -3405,12 +3444,279 @@ self.addEventListener("message", async (event) => {
 });
 
 /* ============================================================
+   RESEARCH, SCXQ2, AND MODEL ADAPTER API
+   ============================================================ */
+
+// Extended API paths for new components
+const EXTENDED_API_PATHS = new Set([
+  '/research/arxiv/search', '/research/arxiv/paper', '/research/arxiv/pi-kuhul',
+  '/scxq2/encode', '/scxq2/decode', '/scxq2/verify',
+  '/adapters/janus/infer', '/adapters/janus/image-to-text', '/adapters/janus/text-to-image',
+  '/adapters/deepseek/infer', '/adapters/deepseek/route',
+  '/providers/list', '/providers/configure', '/providers/request'
+]);
+
+// Handle extended API requests
+async function handleExtendedAPI(url, request) {
+  const path = url.pathname;
+  const method = request.method;
+
+  // Initialize new components
+  initNewComponents();
+
+  let payload = {};
+  if (method === 'POST') {
+    try { payload = await request.json(); } catch (_) {}
+  }
+
+  switch (path) {
+    // ===== ArXiv Research API =====
+    case '/research/arxiv/search':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!ARXIV_FETCHER) {
+        return mx2_json({ error: 'arxiv_fetcher_not_initialized' }, 500);
+      }
+      const searchResults = await ARXIV_FETCHER.fetchPapers(
+        payload.query || '',
+        { maxResults: payload.maxResults || 10 }
+      );
+      kuhulTick();
+      return mx2_json({
+        ok: !searchResults.error,
+        papers: searchResults.error ? [] : searchResults,
+        error: searchResults.error,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/research/arxiv/paper':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!ARXIV_FETCHER) {
+        return mx2_json({ error: 'arxiv_fetcher_not_initialized' }, 500);
+      }
+      const paper = await ARXIV_FETCHER.getPaperById(payload.arxiv_id || '');
+      return mx2_json({
+        ok: !!paper,
+        paper: paper,
+        ingestFormat: paper ? ARXIV_FETCHER.paperToIngestFormat(paper) : null,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/research/arxiv/pi-kuhul':
+      if (!ARXIV_FETCHER) {
+        return mx2_json({ error: 'arxiv_fetcher_not_initialized' }, 500);
+      }
+      const piKuhulPapers = await ARXIV_FETCHER.searchPiKuhulPapers();
+      return mx2_json({
+        ok: true,
+        papers: piKuhulPapers,
+        stats: ARXIV_FETCHER.getStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    // ===== SCXQ2/CC-v1 API =====
+    case '/scxq2/encode':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!SCXQ2_ENCODER) {
+        return mx2_json({ error: 'scxq2_encoder_not_initialized' }, 500);
+      }
+      const encoded = SCXQ2_ENCODER.encode(payload.data || {}, payload.options || {});
+      kuhulTick();
+      return mx2_json({
+        ok: true,
+        stream: encoded.stream,
+        proof: encoded.proof,
+        audit: encoded.audit,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/scxq2/decode':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!SCXQ2_ENCODER) {
+        return mx2_json({ error: 'scxq2_encoder_not_initialized' }, 500);
+      }
+      const decoded = SCXQ2_ENCODER.decode(payload.stream || {});
+      return mx2_json({
+        ok: true,
+        decoded: decoded,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/scxq2/verify':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!SCXQ2_ENCODER) {
+        return mx2_json({ error: 'scxq2_encoder_not_initialized' }, 500);
+      }
+      const verifyResult = SCXQ2_ENCODER.verify(
+        payload.input || {},
+        payload.output || {},
+        payload.proof || {}
+      );
+      return mx2_json({
+        ...verifyResult,
+        tick: ΩCLOCK.tick
+      });
+
+    // ===== Janus Adapter API =====
+    case '/adapters/janus/infer':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!JANUS_ADAPTER) {
+        return mx2_json({ error: 'janus_adapter_not_initialized' }, 500);
+      }
+      const janusResult = await JANUS_ADAPTER.processXCFE(payload, payload.mode || 'chat');
+      kuhulTick();
+      return mx2_json({
+        ok: !janusResult.error,
+        ...janusResult,
+        xcfeAst: JANUS_ADAPTER.buildXcfeAst(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/adapters/janus/image-to-text':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!JANUS_ADAPTER) {
+        return mx2_json({ error: 'janus_adapter_not_initialized' }, 500);
+      }
+      const i2tResult = await JANUS_ADAPTER.imageToText({
+        image: payload.image,
+        prompt: payload.prompt,
+        options: payload.options || {}
+      });
+      kuhulTick();
+      return mx2_json({
+        ok: !i2tResult.error,
+        ...i2tResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/adapters/janus/text-to-image':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!JANUS_ADAPTER) {
+        return mx2_json({ error: 'janus_adapter_not_initialized' }, 500);
+      }
+      const t2iResult = await JANUS_ADAPTER.textToImage({
+        prompt: payload.prompt,
+        options: payload.options || {}
+      });
+      kuhulTick();
+      return mx2_json({
+        ok: !t2iResult.error,
+        ...t2iResult,
+        tick: ΩCLOCK.tick
+      });
+
+    // ===== Deepseek Adapter API =====
+    case '/adapters/deepseek/infer':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!DEEPSEEK_ADAPTER) {
+        return mx2_json({ error: 'deepseek_adapter_not_initialized' }, 500);
+      }
+      const dsResult = await DEEPSEEK_ADAPTER.infer(payload.prompt || '', payload.mode || 'reasoning');
+      kuhulTick();
+      return mx2_json({
+        ok: !dsResult.error,
+        ...dsResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/adapters/deepseek/route':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!DEEPSEEK_ADAPTER) {
+        return mx2_json({ error: 'deepseek_adapter_not_initialized' }, 500);
+      }
+      const routeResult = DEEPSEEK_ADAPTER.routeToExperts(payload.value || 0);
+      return mx2_json({
+        ok: true,
+        ...routeResult,
+        stats: DEEPSEEK_ADAPTER.getStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    // ===== Model Providers API =====
+    case '/providers/list':
+      if (!MODEL_PROVIDER_MANAGER) {
+        return mx2_json({ error: 'provider_manager_not_initialized' }, 500);
+      }
+      return mx2_json({
+        ok: true,
+        providers: MODEL_PROVIDER_MANAGER.getStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/providers/configure':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!MODEL_PROVIDER_MANAGER) {
+        return mx2_json({ error: 'provider_manager_not_initialized' }, 500);
+      }
+      MODEL_PROVIDER_MANAGER.initializeFromConfig(payload.config || {});
+      return mx2_json({
+        ok: true,
+        providers: MODEL_PROVIDER_MANAGER.getStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/providers/request':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!MODEL_PROVIDER_MANAGER) {
+        return mx2_json({ error: 'provider_manager_not_initialized' }, 500);
+      }
+      const providerResult = await MODEL_PROVIDER_MANAGER.request(
+        payload.messages || [],
+        payload.options || {}
+      );
+      kuhulTick();
+      return mx2_json({
+        ok: !providerResult.error,
+        ...providerResult,
+        tick: ΩCLOCK.tick
+      });
+
+    default:
+      return null;
+  }
+}
+
+// Add extended routes to fetch handler
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
+  if (EXTENDED_API_PATHS.has(url.pathname)) {
+    event.respondWith(handleExtendedAPI(url, event.request));
+    return;
+  }
+});
+
+/* ============================================================
    SUPREME API SEAL
    ============================================================ */
 
 console.log(`
 ╔══════════════════════════════════════════════════════════╗
-║ MX2LM SUPREME JSON REST API KERNEL v17.0.0              ║
+║ MX2LM SUPREME JSON REST API KERNEL v18.0.0              ║
 ║ + BRAIN MODEL INTEGRATION LAYER                         ║
 ║ + CHAT INFERENCE & WEB LEARNING ENGINE                  ║
 ║ + ATOMIC BLOCK RUNTIME & GLYPH VM                       ║
@@ -3420,7 +3726,12 @@ console.log(`
 ║ + RLHF N-GRAM ENGINE (φ-decay, TD learning)             ║
 ║ + CLAUDE ARTIFACT INGESTION PIPELINE                    ║
 ║ + REAL P2P NETWORK & WEB CRYPTO                         ║
-║ Law: Ω-BLACK-PANEL                                      ║
+║ + SCXQ2/CC-v1 COMPRESSION BINDING                       ║
+║ + ARXIV RESEARCH PAPER FETCHER                          ║
+║ + JANUS MULTIMODAL ADAPTER (π-KUHUL)                    ║
+║ + DEEPSEEK MoE ADAPTER (π-KUHUL)                        ║
+║ + MULTI-PROVIDER API (Claude/OpenAI/Deepseek/Mistral)   ║
+║ Law: Ω-BLACK-PANEL | CC-v1                              ║
 ║ Architecture: NATIVE_JSON_REST_INSIDE_KERNEL           ║
 ║ Stack: XJSON ⇄ K'UHUL ⇄ ASX_RAM ⇄ MX2LM_INFERENCE      ║
 ║ Performance: 1M+ RPS KERNEL ROUTED                     ║
@@ -3430,16 +3741,17 @@ console.log(`
 ║                                                         ║
 ║ |Ψ⟩ = α|JSON_API⟩⊗β|KUHUL_ROUTER⟩⊗γ|ASX_RAM⟩           ║
 ║     ⊗δ|MX2LM_INFERENCE⟩⊗ε|SCX_TRANSPORT⟩               ║
-║     ⊗ζ|GLYPH_CODEX⟩⊗η|P2P_NETWORK⟩                     ║
+║     ⊗ζ|GLYPH_CODEX⟩⊗η|P2P_NETWORK⟩⊗θ|CC-v1⟩            ║
 ║                                                         ║
-║ CHAT INFERENCE: /chat                                  ║
-║ GLYPH VM:       /vm/execute                            ║
-║ BLOCK RUNTIME:  /blocks/execute                        ║
-║ P2P NETWORK:    /p2p/status                            ║
-║ CRYPTO:         /crypto/encrypt                        ║
+║ CHAT:     /chat          JANUS:    /adapters/janus     ║
+║ VM:       /vm/execute    DEEPSEEK: /adapters/deepseek  ║
+║ BLOCKS:   /blocks        ARXIV:    /research/arxiv     ║
+║ P2P:      /p2p           SCXQ2:    /scxq2              ║
+║ CRYPTO:   /crypto        PROVIDERS:/providers          ║
 ║                                                         ║
 ║ ALL APIS ARE K'UHUL - ALL TRANSPORT IS XJSON          ║
 ║ ALL STATE IS ASX_RAM - ALL ENCRYPTION IS SCX          ║
 ║ STRUCTURE IS LANGUAGE - GLYPHS ARE EXECUTABLE CODE    ║
+║ COMPRESSION IS LAW - CC-v1 VERIFIED                   ║
 ╚══════════════════════════════════════════════════════════╝
 `);

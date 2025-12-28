@@ -1,0 +1,109 @@
+{
+  "@type": "xcfe/brain",
+  "@id": "codegemma_brain",
+  "@law": "Ω-BLACK-PANEL",
+  "@schema": "../schema/codegemma.xjson",
+
+  "identity": {
+    "name": "CodeGemma",
+    "version": "7B",
+    "family": "code_transformer",
+    "architecture": "fim_enabled",
+    "source": "google/codegemma-7b-it"
+  },
+
+  "π_kuhul": {
+    "@doc": "π-KUHUL integration for code generation",
+    "constants": {
+      "π": 3.141592653589793,
+      "φ": 1.6180339887498948,
+      "τ": 6.283185307179586
+    },
+    "wave_functions": {
+      "syntax_encode": "sin(π × depth / max_depth)",
+      "fim_reorder": "prefix ⊕ suffix ⊕ middle",
+      "indent_compress": "⌊indent × φ⌋"
+    },
+    "code_physics": {
+      "max_depth": 32,
+      "fim_enabled": true,
+      "syntax_aware": true
+    }
+  },
+
+  "glyph_codex": {
+    "@doc": "Glyph encoding for CodeGemma operations",
+    "primitives": {
+      "💻→📝": "prompt_to_completion",
+      "📝→🔧": "completion_to_fix",
+      "🔀→💻": "fim_to_code"
+    },
+    "opcodes": {
+      "CGM_TOK": "⟁C0",
+      "CGM_EMB": "⟁C1",
+      "CGM_FIM": "⟁C2",
+      "CGM_ATT": "⟁C3",
+      "CGM_GEG": "⟁C4",
+      "CGM_OUT": "⟁C5"
+    },
+    "fim_tokens": {
+      "prefix": "<|fim_prefix|>",
+      "suffix": "<|fim_suffix|>",
+      "middle": "<|fim_middle|>"
+    }
+  },
+
+  "xcfe_paths": {
+    "@doc": "Control flow paths",
+    "completion": ["tokenizer", "embed", "transformer_layers", "output_head", "sample"],
+    "fim": ["input_router", "fim_mode", "tokenizer", "embed", "transformer_layers", "output_head"],
+    "fix": ["tokenizer", "embed", "transformer_layers", "fix_head", "validate"]
+  },
+
+  "compression_calculus": {
+    "@law": "CC-FULL",
+    "symbol_folding": {
+      "enabled": true,
+      "max_depth": 4,
+      "glyph_cache": true
+    },
+    "code_compression": {
+      "syntax_aware": true,
+      "fim_optimization": true,
+      "whitespace_normalize": true
+    }
+  },
+
+  "memory_binding": {
+    "ngram_table": "codegemma_patterns",
+    "glyph_weights": "codegemma_effectiveness",
+    "syntax_cache": "codegemma_syntax"
+  },
+
+  "inference": {
+    "modes": {
+      "completion": {
+        "temperature": 0.2,
+        "max_tokens": 8192,
+        "stop_tokens": ["```", "\n\n\n"]
+      },
+      "fim": {
+        "temperature": 0.1,
+        "max_tokens": 4096,
+        "fim_mode": true
+      }
+    }
+  },
+
+  "api_binding": {
+    "local": {
+      "enabled": true,
+      "device": "cuda",
+      "dtype": "bfloat16"
+    },
+    "remote": {
+      "enabled": true,
+      "endpoint": "https://generativelanguage.googleapis.com/v1"
+    }
+  }
+}

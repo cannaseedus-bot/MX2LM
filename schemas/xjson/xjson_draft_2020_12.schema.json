@@ -1,0 +1,62 @@
+{
+  "$id": "xjson://schema/draft/2020-12",
+  "title": "XJSON Draft 2020-12 (ASX-R Frozen Wrapper)",
+  "type": "object",
+  "required": ["$id", "type"],
+  "properties": {
+    "$schema": {
+      "description": "Optional in ASX-R. If present MUST equal xjson://schema/draft/2020-12.",
+      "type": "string",
+      "const": "xjson://schema/draft/2020-12"
+    },
+    "$id": {
+      "description": "ASX-R canonical schema IDs must use asx:// or xjson://",
+      "type": "string",
+      "pattern": "^(asx|xjson)://"
+    },
+    "$ref": {
+      "description": "ASX-R canonical refs must use asx:// or xjson://",
+      "type": "string",
+      "pattern": "^(asx|xjson)://"
+    },
+    "$defs": { "type": "object" },
+
+    "type": {
+      "type": ["string", "array"],
+      "items": { "type": "string" }
+    },
+
+    "properties": { "type": "object" },
+    "required": { "type": "array", "items": { "type": "string" } },
+    "additionalProperties": { "type": ["boolean", "object"] },
+
+    "oneOf": { "type": "array" },
+    "anyOf": { "type": "array" },
+    "allOf": { "type": "array" },
+    "not": { "type": "object" },
+
+    "enum": { "type": "array" },
+    "const": {},
+
+    "minimum": { "type": "number" },
+    "maximum": { "type": "number" },
+    "minLength": { "type": "integer", "minimum": 0 },
+    "maxLength": { "type": "integer", "minimum": 0 },
+    "pattern": { "type": "string" },
+
+    "items": { "type": ["object", "array"] },
+    "minItems": { "type": "integer", "minimum": 0 },
+    "maxItems": { "type": "integer", "minimum": 0 },
+
+    "format": { "type": "string" }
+  },
+  "additionalProperties": true,
+  "xjson:freeze": {
+    "status": "FROZEN",
+    "rules": [
+      "External JSON-Schema URLs forbidden in $schema/$id/$ref",
+      "Only asx:// and xjson:// are valid scheme prefixes",
+      "Semantics follow Draft 2020-12; this wrapper only constrains headers + refs"
+    ]
+  }
+}
