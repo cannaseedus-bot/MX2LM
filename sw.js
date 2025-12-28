@@ -2371,12 +2371,208 @@ self.addEventListener("install", (e) => {
 });
 
 /* ============================================================
+   BRAIN MODEL INTEGRATION LAYER
+   External LLM orchestration + RLHF learning
+   ============================================================ */
+
+// Import brain integration (inline for Service Worker)
+importScripts('./brain_integration.js');
+
+// Brain model API paths
+const BRAIN_MODEL_API_PATHS = new Set([
+  '/models/list', '/models/status', '/models/route',
+  '/models/infer', '/models/reinforce', '/models/penalize',
+  '/models/knowledge/export', '/models/knowledge/import',
+  '/models/api-key'
+]);
+
+// Handle brain model API requests
+async function handleBrainModelAPI(url, request) {
+  const path = url.pathname;
+  const method = request.method;
+
+  // Initialize orchestrator if needed
+  if (!BRAIN_ORCHESTRATOR.ready) {
+    await BRAIN_ORCHESTRATOR.initialize();
+  }
+
+  let payload = {};
+  if (method === 'POST') {
+    try { payload = await request.json(); } catch (_) {}
+  }
+
+  switch (path) {
+    case '/models/list':
+      return mx2_json({
+        ok: true,
+        models: BRAIN_ORCHESTRATOR.registry?.models || {},
+        routing_rules: BRAIN_ORCHESTRATOR.registry?.routing_rules || {},
+        tick: ΩCLOCK.tick
+      });
+
+    case '/models/status':
+      return mx2_json({
+        ok: true,
+        ...BRAIN_ORCHESTRATOR.getStatus(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/models/route':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      const routeResult = await BRAIN_ORCHESTRATOR.route(
+        payload.prompt || '',
+        payload.options || {}
+      );
+      kuhulTick();
+      return mx2_json({
+        ok: !routeResult.error,
+        ...routeResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/models/infer':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      const modelId = payload.model || 'mistral_glyph';
+      const inferResult = await BRAIN_ORCHESTRATOR.executeModel(
+        modelId,
+        payload.prompt || '',
+        payload.options || {}
+      );
+
+      // Record interaction for learning
+      if (!inferResult.error) {
+        inferResult.interaction_id = BRAIN_ORCHESTRATOR.learner.recordInteraction(
+          payload.prompt,
+          inferResult.completion,
+          inferResult.source,
+          { model: modelId }
+        );
+      }
+
+      kuhulTick();
+      return mx2_json({
+        ok: !inferResult.error,
+        ...inferResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/models/reinforce':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      BRAIN_ORCHESTRATOR.reinforce(
+        payload.interaction_id,
+        payload.reward || 1.0
+      );
+      return mx2_json({
+        ok: true,
+        status: 'reinforced',
+        learning_stats: BRAIN_ORCHESTRATOR.learner.getStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/models/penalize':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      BRAIN_ORCHESTRATOR.penalize(
+        payload.interaction_id,
+        payload.penalty || 1.0
+      );
+      return mx2_json({
+        ok: true,
+        status: 'penalized',
+        learning_stats: BRAIN_ORCHESTRATOR.learner.getStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/models/knowledge/export':
+      return mx2_json({
+        ok: true,
+        knowledge: BRAIN_ORCHESTRATOR.exportKnowledge(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/models/knowledge/import':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      BRAIN_ORCHESTRATOR.importKnowledge(payload.knowledge || {});
+      return mx2_json({
+        ok: true,
+        status: 'imported',
+        learning_stats: BRAIN_ORCHESTRATOR.learner.getStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/models/api-key':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      BRAIN_ORCHESTRATOR.setApiKey(payload.provider, payload.api_key);
+      return mx2_json({
+        ok: true,
+        status: 'api_key_set',
+        provider: payload.provider,
+        tick: ΩCLOCK.tick
+      });
+
+    default:
+      return null;
+  }
+}
+
+// Add brain model routes to fetch handler
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+
+  if (url.origin !== self.location.origin) return;
+
+  if (BRAIN_MODEL_API_PATHS.has(url.pathname)) {
+    event.respondWith(handleBrainModelAPI(url, event.request));
+    return;
+  }
+});
+
+// Enhanced inference endpoint that uses brain orchestrator
+async function enhancedInferEndpoint(payload) {
+  // Use brain orchestrator for inference
+  const result = await BRAIN_ORCHESTRATOR.route(
+    payload.prompt || '',
+    {
+      temperature: payload.temperature || 0.7,
+      max_tokens: payload.max_tokens || 100,
+      mode: payload.mode || 'standard'
+    }
+  );
+
+  kuhulTick();
+
+  return {
+    status: 200,
+    data: {
+      ...result,
+      tokens_used: result.tokens_used || 0,
+      entropy: KERNEL_STATE.entropy,
+      tick: ΩCLOCK.tick,
+      learning_enabled: true,
+      quantum_state: '|Ψ⟩ = |BRAIN_ORCHESTRATED⟩⊗|LEARNING⟩'
+    }
+  };
+}
+
+/* ============================================================
    SUPREME API SEAL
    ============================================================ */
 
 console.log(`
 ╔══════════════════════════════════════════════════════════╗
-║ MX2LM SUPREME JSON REST API KERNEL v11.0.0              ║
+║ MX2LM SUPREME JSON REST API KERNEL v12.0.0              ║
+║ + BRAIN MODEL INTEGRATION LAYER                         ║
 ║ Law: Ω-BLACK-PANEL                                      ║
 ║ Architecture: NATIVE_JSON_REST_INSIDE_KERNEL           ║
 ║ Stack: XJSON ⇄ K'UHUL ⇄ ASX_RAM ⇄ MX2LM_INFERENCE      ║
