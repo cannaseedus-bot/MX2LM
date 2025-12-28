@@ -11,7 +11,7 @@
 -------------------------------- */
 
 const Ω = Object.freeze({
-  VERSION: "Ω-KUHUL-PI-KERNEL.v16.0.0",
+  VERSION: "Ω-KUHUL-PI-KERNEL.v17.0.0",
   DETERMINISTIC: true,
   UI_READS_STATE: true,
   STATE_READS_UI: false,
@@ -2393,6 +2393,9 @@ importScripts('./p2p_network.js');
 // Import Web Crypto Encryption
 importScripts('./glyph_crypto.js');
 
+// Import RLHF N-gram Engine
+importScripts('./rlhf_ngram_engine.js');
+
 // Note: voice_interface.js requires browser APIs (SpeechRecognition, SpeechSynthesis)
 // and should be loaded in the main page context, not in Service Worker
 
@@ -2836,6 +2839,9 @@ let GLYPH_REGISTRY = null;
 let PI_KUHUL = null;
 let P2P_NETWORK_INSTANCE = null;
 let GLYPH_CRYPTO = null;
+let NGRAM_BUILDER = null;
+let RLHF_ENGINE = null;
+let MEMORY_GLYPH_BRIDGE = null;
 
 // Initialize runtime components
 async function initRuntimeComponents() {
@@ -2863,12 +2869,33 @@ async function initRuntimeComponents() {
       mode: 'hybrid'
     });
   }
+  // Initialize RLHF N-gram Engine
+  if (!NGRAM_BUILDER && typeof NgramBuilder !== 'undefined') {
+    NGRAM_BUILDER = new NgramBuilder({ maxN: 5, minFreq: 2 });
+  }
+  if (!RLHF_ENGINE && typeof RLHFEngine !== 'undefined' && NGRAM_BUILDER) {
+    RLHF_ENGINE = new RLHFEngine({
+      ngramBuilder: NGRAM_BUILDER,
+      glyphVM: GLYPH_VM,
+      learningRate: 0.001
+    });
+  }
+  if (!MEMORY_GLYPH_BRIDGE && typeof MemoryGlyphBridge !== 'undefined' && RLHF_ENGINE) {
+    MEMORY_GLYPH_BRIDGE = new MemoryGlyphBridge({
+      rlhfEngine: RLHF_ENGINE,
+      glyphVM: GLYPH_VM,
+      glyphRegistry: GLYPH_REGISTRY
+    });
+  }
   return {
     blockExecutor: !!BLOCK_EXECUTOR,
     glyphVM: !!GLYPH_VM,
     glyphRegistry: !!GLYPH_REGISTRY,
     piKuhul: !!PI_KUHUL,
     atomicRuntime: !!ATOMIC_RUNTIME,
+    ngramBuilder: !!NGRAM_BUILDER,
+    rlhfEngine: !!RLHF_ENGINE,
+    memoryBridge: !!MEMORY_GLYPH_BRIDGE,
     p2p: !!P2P_NETWORK_INSTANCE,
     crypto: !!GLYPH_CRYPTO
   };
@@ -2892,7 +2919,12 @@ const RUNTIME_API_PATHS = new Set([
   '/pi-kuhul/spiral', '/pi-kuhul/compress', '/pi-kuhul/fibonacci',
   // AtomicBlockRuntime API (unified Block+GlyphVM execution)
   '/atomic/execute', '/atomic/register', '/atomic/map',
-  '/atomic/stats', '/atomic/trace', '/atomic/compile'
+  '/atomic/stats', '/atomic/trace', '/atomic/compile',
+  // RLHF & N-gram API
+  '/rlhf/process', '/rlhf/reinforce', '/rlhf/penalize', '/rlhf/metrics',
+  '/ngrams/snapshot', '/ngrams/ingest', '/ngrams/compress', '/ngrams/top',
+  // Claude Artifact Ingestion
+  '/artifact/ingest', '/artifact/list'
 ]);
 
 // Handle runtime API requests
@@ -3203,6 +3235,129 @@ async function handleRuntimeAPI(url, request) {
         tick: ΩCLOCK.tick
       });
 
+    // RLHF & N-gram endpoints
+    case '/rlhf/process':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!MEMORY_GLYPH_BRIDGE) return mx2_json({ error: 'rlhf_not_initialized' }, 500);
+
+      const processResult = MEMORY_GLYPH_BRIDGE.process(payload.input || '', payload.context || {});
+      kuhulTick();
+      return mx2_json({ ok: true, interaction: processResult, tick: ΩCLOCK.tick });
+
+    case '/rlhf/reinforce':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!RLHF_ENGINE) return mx2_json({ error: 'rlhf_not_initialized' }, 500);
+
+      const reinforceResult = RLHF_ENGINE.reinforce(
+        payload.interactionId,
+        payload.reward || 1,
+        payload.depth || 3
+      );
+      return mx2_json({ ok: true, ...reinforceResult, tick: ΩCLOCK.tick });
+
+    case '/rlhf/penalize':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!RLHF_ENGINE) return mx2_json({ error: 'rlhf_not_initialized' }, 500);
+
+      const penalizeResult = RLHF_ENGINE.penalize(
+        payload.interactionId,
+        payload.penalty || 1,
+        payload.depth || 2
+      );
+      return mx2_json({ ok: true, ...penalizeResult, tick: ΩCLOCK.tick });
+
+    case '/rlhf/metrics':
+      return mx2_json({
+        ok: true,
+        metrics: RLHF_ENGINE?.getMetrics() || {},
+        interactions: RLHF_ENGINE?.getInteractions(20) || [],
+        tick: ΩCLOCK.tick
+      });
+
+    case '/ngrams/snapshot':
+      return mx2_json({
+        ok: true,
+        snapshot: NGRAM_BUILDER?.getSnapshot() || {},
+        tick: ΩCLOCK.tick
+      });
+
+    case '/ngrams/ingest':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!NGRAM_BUILDER) return mx2_json({ error: 'ngram_not_initialized' }, 500);
+
+      const ingestResult = NGRAM_BUILDER.ingest(payload.text || '', payload.metadata || {});
+      return mx2_json({ ok: true, ...ingestResult, tick: ΩCLOCK.tick });
+
+    case '/ngrams/compress':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!NGRAM_BUILDER) return mx2_json({ error: 'ngram_not_initialized' }, 500);
+
+      const compressResult = NGRAM_BUILDER.compress(payload.text || '');
+      return mx2_json({ ok: true, ...compressResult, tick: ΩCLOCK.tick });
+
+    case '/ngrams/top':
+      const ngramOrder = parseInt(payload.n) || 2;
+      const limit = parseInt(payload.limit) || 50;
+      return mx2_json({
+        ok: true,
+        n: ngramOrder,
+        top: NGRAM_BUILDER?.getTopNgrams(ngramOrder, limit) || [],
+        tick: ΩCLOCK.tick
+      });
+
+    // Claude Artifact Ingestion endpoints
+    case '/artifact/ingest':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!MEMORY_GLYPH_BRIDGE) return mx2_json({ error: 'bridge_not_initialized' }, 500);
+
+      try {
+        const artifact = payload.artifact || {};
+        const artifactContent = artifact.content || artifact.code || artifact.text || '';
+        const artifactType = artifact.type || 'unknown';
+        const artifactId = artifact.id || `artifact_${Date.now()}`;
+
+        // Ingest artifact content into n-gram memory
+        const ingested = MEMORY_GLYPH_BRIDGE.process(artifactContent, {
+          source: 'claude_artifact',
+          type: artifactType,
+          id: artifactId,
+          title: artifact.title || '',
+          language: artifact.language || ''
+        });
+
+        // Store artifact metadata in ASX RAM
+        KERNEL_STATE.artifacts = KERNEL_STATE.artifacts || [];
+        KERNEL_STATE.artifacts.push({
+          id: artifactId,
+          type: artifactType,
+          title: artifact.title,
+          language: artifact.language,
+          contentLength: artifactContent.length,
+          interactionId: ingested.id,
+          timestamp: Date.now()
+        });
+
+        kuhulTick();
+        return mx2_json({
+          ok: true,
+          artifactId,
+          ingested: true,
+          interaction: ingested,
+          glyphsCreated: ingested.glyphs?.length || 0,
+          tick: ΩCLOCK.tick
+        });
+      } catch (e) {
+        return mx2_json({ ok: false, error: e.message, tick: ΩCLOCK.tick });
+      }
+
+    case '/artifact/list':
+      return mx2_json({
+        ok: true,
+        artifacts: (KERNEL_STATE.artifacts || []).slice(-100),
+        total: (KERNEL_STATE.artifacts || []).length,
+        tick: ΩCLOCK.tick
+      });
+
     default:
       return null;
   }
@@ -3255,13 +3410,15 @@ self.addEventListener("message", async (event) => {
 
 console.log(`
 ╔══════════════════════════════════════════════════════════╗
-║ MX2LM SUPREME JSON REST API KERNEL v16.0.0              ║
+║ MX2LM SUPREME JSON REST API KERNEL v17.0.0              ║
 ║ + BRAIN MODEL INTEGRATION LAYER                         ║
 ║ + CHAT INFERENCE & WEB LEARNING ENGINE                  ║
 ║ + ATOMIC BLOCK RUNTIME & GLYPH VM                       ║
 ║ + ATOMIC→GLYPH MAPPER (Block↔Bytecode Bridge)           ║
 ║ + GLYPH REGISTRY & SELF-MODIFYING META-RULES            ║
 ║ + π-KUHUL MATH LAWS ENGINE                              ║
+║ + RLHF N-GRAM ENGINE (φ-decay, TD learning)             ║
+║ + CLAUDE ARTIFACT INGESTION PIPELINE                    ║
 ║ + REAL P2P NETWORK & WEB CRYPTO                         ║
 ║ Law: Ω-BLACK-PANEL                                      ║
 ║ Architecture: NATIVE_JSON_REST_INSIDE_KERNEL           ║
