@@ -47,7 +47,7 @@ class GlyphVM {
 
     // Primitive glyph opcodes
     this.opcodes = {
-      // Numbers (compressed)
+      // Numbers (compressed) - Standard form
       '⚡0': () => this.push(0),
       '⚡1': () => this.push(1),
       '⚡2': () => this.push(2),
@@ -62,11 +62,18 @@ class GlyphVM {
       '⚡100': () => this.push(100),
       '⚡1000': () => this.push(1000),
 
+      // Numbers (alternate symbolic form from spec)
+      '❄': () => this.push(0),           // Zero (frozen/cold)
+      '⚡': () => this.push(1),           // One (energy/singular)
+
       // π-constants
       '⚡π': () => this.push(Math.PI),
       '⚡φ': () => this.push(1.6180339887498948),
       '⚡τ': () => this.push(Math.PI * 2),
       '⚡e': () => this.push(Math.E),
+      'π': () => this.push(Math.PI),      // Direct π access
+      'φ': () => this.push(1.6180339887498948), // Direct φ access
+      'τ': () => this.push(Math.PI * 2),  // Direct τ access
 
       // Arithmetic operators
       '➕': () => this.binaryOp((a, b) => a + b),
@@ -158,7 +165,36 @@ class GlyphVM {
       // Self-modification
       '⟲': () => this.selfModify(),      // Self-modify
       '⊙': () => this.introspect(),      // Introspect
-      '∞loop': () => this.infiniteLoop() // Infinite loop marker
+      '∞loop': () => this.infiniteLoop(), // Infinite loop marker
+
+      // ========== EXTENDED GLYPHS FROM SPEC ==========
+
+      // Control Flow Glyphs
+      '❓': () => this.conditionalIf(),   // If: ❓⟨condition⟩▶⟨action⟩
+      '🔄': () => this.loopFor(),         // Loop: 🔄⟨i⟷0⟩▶⟨body⟩
+      '▶': () => this.executeBlock(),     // Execute: run block
+      '⟷': () => this.binaryOp((a, b) => a === b ? 1 : 0), // Equals (alternate)
+      '⟨': () => this.beginGroup(),       // Begin group delimiter
+      '⟩': () => this.endGroup(),         // End group delimiter
+
+      // Semantic Glyphs (Context/Mode Markers)
+      '📐': () => this.setMode('math'),     // Math mode
+      '💻': () => this.setMode('code'),     // Code mode
+      '🌀': () => this.setMode('fractal'),  // Fractal mode
+      '📊': () => this.calculateMode(),     // Calculate: process expression
+      '🔢': () => this.solveMode(),         // Solve: find unknowns
+      '💡': () => this.explainMode(),       // Explain: generate explanation
+      '🗃': () => this.storeResult(),       // Store: save to memory
+
+      // Container/Data Glyphs
+      '📦': () => this.rawData(),           // Raw data container
+      '🔗': () => this.reference(),         // Reference to stored value
+      '📝': () => this.annotate(),          // Annotate with metadata
+
+      // π-KUHUL Extended Math Laws
+      '🌊π': () => this.piWaveFull(),       // Full π-wave transform
+      'φ🌀': () => this.goldenSpiral(),     // Golden spiral generation
+      '∞φ': () => this.infiniteGolden()    // Infinite golden sequence
     };
 
     // Meta-rules for self-modification
@@ -491,6 +527,206 @@ class GlyphVM {
     this.metaRules.push({ condition, transform });
   }
 
+  // ==================== CONTROL FLOW ====================
+
+  conditionalIf() {
+    // ❓⟨condition⟩▶⟨action⟩
+    // Pops condition from stack, if truthy, executes action
+    const condition = this.pop();
+    if (condition) {
+      // Action will be executed by subsequent ▶
+      this.push(1); // Signal to execute
+    } else {
+      this.push(0); // Signal to skip
+    }
+  }
+
+  loopFor() {
+    // 🔄⟨i⟷n⟩▶⟨body⟩
+    // Loop iteration marker - pushes loop context
+    const iterations = this.pop();
+    const counter = this.registers.X;
+
+    if (counter < iterations) {
+      this.push(counter);      // Push current index
+      this.registers.X++;      // Increment counter
+      this.push(1);            // Continue signal
+    } else {
+      this.registers.X = 0;    // Reset counter
+      this.push(0);            // Stop signal
+    }
+  }
+
+  executeBlock() {
+    // ▶ Execute if condition on stack is truthy
+    const shouldExecute = this.peek();
+    if (!shouldExecute) {
+      // Skip until end of block (find matching ⟩)
+      this.push(0);
+    }
+    // Otherwise, execution continues normally
+  }
+
+  beginGroup() {
+    // ⟨ - Mark beginning of expression group
+    this.push('⟨'); // Push delimiter marker
+  }
+
+  endGroup() {
+    // ⟩ - End of expression group, evaluate contents
+    const contents = [];
+    let item = this.pop();
+
+    while (item !== '⟨' && this.stack.length > 0) {
+      contents.unshift(item);
+      item = this.pop();
+    }
+
+    // Push evaluated group result
+    if (contents.length === 1) {
+      this.push(contents[0]);
+    } else if (contents.length > 1) {
+      this.push(contents);
+    }
+  }
+
+  // ==================== SEMANTIC MODES ====================
+
+  setMode(mode) {
+    // Set execution mode context
+    this.registers.mode = mode;
+    this.push(mode);
+  }
+
+  calculateMode() {
+    // 📊 Calculate: evaluate expression on stack
+    const expr = this.pop();
+
+    if (typeof expr === 'number') {
+      this.push(expr);
+    } else if (Array.isArray(expr)) {
+      // Reduce array with addition
+      const result = expr.reduce((a, b) => {
+        const numA = typeof a === 'number' ? a : parseFloat(a) || 0;
+        const numB = typeof b === 'number' ? b : parseFloat(b) || 0;
+        return numA + numB;
+      }, 0);
+      this.push(result);
+    } else {
+      this.push(expr);
+    }
+  }
+
+  solveMode() {
+    // 🔢 Solve: attempt to solve equation
+    // Pop equation representation and find unknown
+    const target = this.pop();
+    const value = this.pop();
+
+    // Simple linear solve: if target = value * x, find x
+    if (target !== 0 && value !== 0) {
+      const solution = target / value;
+      this.push(solution);
+    } else {
+      this.push(0);
+    }
+  }
+
+  explainMode() {
+    // 💡 Explain: push explanation metadata
+    const value = this.peek();
+    const explanation = {
+      type: 'explanation',
+      value: value,
+      glyph: this.valueToGlyph(value),
+      meaning: this.describeValue(value)
+    };
+    this.push(explanation);
+  }
+
+  describeValue(value) {
+    if (value === Math.PI) return 'π: ratio of circumference to diameter';
+    if (value === 1.6180339887498948) return 'φ: golden ratio';
+    if (value === Math.E) return 'e: Euler\'s number';
+    if (typeof value === 'number') {
+      if (Number.isInteger(value)) return `integer: ${value}`;
+      return `decimal: ${value.toFixed(6)}`;
+    }
+    return `value: ${String(value)}`;
+  }
+
+  storeResult() {
+    // 🗃 Store: save top of stack to memory
+    const value = this.peek();
+    const addr = this.registers.Y++;
+    this.memory.set(`@${addr}`, value);
+    this.push(addr);
+  }
+
+  // ==================== CONTAINER OPERATIONS ====================
+
+  rawData() {
+    // 📦 Raw data container - pop and wrap as raw
+    const data = this.pop();
+    this.push({ type: 'raw', data: data });
+  }
+
+  reference() {
+    // 🔗 Reference: load from stored address
+    const addr = this.pop();
+    const key = typeof addr === 'number' ? `@${addr}` : addr;
+    const value = this.memory.get(key) || 0;
+    this.push(value);
+  }
+
+  annotate() {
+    // 📝 Annotate: add metadata to value
+    const annotation = this.pop();
+    const value = this.pop();
+    this.push({
+      value: value,
+      annotation: annotation,
+      timestamp: Date.now()
+    });
+  }
+
+  // ==================== π-KUHUL EXTENDED MATH ====================
+
+  piWaveFull() {
+    // 🌊π Full π-wave: complete wave function
+    const x = this.pop();
+    const amplitude = this.pop() || 1;
+    const frequency = this.pop() || 1;
+
+    // Wave equation: A * sin(2πfx)
+    const result = amplitude * Math.sin(2 * Math.PI * frequency * x);
+    this.push(result);
+  }
+
+  goldenSpiral() {
+    // φ🌀 Golden spiral: generate spiral point
+    const theta = this.pop();
+    const phi = 1.6180339887498948;
+
+    // r = φ^(2θ/π)
+    const r = Math.pow(phi, (2 * theta) / Math.PI);
+    const x = r * Math.cos(theta);
+    const y = r * Math.sin(theta);
+
+    this.push({ x, y, r, theta });
+  }
+
+  infiniteGolden() {
+    // ∞φ Infinite golden sequence: push next Fibonacci-like value
+    const prev1 = this.pop() || 1;
+    const prev2 = this.pop() || 0;
+
+    const next = prev1 + prev2;
+    this.push(prev1);
+    this.push(next);
+    this.push(next / prev1); // Ratio approaches φ
+  }
+
   // ==================== BYTECODE EXECUTION ====================
 
   /**
@@ -796,6 +1032,7 @@ class GlyphCompiler {
       '^': '🔺',
       '%': '%',
       '==': '⚖',
+      '===': '⟷',
       '!=': '≠',
       '<': '⊂',
       '>': '⊃',
@@ -819,7 +1056,22 @@ class GlyphCompiler {
       'exp': 'exp',
       'pi': '⚡π',
       'phi': '⚡φ',
-      'wave': '🌊'
+      'wave': '🌊',
+      'calculate': '📊',
+      'solve': '🔢',
+      'explain': '💡',
+      'store': '🗃',
+      'fractal': '🌀',
+      'spiral': 'φ🌀'
+    };
+
+    // Control flow keywords
+    this.controlMap = {
+      'if': '❓',
+      'for': '🔄',
+      'exec': '▶',
+      'begin': '⟨',
+      'end': '⟩'
     };
   }
 
@@ -978,8 +1230,229 @@ class GlyphCompiler {
   }
 }
 
+/**
+ * GlyphRegistry - Dynamic glyph registration and meta-programming
+ * Supports self-modifying rules from the π-KUHUL spec
+ */
+class GlyphRegistry {
+  constructor(vm) {
+    this.vm = vm;
+    this.customGlyphs = new Map();
+    this.metaRules = [];
+    this.glyphHistory = [];
+  }
+
+  /**
+   * Register a new glyph dynamically
+   * Example: registry.register('🎯', (vm) => vm.push(vm.pop() * 2))
+   */
+  register(glyph, handler, metadata = {}) {
+    const registration = {
+      glyph,
+      handler: handler.bind(this.vm),
+      metadata: {
+        ...metadata,
+        registered: Date.now(),
+        source: 'dynamic'
+      }
+    };
+
+    this.customGlyphs.set(glyph, registration);
+    this.vm.opcodes[glyph] = registration.handler;
+    this.glyphHistory.push({ action: 'register', glyph, timestamp: Date.now() });
+
+    return this;
+  }
+
+  /**
+   * Unregister a glyph
+   */
+  unregister(glyph) {
+    if (this.customGlyphs.has(glyph)) {
+      this.customGlyphs.delete(glyph);
+      delete this.vm.opcodes[glyph];
+      this.glyphHistory.push({ action: 'unregister', glyph, timestamp: Date.now() });
+    }
+    return this;
+  }
+
+  /**
+   * Add a meta-rule that can modify glyphs at runtime
+   * Meta-rules implement self-modifying behavior
+   */
+  addMetaRule(rule) {
+    const metaRule = {
+      id: `meta_${this.metaRules.length}`,
+      condition: rule.condition,
+      transform: rule.transform,
+      priority: rule.priority || 0,
+      active: true
+    };
+
+    this.metaRules.push(metaRule);
+    this.metaRules.sort((a, b) => b.priority - a.priority);
+
+    return metaRule.id;
+  }
+
+  /**
+   * Apply all active meta-rules
+   */
+  applyMetaRules() {
+    for (const rule of this.metaRules) {
+      if (rule.active && rule.condition(this.vm)) {
+        rule.transform(this.vm, this);
+      }
+    }
+  }
+
+  /**
+   * Create composite glyph from sequence
+   * Example: registry.compose('🔮', ['⚡π', '🌊', '✖'])
+   */
+  compose(newGlyph, sequence, metadata = {}) {
+    const handler = () => {
+      for (const glyph of sequence) {
+        if (this.vm.opcodes[glyph]) {
+          this.vm.opcodes[glyph]();
+        }
+      }
+    };
+
+    return this.register(newGlyph, handler, {
+      ...metadata,
+      type: 'composite',
+      sequence
+    });
+  }
+
+  /**
+   * Alias an existing glyph
+   */
+  alias(newGlyph, existingGlyph) {
+    if (this.vm.opcodes[existingGlyph]) {
+      return this.register(newGlyph, this.vm.opcodes[existingGlyph], {
+        type: 'alias',
+        aliasOf: existingGlyph
+      });
+    }
+    return this;
+  }
+
+  /**
+   * Get all registered glyphs
+   */
+  list() {
+    return {
+      builtin: Object.keys(this.vm.opcodes).filter(g => !this.customGlyphs.has(g)),
+      custom: Array.from(this.customGlyphs.entries()).map(([glyph, reg]) => ({
+        glyph,
+        ...reg.metadata
+      })),
+      metaRules: this.metaRules.map(r => ({ id: r.id, active: r.active, priority: r.priority }))
+    };
+  }
+
+  /**
+   * Export registry state
+   */
+  export() {
+    return {
+      customGlyphs: Array.from(this.customGlyphs.entries()),
+      metaRules: this.metaRules.length,
+      history: this.glyphHistory.slice(-100) // Last 100 actions
+    };
+  }
+}
+
+/**
+ * PiKUHUL - π-KUHUL Math Laws Engine
+ * Implements the mathematical transformations from the spec
+ */
+class PiKUHUL {
+  constructor() {
+    this.PI = Math.PI;
+    this.PHI = 1.6180339887498948;
+    this.TAU = 2 * Math.PI;
+    this.E = Math.E;
+  }
+
+  /**
+   * πWave: Wave transformation
+   * πWave(x) = sin(πx)
+   */
+  wave(x) {
+    return Math.sin(this.PI * x);
+  }
+
+  /**
+   * πScale: Golden scaling
+   * πScale(x) = x * φ
+   */
+  scale(x) {
+    return x * this.PHI;
+  }
+
+  /**
+   * πFractal: Recursive fractal generation
+   * πFractal(n, f) = f(f(f(...n times...)))
+   */
+  fractal(n, f, initial = 1) {
+    let result = initial;
+    for (let i = 0; i < n; i++) {
+      result = f(result);
+    }
+    return result;
+  }
+
+  /**
+   * πCompress: Compress to nearest π-multiple
+   */
+  compress(x) {
+    const piRatio = x / this.PI;
+    const rounded = Math.round(piRatio * 1000) / 1000;
+    return { ratio: rounded, value: rounded * this.PI, error: Math.abs(x - rounded * this.PI) };
+  }
+
+  /**
+   * φSpiral: Golden spiral point at angle θ
+   */
+  spiral(theta) {
+    const r = Math.pow(this.PHI, (2 * theta) / this.PI);
+    return {
+      r,
+      x: r * Math.cos(theta),
+      y: r * Math.sin(theta)
+    };
+  }
+
+  /**
+   * Fibonacci sequence generator
+   */
+  fibonacci(n) {
+    const seq = [0, 1];
+    for (let i = 2; i <= n; i++) {
+      seq.push(seq[i - 1] + seq[i - 2]);
+    }
+    return seq;
+  }
+
+  /**
+   * Check if number is a Fibonacci number
+   */
+  isFibonacci(n) {
+    const isPerfectSquare = (x) => {
+      const s = Math.sqrt(x);
+      return s * s === x;
+    };
+    return isPerfectSquare(5 * n * n + 4) || isPerfectSquare(5 * n * n - 4);
+  }
+}
+
 // Export for Service Worker
 if (typeof self !== 'undefined') {
   self.GlyphVM = GlyphVM;
   self.GlyphCompiler = GlyphCompiler;
+  self.GlyphRegistry = GlyphRegistry;
+  self.PiKUHUL = PiKUHUL;
 }

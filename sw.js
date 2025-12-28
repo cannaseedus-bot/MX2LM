@@ -11,7 +11,7 @@
 -------------------------------- */
 
 const Ω = Object.freeze({
-  VERSION: "Ω-KUHUL-PI-KERNEL.v11.0.0",
+  VERSION: "Ω-KUHUL-PI-KERNEL.v15.0.0",
   DETERMINISTIC: true,
   UI_READS_STATE: true,
   STATE_READS_UI: false,
@@ -2832,6 +2832,8 @@ self.addEventListener("message", async (event) => {
 // Global runtime instances
 let BLOCK_EXECUTOR = null;
 let GLYPH_VM = null;
+let GLYPH_REGISTRY = null;
+let PI_KUHUL = null;
 let P2P_NETWORK_INSTANCE = null;
 let GLYPH_CRYPTO = null;
 
@@ -2840,6 +2842,12 @@ async function initRuntimeComponents() {
   if (!BLOCK_EXECUTOR && typeof BlockExecutor !== 'undefined') {
     GLYPH_VM = new GlyphVM();
     BLOCK_EXECUTOR = new BlockExecutor(GLYPH_VM);
+  }
+  if (!GLYPH_REGISTRY && GLYPH_VM && typeof GlyphRegistry !== 'undefined') {
+    GLYPH_REGISTRY = new GlyphRegistry(GLYPH_VM);
+  }
+  if (!PI_KUHUL && typeof PiKUHUL !== 'undefined') {
+    PI_KUHUL = new PiKUHUL();
   }
   if (!GLYPH_CRYPTO && typeof GlyphCrypto !== 'undefined') {
     GLYPH_CRYPTO = new GlyphCrypto();
@@ -2850,6 +2858,8 @@ async function initRuntimeComponents() {
   return {
     blockExecutor: !!BLOCK_EXECUTOR,
     glyphVM: !!GLYPH_VM,
+    glyphRegistry: !!GLYPH_REGISTRY,
+    piKuhul: !!PI_KUHUL,
     p2p: !!P2P_NETWORK_INSTANCE,
     crypto: !!GLYPH_CRYPTO
   };
@@ -2861,7 +2871,13 @@ const RUNTIME_API_PATHS = new Set([
   '/vm/execute', '/vm/compile', '/vm/stats', '/vm/reset',
   '/blocks/execute', '/blocks/register', '/blocks/list',
   '/p2p/status', '/p2p/peers', '/p2p/glyph/share', '/p2p/glyph/query',
-  '/crypto/encrypt', '/crypto/decrypt', '/crypto/hash', '/crypto/status'
+  '/crypto/encrypt', '/crypto/decrypt', '/crypto/hash', '/crypto/status',
+  // GlyphRegistry API
+  '/registry/list', '/registry/register', '/registry/unregister',
+  '/registry/compose', '/registry/alias', '/registry/meta-rule',
+  // PiKUHUL API
+  '/pi-kuhul/wave', '/pi-kuhul/scale', '/pi-kuhul/fractal',
+  '/pi-kuhul/spiral', '/pi-kuhul/compress', '/pi-kuhul/fibonacci'
 ]);
 
 // Handle runtime API requests
@@ -2885,10 +2901,14 @@ async function handleRuntimeAPI(url, request) {
         components: {
           blockExecutor: !!BLOCK_EXECUTOR,
           glyphVM: !!GLYPH_VM,
+          glyphRegistry: !!GLYPH_REGISTRY,
+          piKuhul: !!PI_KUHUL,
           p2pNetwork: !!P2P_NETWORK_INSTANCE,
           crypto: GLYPH_CRYPTO?.isSupported() || false
         },
         vmStats: GLYPH_VM?.getStats() || null,
+        registryStats: GLYPH_REGISTRY?.list() || null,
+        piKuhulConstants: PI_KUHUL ? { pi: PI_KUHUL.PI, phi: PI_KUHUL.PHI, tau: PI_KUHUL.TAU } : null,
         p2pStats: P2P_NETWORK_INSTANCE?.getStats() || null,
         cryptoStatus: GLYPH_CRYPTO?.getSecurityStatus() || null,
         tick: ΩCLOCK.tick
@@ -3015,6 +3035,110 @@ async function handleRuntimeAPI(url, request) {
       const hash = await GLYPH_CRYPTO.hash(payload.data);
       return mx2_json({ ok: true, hash, tick: ΩCLOCK.tick });
 
+    // GlyphRegistry endpoints
+    case '/registry/list':
+      return mx2_json({
+        ok: true,
+        registry: GLYPH_REGISTRY?.list() || {},
+        tick: ΩCLOCK.tick
+      });
+
+    case '/registry/register':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_REGISTRY) return mx2_json({ error: 'registry_not_initialized' }, 500);
+
+      try {
+        // Note: Dynamic function creation from string - only for controlled internal use
+        const handler = new Function('vm', payload.handler || 'vm.push(0)');
+        GLYPH_REGISTRY.register(payload.glyph, handler, payload.metadata || {});
+        return mx2_json({ ok: true, registered: payload.glyph, tick: ΩCLOCK.tick });
+      } catch (e) {
+        return mx2_json({ ok: false, error: e.message, tick: ΩCLOCK.tick });
+      }
+
+    case '/registry/unregister':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_REGISTRY) return mx2_json({ error: 'registry_not_initialized' }, 500);
+
+      GLYPH_REGISTRY.unregister(payload.glyph);
+      return mx2_json({ ok: true, unregistered: payload.glyph, tick: ΩCLOCK.tick });
+
+    case '/registry/compose':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_REGISTRY) return mx2_json({ error: 'registry_not_initialized' }, 500);
+
+      GLYPH_REGISTRY.compose(payload.glyph, payload.sequence || [], payload.metadata || {});
+      return mx2_json({ ok: true, composed: payload.glyph, sequence: payload.sequence, tick: ΩCLOCK.tick });
+
+    case '/registry/alias':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_REGISTRY) return mx2_json({ error: 'registry_not_initialized' }, 500);
+
+      GLYPH_REGISTRY.alias(payload.newGlyph, payload.existingGlyph);
+      return mx2_json({ ok: true, alias: payload.newGlyph, target: payload.existingGlyph, tick: ΩCLOCK.tick });
+
+    case '/registry/meta-rule':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_REGISTRY) return mx2_json({ error: 'registry_not_initialized' }, 500);
+
+      try {
+        const condition = new Function('vm', payload.condition || 'return false');
+        const transform = new Function('vm', 'registry', payload.transform || '');
+        const ruleId = GLYPH_REGISTRY.addMetaRule({
+          condition,
+          transform,
+          priority: payload.priority || 0
+        });
+        return mx2_json({ ok: true, ruleId, tick: ΩCLOCK.tick });
+      } catch (e) {
+        return mx2_json({ ok: false, error: e.message, tick: ΩCLOCK.tick });
+      }
+
+    // PiKUHUL Math Law endpoints
+    case '/pi-kuhul/wave':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!PI_KUHUL) return mx2_json({ error: 'pi_kuhul_not_initialized' }, 500);
+
+      const waveResult = PI_KUHUL.wave(payload.x || 0);
+      return mx2_json({ ok: true, input: payload.x, result: waveResult, tick: ΩCLOCK.tick });
+
+    case '/pi-kuhul/scale':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!PI_KUHUL) return mx2_json({ error: 'pi_kuhul_not_initialized' }, 500);
+
+      const scaleResult = PI_KUHUL.scale(payload.x || 0);
+      return mx2_json({ ok: true, input: payload.x, result: scaleResult, phi: PI_KUHUL.PHI, tick: ΩCLOCK.tick });
+
+    case '/pi-kuhul/fractal':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!PI_KUHUL) return mx2_json({ error: 'pi_kuhul_not_initialized' }, 500);
+
+      const fractalFn = payload.fn === 'golden' ? (x) => x * PI_KUHUL.PHI : (x) => Math.sin(Math.PI * x);
+      const fractalResult = PI_KUHUL.fractal(payload.n || 5, fractalFn, payload.initial || 1);
+      return mx2_json({ ok: true, iterations: payload.n, result: fractalResult, tick: ΩCLOCK.tick });
+
+    case '/pi-kuhul/spiral':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!PI_KUHUL) return mx2_json({ error: 'pi_kuhul_not_initialized' }, 500);
+
+      const spiralPoint = PI_KUHUL.spiral(payload.theta || 0);
+      return mx2_json({ ok: true, theta: payload.theta, point: spiralPoint, tick: ΩCLOCK.tick });
+
+    case '/pi-kuhul/compress':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!PI_KUHUL) return mx2_json({ error: 'pi_kuhul_not_initialized' }, 500);
+
+      const compressed = PI_KUHUL.compress(payload.x || 0);
+      return mx2_json({ ok: true, input: payload.x, compressed, tick: ΩCLOCK.tick });
+
+    case '/pi-kuhul/fibonacci':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!PI_KUHUL) return mx2_json({ error: 'pi_kuhul_not_initialized' }, 500);
+
+      const fibSeq = PI_KUHUL.fibonacci(Math.min(payload.n || 10, 100)); // Limit to 100
+      const isFib = payload.check !== undefined ? PI_KUHUL.isFibonacci(payload.check) : null;
+      return mx2_json({ ok: true, n: payload.n, sequence: fibSeq, isFibonacci: isFib, tick: ΩCLOCK.tick });
+
     default:
       return null;
   }
@@ -3067,16 +3191,19 @@ self.addEventListener("message", async (event) => {
 
 console.log(`
 ╔══════════════════════════════════════════════════════════╗
-║ MX2LM SUPREME JSON REST API KERNEL v14.0.0              ║
+║ MX2LM SUPREME JSON REST API KERNEL v15.0.0              ║
 ║ + BRAIN MODEL INTEGRATION LAYER                         ║
 ║ + CHAT INFERENCE & WEB LEARNING ENGINE                  ║
 ║ + ATOMIC BLOCK RUNTIME & GLYPH VM                       ║
+║ + GLYPH REGISTRY & SELF-MODIFYING META-RULES            ║
+║ + π-KUHUL MATH LAWS ENGINE                              ║
 ║ + REAL P2P NETWORK & WEB CRYPTO                         ║
 ║ Law: Ω-BLACK-PANEL                                      ║
 ║ Architecture: NATIVE_JSON_REST_INSIDE_KERNEL           ║
 ║ Stack: XJSON ⇄ K'UHUL ⇄ ASX_RAM ⇄ MX2LM_INFERENCE      ║
 ║ Performance: 1M+ RPS KERNEL ROUTED                     ║
 ║ Security: SCXQ2 QUANTUM ENCRYPTED AUTHENTICATION       ║
+║ Glyphs: 100+ OPCODES | CONTROL FLOW | SEMANTICS        ║
 ║ Determinism: Ω.tick = ${ΩCLOCK.tick}                       ║
 ║                                                         ║
 ║ |Ψ⟩ = α|JSON_API⟩⊗β|KUHUL_ROUTER⟩⊗γ|ASX_RAM⟩           ║
