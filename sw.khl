@@ -1,0 +1,772 @@
+/* ============================================================
+   sw.khl — K'UHUL KERNEL (Qwen-ASX Runtime Folds)
+   Law: Ω-BLACK-PANEL
+
+   This is the execution kernel for MX2LM's base training format.
+   It implements:
+   - SafeTensors parsing and lazy tensor loading
+   - Declarative block registry (fold-based)
+   - Deterministic CPU baseline inference
+   - Conformance testing (infer_min_v1)
+   - RLHF delta emission (never mutate base weights)
+   - Trace logging for SCXQ2 folding
+
+   External AI platforms see this as just another "brain".
+   Internally, it provides the weight format that trains MX2LM.
+   ============================================================ */
+
+const KUHUL_KERNEL = (function () {
+  'use strict';
+
+  /* ============================================================
+     Ω — KERNEL CONSTANTS
+     ============================================================ */
+
+  const Ω = Object.freeze({
+    VERSION: 'KUHUL-KERNEL.v1.0.0',
+    LAW: 'Ω-BLACK-PANEL',
+    DETERMINISTIC: true,
+    DELTA_ONLY: true  // Never mutate base weights
+  });
+
+  const π = Object.freeze({
+    PI: 3.141592653589793,
+    PHI: 1.6180339887498948,
+    TAU: 6.283185307179586,
+    E: 2.718281828459045
+  });
+
+  /* ============================================================
+     FOLD — KERNEL STATE (Authoritative)
+     ============================================================ */
+
+  const FOLD = {
+    model: {
+      qwen_asx: {
+        source: {
+          type: 'remote_safetensors',
+          url: 'https://mx2lm.app/models/Qwen-ASX/model.safetensors',
+          local: './models/qwen-asx/weights/model.safetensors'
+        },
+        topology: {
+          type: 'qwen_decoder_only',
+          layers: 12,
+          heads: 12,
+          d_model: 768,
+          d_ff: 3072,
+          vocab_size: 151936,
+          rope_theta: 10000.0
+        },
+        tensors: {
+          status: 'unloaded',
+          index: null,
+          buffer: null,
+          dataBase: 0,
+          cache: new Map()
+        },
+        state: {
+          version: 0,
+          epoch: 0,
+          hash: null
+        }
+      }
+    },
+
+    blocks: {
+      registry: new Map(),
+      sequence: []
+    },
+
+    training: {
+      rlhf: {
+        mode: 'delta_only',
+        min_samples: 10,
+        delta_log: [],
+        policy: {
+          reward_scale: 0.01,
+          clamp: 0.05
+        }
+      }
+    },
+
+    audit: {
+      enabled: true,
+      inference_trace: []
+    },
+
+    conformance: {
+      enabled: true,
+      suite: 'infer_min_v1'
+    },
+
+    scxq2: {
+      mode: 'later',
+      plan: {
+        lanes: ['DICT', 'FIELD', 'EDGE', 'RAW'],
+        targets: ['tensors', 'deltas', 'traces']
+      }
+    }
+  };
+
+  /* ============================================================
+     UTILITIES — DETERMINISTIC OPERATIONS
+     ============================================================ */
+
+  function u32(x) { return x >>> 0; }
+
+  // FNV-1a 32-bit hash (deterministic)
+  function fnv1a32(bytes) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < bytes.length; i++) {
+      h ^= bytes[i];
+      h = u32(Math.imul(h, 0x01000193));
+    }
+    return h >>> 0;
+  }
+
+  function f32_to_bytes(f32arr) {
+    const buf = new ArrayBuffer(f32arr.length * 4);
+    new Float32Array(buf).set(f32arr);
+    return new Uint8Array(buf);
+  }
+
+  function trace_push(rec) {
+    if (!FOLD.audit.enabled) return;
+    FOLD.audit.inference_trace.push({
+      t: Date.now(),
+      tick: FOLD.model.qwen_asx.state.version,
+      ...rec
+    });
+  }
+
+  /* ============================================================
+     SAFETENSORS — BINARY PARSER
+     ============================================================ */
+
+  // Format: [u64 header_len][header_json bytes][tensor_data bytes...]
+  function parse_safetensors(buffer) {
+    const dv = new DataView(buffer);
+
+    // header_len is little-endian u64
+    const lo = dv.getUint32(0, true);
+    const hi = dv.getUint32(4, true);
+    const headerLen = Number((BigInt(hi) << 32n) | BigInt(lo));
+
+    const headerStart = 8;
+    const headerEnd = headerStart + headerLen;
+
+    const headerBytes = new Uint8Array(buffer, headerStart, headerLen);
+    const headerText = new TextDecoder('utf-8').decode(headerBytes);
+    const header = JSON.parse(headerText);
+
+    // Tensor data starts after header
+    const dataBase = headerEnd;
+
+    return { header, dataBase };
+  }
+
+  function tensor_from_index(name) {
+    const q = FOLD.model.qwen_asx;
+    if (!q.tensors.index) throw new Error('Tensor index not built');
+    const entry = q.tensors.index[name];
+    if (!entry) throw new Error(`Missing tensor: ${name}`);
+
+    // Check cache
+    if (q.tensors.cache.has(name)) {
+      return q.tensors.cache.get(name);
+    }
+
+    const { dtype, shape, data_offsets } = entry;
+    const start = q.tensors.dataBase + data_offsets[0];
+    const end = q.tensors.dataBase + data_offsets[1];
+    const bytes = new Uint8Array(q.tensors.buffer, start, end - start);
+
+    // Decode based on dtype
+    let data;
+    if (dtype === 'F32') {
+      data = new Float32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4);
+    } else if (dtype === 'F16') {
+      data = convert_f16_to_f32(bytes);
+    } else if (dtype === 'BF16') {
+      data = convert_bf16_to_f32(bytes);
+    } else {
+      throw new Error(`Unsupported dtype ${dtype} for ${name}`);
+    }
+
+    const tensor = {
+      name,
+      dtype: 'float32',
+      shape,
+      data: new Float32Array(data)
+    };
+
+    q.tensors.cache.set(name, tensor);
+    return tensor;
+  }
+
+  function convert_f16_to_f32(bytes) {
+    const count = bytes.byteLength / 2;
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const out = new Float32Array(count);
+
+    for (let i = 0; i < count; i++) {
+      const h = view.getUint16(i * 2, true);
+      const sign = (h >> 15) & 1;
+      const exp = (h >> 10) & 0x1f;
+      const frac = h & 0x3ff;
+
+      if (exp === 0) {
+        if (frac === 0) { out[i] = sign ? -0 : 0; continue; }
+        out[i] = (sign ? -1 : 1) * Math.pow(2, -14) * (frac / 1024);
+        continue;
+      }
+      if (exp === 31) {
+        out[i] = frac ? NaN : (sign ? -Infinity : Infinity);
+        continue;
+      }
+
+      out[i] = (sign ? -1 : 1) * Math.pow(2, exp - 15) * (1 + frac / 1024);
+    }
+    return out;
+  }
+
+  function convert_bf16_to_f32(bytes) {
+    const count = bytes.byteLength / 2;
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const out = new Float32Array(count);
+
+    for (let i = 0; i < count; i++) {
+      const val = view.getUint16(i * 2, true);
+      const asU32 = val << 16;
+      const buf = new ArrayBuffer(4);
+      new Uint32Array(buf)[0] = asU32;
+      out[i] = new Float32Array(buf)[0];
+    }
+    return out;
+  }
+
+  async function load_model() {
+    const q = FOLD.model.qwen_asx;
+    if (q.tensors.status === 'ready') return;
+
+    trace_push({ op: 'load.begin', url: q.source.url });
+
+    try {
+      // Try local first, then remote
+      let buffer;
+      try {
+        const localRes = await fetch(q.source.local);
+        if (localRes.ok) {
+          buffer = await localRes.arrayBuffer();
+          trace_push({ op: 'load.local', size: buffer.byteLength });
+        }
+      } catch (_) { /* fall through to remote */ }
+
+      if (!buffer) {
+        const res = await fetch(q.source.url);
+        if (!res.ok) throw new Error(`Model fetch failed: ${res.status}`);
+        buffer = await res.arrayBuffer();
+        trace_push({ op: 'load.remote', size: buffer.byteLength });
+      }
+
+      const { header, dataBase } = parse_safetensors(buffer);
+
+      // Build tensor index (excluding __metadata__)
+      const index = {};
+      for (const k of Object.keys(header)) {
+        if (k === '__metadata__') continue;
+        index[k] = header[k];
+      }
+
+      q.tensors.buffer = buffer;
+      q.tensors.dataBase = dataBase;
+      q.tensors.index = index;
+      q.tensors.status = 'ready';
+
+      trace_push({ op: 'load.ok', tensors: Object.keys(index).length });
+
+      // Initialize block registry
+      register_blocks();
+
+    } catch (error) {
+      q.tensors.status = 'error';
+      trace_push({ op: 'load.error', error: error.message });
+      throw error;
+    }
+  }
+
+  /* ============================================================
+     TENSOR OPERATIONS — CPU BASELINE (Deterministic)
+     ============================================================ */
+
+  function matmul(A, B, m, k, n) {
+    // A: [m,k], B:[k,n] -> C:[m,n]
+    const C = new Float32Array(m * n);
+    for (let i = 0; i < m; i++) {
+      for (let j = 0; j < n; j++) {
+        let sum = 0.0;
+        const aRow = i * k;
+        for (let t = 0; t < k; t++) {
+          sum += A[aRow + t] * B[t * n + j];
+        }
+        C[i * n + j] = sum;
+      }
+    }
+    return C;
+  }
+
+  function transpose2D(W, rows, cols) {
+    const out = new Float32Array(rows * cols);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        out[c * rows + r] = W[r * cols + c];
+      }
+    }
+    return out;
+  }
+
+  function rmsnorm(x, w, eps = 1e-6) {
+    let ss = 0.0;
+    for (let i = 0; i < x.length; i++) ss += x[i] * x[i];
+    const inv = 1.0 / Math.sqrt(ss / x.length + eps);
+    const out = new Float32Array(x.length);
+    for (let i = 0; i < x.length; i++) out[i] = x[i] * inv * w[i];
+    return out;
+  }
+
+  function silu(x) {
+    const out = new Float32Array(x.length);
+    for (let i = 0; i < x.length; i++) {
+      const v = x[i];
+      out[i] = v / (1.0 + Math.exp(-v));
+    }
+    return out;
+  }
+
+  /* ============================================================
+     BLOCKS — DECLARATIVE REGISTRY (Fold-Based)
+     ============================================================ */
+
+  function register_blocks() {
+    const q = FOLD.model.qwen_asx;
+    const reg = FOLD.blocks.registry;
+    reg.clear();
+
+    // Embedding block
+    reg.set('embedding', {
+      '@block': 'embedding',
+      '@type': 'tensor.embedding',
+      '@weights': ['model.embed_tokens.weight'],
+      '@in': ['input_ids'],
+      '@out': ['x'],
+      '@exec': 'π.embedding.v1'
+    });
+
+    // Transformer layers
+    for (let i = 0; i < q.topology.layers; i++) {
+      // Attention
+      reg.set(`attn_${i}`, {
+        '@block': `attn_${i}`,
+        '@type': 'tensor.attention',
+        '@weights': [
+          `model.layers.${i}.self_attn.q_proj.weight`,
+          `model.layers.${i}.self_attn.k_proj.weight`,
+          `model.layers.${i}.self_attn.v_proj.weight`,
+          `model.layers.${i}.self_attn.o_proj.weight`
+        ],
+        '@in': ['x'],
+        '@out': ['x'],
+        '@exec': 'π.attention.v1'
+      });
+
+      // FFN
+      reg.set(`ffn_${i}`, {
+        '@block': `ffn_${i}`,
+        '@type': 'tensor.ffn',
+        '@weights': [
+          `model.layers.${i}.mlp.gate_proj.weight`,
+          `model.layers.${i}.mlp.up_proj.weight`,
+          `model.layers.${i}.mlp.down_proj.weight`
+        ],
+        '@in': ['x'],
+        '@out': ['x'],
+        '@exec': 'π.ffn.v1'
+      });
+    }
+
+    // Output norm
+    reg.set('norm_out', {
+      '@block': 'norm_out',
+      '@type': 'tensor.rmsnorm',
+      '@weights': ['model.norm.weight'],
+      '@in': ['x'],
+      '@out': ['x'],
+      '@exec': 'π.rmsnorm.v1'
+    });
+
+    // LM head
+    reg.set('lm_head', {
+      '@block': 'lm_head',
+      '@type': 'tensor.linear',
+      '@weights': ['lm_head.weight'],
+      '@in': ['x'],
+      '@out': ['logits'],
+      '@exec': 'π.linear.v1'
+    });
+
+    // Build execution sequence
+    FOLD.blocks.sequence = ['embedding'];
+    for (let i = 0; i < q.topology.layers; i++) {
+      FOLD.blocks.sequence.push(`attn_${i}`, `ffn_${i}`);
+    }
+    FOLD.blocks.sequence.push('norm_out', 'lm_head');
+
+    trace_push({ op: 'blocks.registered', count: reg.size });
+  }
+
+  /* ============================================================
+     BLOCK EXECUTORS — π KERNELS
+     ============================================================ */
+
+  function exec_embedding(block, ctx) {
+    const [Wname] = block['@weights'];
+    const W = tensor_from_index(Wname);
+
+    const T = ctx.input_ids.length;
+    const d = W.shape[1];
+
+    const out = new Float32Array(T * d);
+    for (let t = 0; t < T; t++) {
+      const tok = ctx.input_ids[t];
+      const row = tok * d;
+      for (let i = 0; i < d; i++) {
+        out[t * d + i] = W.data[row + i];
+      }
+    }
+
+    trace_push({ op: `block.${block['@block']}`, T, d });
+    return { x: out, shape: [T, d] };
+  }
+
+  function exec_attention(block, ctx) {
+    const x = ctx.x;
+    const [T, d] = ctx.shape;
+
+    const Wq = tensor_from_index(block['@weights'][0]);
+    const Wo = tensor_from_index(block['@weights'][3]);
+
+    const out = new Float32Array(x.length);
+
+    // Minimal: Q projection + O projection (baseline)
+    if (Wq.shape.length === 2 && Wq.shape[0] === d && Wq.shape[1] === d) {
+      for (let t = 0; t < T; t++) {
+        const row = x.subarray(t * d, (t + 1) * d);
+        const y = matmul(row, Wq.data, 1, d, d);
+        out.set(y, t * d);
+      }
+
+      if (Wo.shape.length === 2 && Wo.shape[0] === d) {
+        const out2 = new Float32Array(out.length);
+        for (let t = 0; t < T; t++) {
+          const row = out.subarray(t * d, (t + 1) * d);
+          const y = matmul(row, Wo.data, 1, d, d);
+          out2.set(y, t * d);
+        }
+        trace_push({ op: `block.${block['@block']}`, T, d });
+        return { x: out2, shape: [T, d] };
+      }
+    }
+
+    // Passthrough fallback
+    out.set(x);
+    trace_push({ op: `block.${block['@block']}.passthrough`, T, d });
+    return { x: out, shape: [T, d] };
+  }
+
+  function exec_ffn(block, ctx) {
+    const x = ctx.x;
+    const [T, d] = ctx.shape;
+
+    const W1 = tensor_from_index(block['@weights'][0]);
+    const W2 = tensor_from_index(block['@weights'][1]);
+    const W3 = tensor_from_index(block['@weights'][2]);
+
+    if (W1.shape.length === 2 && W2.shape.length === 2 && W3.shape.length === 2 && W1.shape[1] === d) {
+      const dff = W1.shape[0];
+      const out = new Float32Array(T * d);
+
+      for (let t = 0; t < T; t++) {
+        const row = x.subarray(t * d, (t + 1) * d);
+
+        // gate = silu(row @ W1.T)
+        const W1T = transpose2D(W1.data, dff, d);
+        const gate = matmul(row, W1T, 1, d, dff);
+        const gateAct = silu(gate);
+
+        // up = row @ W2.T
+        const W2T = transpose2D(W2.data, dff, d);
+        const up = matmul(row, W2T, 1, d, dff);
+
+        // Hadamard
+        for (let i = 0; i < dff; i++) gateAct[i] *= up[i];
+
+        // down = gateAct @ W3.T
+        const W3T = transpose2D(W3.data, d, dff);
+        const y = matmul(gateAct, W3T, 1, dff, d);
+
+        // Residual connection
+        for (let i = 0; i < d; i++) {
+          out[t * d + i] = row[i] + y[i];
+        }
+      }
+
+      trace_push({ op: `block.${block['@block']}`, T, d, dff });
+      return { x: out, shape: [T, d] };
+    }
+
+    // Passthrough fallback
+    const out = new Float32Array(x.length);
+    out.set(x);
+    trace_push({ op: `block.${block['@block']}.passthrough`, T, d });
+    return { x: out, shape: [T, d] };
+  }
+
+  function exec_rmsnorm(block, ctx) {
+    const x = ctx.x;
+    const [T, d] = ctx.shape;
+    const W = tensor_from_index(block['@weights'][0]);
+    const out = new Float32Array(x.length);
+
+    for (let t = 0; t < T; t++) {
+      const row = x.subarray(t * d, (t + 1) * d);
+      const n = rmsnorm(row, W.data);
+      out.set(n, t * d);
+    }
+
+    trace_push({ op: `block.${block['@block']}`, T, d });
+    return { x: out, shape: [T, d] };
+  }
+
+  function exec_linear(block, ctx) {
+    const x = ctx.x;
+    const [T, d] = ctx.shape;
+    const W = tensor_from_index(block['@weights'][0]);
+
+    const vocab = W.shape[0];
+    const out = new Float32Array(vocab);
+
+    // Use last token representation
+    const last = x.subarray((T - 1) * d, T * d);
+
+    for (let v = 0; v < vocab; v++) {
+      let sum = 0.0;
+      const row = v * d;
+      for (let i = 0; i < d; i++) {
+        sum += W.data[row + i] * last[i];
+      }
+      out[v] = sum;
+    }
+
+    trace_push({ op: `block.${block['@block']}`, vocab, d });
+    return { logits: out, shape: [vocab] };
+  }
+
+  function exec_block(block, ctx) {
+    switch (block['@type']) {
+      case 'tensor.embedding': return exec_embedding(block, ctx);
+      case 'tensor.attention': return exec_attention(block, ctx);
+      case 'tensor.ffn': return exec_ffn(block, ctx);
+      case 'tensor.rmsnorm': return exec_rmsnorm(block, ctx);
+      case 'tensor.linear': return exec_linear(block, ctx);
+      default: throw new Error(`Unknown block type: ${block['@type']}`);
+    }
+  }
+
+  /* ============================================================
+     INFERENCE — FOLD PIPELINE
+     ============================================================ */
+
+  async function infer(input_ids) {
+    await load_model();
+
+    let ctx = {
+      input_ids: Int32Array.from(input_ids),
+      x: null,
+      shape: null
+    };
+
+    trace_push({ op: 'infer.begin', seq: FOLD.blocks.sequence.slice() });
+
+    for (const id of FOLD.blocks.sequence) {
+      const block = FOLD.blocks.registry.get(id);
+      if (!block) throw new Error(`Missing block: ${id}`);
+
+      const out = exec_block(block, ctx);
+      ctx = { ...ctx, ...out };
+    }
+
+    // Seal output hash for determinism checks
+    const logitsBytes = f32_to_bytes(ctx.logits);
+    const outHash = fnv1a32(logitsBytes);
+
+    FOLD.model.qwen_asx.state.version++;
+    trace_push({ op: 'infer.ok', out_hash: outHash });
+
+    return {
+      logits: ctx.logits,
+      hash32: outHash,
+      trace: FOLD.audit.inference_trace.slice()
+    };
+  }
+
+  /* ============================================================
+     CONFORMANCE — MINIMAL TEST SUITE (infer_min_v1)
+     ============================================================ */
+
+  async function conformance_test() {
+    const sample = [1, 2, 3, 4];
+    const r1 = await infer(sample);
+    const r2 = await infer(sample);
+
+    const ok_shape = r1.logits instanceof Float32Array && r1.logits.length > 1000;
+    const ok_hash = r1.hash32 === r2.hash32;
+
+    let ok_finite = true;
+    for (let i = 0; i < r1.logits.length; i++) {
+      if (!Number.isFinite(r1.logits[i])) {
+        ok_finite = false;
+        break;
+      }
+    }
+
+    const result = {
+      '@test': 'infer_min_v1',
+      '@ok': Boolean(ok_shape && ok_hash && ok_finite),
+      '@checks': { ok_shape, ok_hash, ok_finite },
+      '@hash32': r1.hash32
+    };
+
+    trace_push({ op: 'conformance.result', ...result });
+    return result;
+  }
+
+  /* ============================================================
+     TRAINING — RLHF DELTA EMISSION (Never Mutate Base)
+     ============================================================ */
+
+  function record_sample(input, output, reward) {
+    FOLD.training.rlhf.delta_log.push({
+      '@type': 'training.sample',
+      '@input': input,
+      '@output_hash': output.hash32,
+      '@reward': reward,
+      '@epoch': FOLD.model.qwen_asx.state.epoch,
+      '@timestamp': Date.now()
+    });
+
+    trace_push({ op: 'training.sample', reward, epoch: FOLD.model.qwen_asx.state.epoch });
+  }
+
+  function emit_delta() {
+    const log = FOLD.training.rlhf.delta_log;
+    if (log.length < FOLD.training.rlhf.min_samples) {
+      return { applied: false, reason: 'insufficient_samples', count: log.length };
+    }
+
+    const avgReward = log.reduce((s, t) => s + t['@reward'], 0) / log.length;
+    const policy = FOLD.training.rlhf.policy;
+    const scaledDelta = Math.pow(π.PHI, -FOLD.model.qwen_asx.state.epoch) * avgReward * policy.reward_scale;
+    const clampedDelta = Math.max(-policy.clamp, Math.min(policy.clamp, scaledDelta));
+
+    // Emit delta record (for SCXQ2 lane storage)
+    const delta = {
+      '@delta': 'weight.patch',
+      '@epoch': FOLD.model.qwen_asx.state.epoch,
+      '@avg_reward': avgReward,
+      '@scaled_delta': clampedDelta,
+      '@sample_count': log.length,
+      '@lane': 'RAW',
+      '@hash': fnv1a32(new TextEncoder().encode(JSON.stringify({
+        avgReward,
+        epoch: FOLD.model.qwen_asx.state.epoch,
+        samples: log.length
+      })))
+    };
+
+    // Clear log, advance epoch
+    FOLD.training.rlhf.delta_log = [];
+    FOLD.model.qwen_asx.state.epoch++;
+
+    trace_push({ op: 'training.delta_emitted', ...delta });
+
+    return { applied: true, delta };
+  }
+
+  /* ============================================================
+     KERNEL API — PUBLIC INTERFACE
+     ============================================================ */
+
+  async function exec(payload) {
+    if (!payload || typeof payload.route !== 'string') {
+      throw new Error('Bad payload: missing route');
+    }
+
+    switch (payload.route) {
+      case 'model.infer':
+        return await infer(payload.input_ids || []);
+
+      case 'model.test':
+        return await conformance_test();
+
+      case 'model.status':
+        return {
+          version: Ω.VERSION,
+          law: Ω.LAW,
+          model_status: FOLD.model.qwen_asx.tensors.status,
+          model_version: FOLD.model.qwen_asx.state.version,
+          epoch: FOLD.model.qwen_asx.state.epoch,
+          blocks: FOLD.blocks.sequence.length,
+          cached_tensors: FOLD.model.qwen_asx.tensors.cache.size,
+          training_samples: FOLD.training.rlhf.delta_log.length,
+          trace_length: FOLD.audit.inference_trace.length
+        };
+
+      case 'training.record':
+        record_sample(payload.input, payload.output, payload.reward);
+        return { recorded: true };
+
+      case 'training.emit_delta':
+        return emit_delta();
+
+      case 'trace.get':
+        return { trace: FOLD.audit.inference_trace.slice() };
+
+      case 'trace.clear':
+        FOLD.audit.inference_trace = [];
+        return { cleared: true };
+
+      default:
+        throw new Error(`Unknown route: ${payload.route}`);
+    }
+  }
+
+  /* ============================================================
+     EXPORT
+     ============================================================ */
+
+  return {
+    exec,
+    FOLD,
+    Ω,
+    π
+  };
+})();
+
+// Export for Service Worker
+if (typeof self !== 'undefined') {
+  self.KUHUL_KERNEL = KUHUL_KERNEL;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { KUHUL_KERNEL };
+}

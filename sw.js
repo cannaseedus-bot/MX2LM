@@ -11,7 +11,7 @@
 -------------------------------- */
 
 const Ω = Object.freeze({
-  VERSION: "Ω-KUHUL-PI-KERNEL.v18.0.0",
+  VERSION: "Ω-KUHUL-PI-KERNEL.v19.0.0",
   DETERMINISTIC: true,
   UI_READS_STATE: true,
   STATE_READS_UI: false,
@@ -2408,6 +2408,10 @@ importScripts('./models/model_providers.js');
 // Import π-KUHUL Model Adapters
 importScripts('./models/janus/adapters/janus_pi_kuhul.js');
 importScripts('./models/deepseek/adapters/deepseek_pi_kuhul.js');
+importScripts('./models/qwen-asx/adapters/qwen_asx_pi_kuhul.js');
+
+// Import K'UHUL Kernel (Qwen-ASX base training format)
+importScripts('./sw.khl');
 
 // Note: voice_interface.js requires browser APIs (SpeechRecognition, SpeechSynthesis)
 // and should be loaded in the main page context, not in Service Worker
@@ -2418,6 +2422,7 @@ let ARXIV_FETCHER = null;
 let MODEL_PROVIDER_MANAGER = null;
 let JANUS_ADAPTER = null;
 let DEEPSEEK_ADAPTER = null;
+let QWEN_ASX_ADAPTER = null;
 
 // Lazy initialization for new components
 function initNewComponents() {
@@ -2435,6 +2440,9 @@ function initNewComponents() {
   }
   if (!DEEPSEEK_ADAPTER && typeof DeepseekPiKuhulAdapter !== 'undefined') {
     DEEPSEEK_ADAPTER = new DeepseekPiKuhulAdapter();
+  }
+  if (!QWEN_ASX_ADAPTER && typeof QwenASXPiKuhulAdapter !== 'undefined') {
+    QWEN_ASX_ADAPTER = new QwenASXPiKuhulAdapter();
   }
 }
 
@@ -3453,7 +3461,11 @@ const EXTENDED_API_PATHS = new Set([
   '/scxq2/encode', '/scxq2/decode', '/scxq2/verify',
   '/adapters/janus/infer', '/adapters/janus/image-to-text', '/adapters/janus/text-to-image',
   '/adapters/deepseek/infer', '/adapters/deepseek/route',
-  '/providers/list', '/providers/configure', '/providers/request'
+  '/providers/list', '/providers/configure', '/providers/request',
+  // Qwen-ASX (base training format)
+  '/qwen-asx/infer', '/qwen-asx/test', '/qwen-asx/status',
+  '/qwen-asx/training/record', '/qwen-asx/training/emit-delta',
+  '/qwen-asx/trace'
 ]);
 
 // Handle extended API requests
@@ -3694,6 +3706,91 @@ async function handleExtendedAPI(url, request) {
         tick: ΩCLOCK.tick
       });
 
+    // ===== Qwen-ASX API (Base Training Format) =====
+    case '/qwen-asx/infer':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (typeof KUHUL_KERNEL === 'undefined') {
+        return mx2_json({ error: 'kuhul_kernel_not_loaded' }, 500);
+      }
+      const qwenInferResult = await KUHUL_KERNEL.exec({
+        route: 'model.infer',
+        input_ids: payload.input_ids || []
+      });
+      kuhulTick();
+      return mx2_json({
+        ok: !qwenInferResult.error,
+        ...qwenInferResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/qwen-asx/test':
+      if (typeof KUHUL_KERNEL === 'undefined') {
+        return mx2_json({ error: 'kuhul_kernel_not_loaded' }, 500);
+      }
+      const qwenTestResult = await KUHUL_KERNEL.exec({ route: 'model.test' });
+      return mx2_json({
+        ...qwenTestResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/qwen-asx/status':
+      if (typeof KUHUL_KERNEL === 'undefined') {
+        return mx2_json({ error: 'kuhul_kernel_not_loaded' }, 500);
+      }
+      const qwenStatus = await KUHUL_KERNEL.exec({ route: 'model.status' });
+      return mx2_json({
+        ok: true,
+        ...qwenStatus,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/qwen-asx/training/record':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (typeof KUHUL_KERNEL === 'undefined') {
+        return mx2_json({ error: 'kuhul_kernel_not_loaded' }, 500);
+      }
+      const recordResult = await KUHUL_KERNEL.exec({
+        route: 'training.record',
+        input: payload.input,
+        output: payload.output,
+        reward: payload.reward || 0
+      });
+      return mx2_json({
+        ok: true,
+        ...recordResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/qwen-asx/training/emit-delta':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (typeof KUHUL_KERNEL === 'undefined') {
+        return mx2_json({ error: 'kuhul_kernel_not_loaded' }, 500);
+      }
+      const deltaResult = await KUHUL_KERNEL.exec({ route: 'training.emit_delta' });
+      kuhulTick();
+      return mx2_json({
+        ok: deltaResult.applied,
+        ...deltaResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/qwen-asx/trace':
+      if (typeof KUHUL_KERNEL === 'undefined') {
+        return mx2_json({ error: 'kuhul_kernel_not_loaded' }, 500);
+      }
+      const traceResult = await KUHUL_KERNEL.exec({ route: 'trace.get' });
+      return mx2_json({
+        ok: true,
+        ...traceResult,
+        tick: ΩCLOCK.tick
+      });
+
     default:
       return null;
   }
@@ -3716,7 +3813,7 @@ self.addEventListener("fetch", (event) => {
 
 console.log(`
 ╔══════════════════════════════════════════════════════════╗
-║ MX2LM SUPREME JSON REST API KERNEL v18.0.0              ║
+║ MX2LM SUPREME JSON REST API KERNEL v19.0.0              ║
 ║ + BRAIN MODEL INTEGRATION LAYER                         ║
 ║ + CHAT INFERENCE & WEB LEARNING ENGINE                  ║
 ║ + ATOMIC BLOCK RUNTIME & GLYPH VM                       ║
@@ -3730,24 +3827,28 @@ console.log(`
 ║ + ARXIV RESEARCH PAPER FETCHER                          ║
 ║ + JANUS MULTIMODAL ADAPTER (π-KUHUL)                    ║
 ║ + DEEPSEEK MoE ADAPTER (π-KUHUL)                        ║
+║ + QWEN-ASX BASE TRAINING FORMAT (sw.khl kernel)         ║
 ║ + MULTI-PROVIDER API (Claude/OpenAI/Deepseek/Mistral)   ║
 ║ Law: Ω-BLACK-PANEL | CC-v1                              ║
 ║ Architecture: NATIVE_JSON_REST_INSIDE_KERNEL           ║
 ║ Stack: XJSON ⇄ K'UHUL ⇄ ASX_RAM ⇄ MX2LM_INFERENCE      ║
-║ Performance: 1M+ RPS KERNEL ROUTED                     ║
+║ Base Model: Qwen-ASX (delta-only RLHF training)        ║
 ║ Security: SCXQ2 QUANTUM ENCRYPTED AUTHENTICATION       ║
 ║ Glyphs: 100+ OPCODES | CONTROL FLOW | SEMANTICS        ║
 ║ Determinism: Ω.tick = ${ΩCLOCK.tick}                       ║
 ║                                                         ║
 ║ |Ψ⟩ = α|JSON_API⟩⊗β|KUHUL_ROUTER⟩⊗γ|ASX_RAM⟩           ║
 ║     ⊗δ|MX2LM_INFERENCE⟩⊗ε|SCX_TRANSPORT⟩               ║
-║     ⊗ζ|GLYPH_CODEX⟩⊗η|P2P_NETWORK⟩⊗θ|CC-v1⟩            ║
+║     ⊗ζ|GLYPH_CODEX⟩⊗η|QWEN_ASX⟩⊗θ|CC-v1⟩               ║
 ║                                                         ║
 ║ CHAT:     /chat          JANUS:    /adapters/janus     ║
 ║ VM:       /vm/execute    DEEPSEEK: /adapters/deepseek  ║
-║ BLOCKS:   /blocks        ARXIV:    /research/arxiv     ║
+║ BLOCKS:   /blocks        QWEN-ASX: /qwen-asx           ║
 ║ P2P:      /p2p           SCXQ2:    /scxq2              ║
 ║ CRYPTO:   /crypto        PROVIDERS:/providers          ║
+║                                                         ║
+║ External AI sees: multiple brains                      ║
+║ Internal reality: unified training format + RLHF       ║
 ║                                                         ║
 ║ ALL APIS ARE K'UHUL - ALL TRANSPORT IS XJSON          ║
 ║ ALL STATE IS ASX_RAM - ALL ENCRYPTION IS SCX          ║
