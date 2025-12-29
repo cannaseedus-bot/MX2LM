@@ -745,6 +745,39 @@ const KUHUL_KERNEL = (function () {
         FOLD.audit.inference_trace = [];
         return { cleared: true };
 
+      // ===== GlyphVM Integration Routes =====
+      case 'glyph.execute':
+        // Execute K'UHUL script via GlyphVM
+        if (typeof executeBrainPipeline === 'function') {
+          const result = executeBrainPipeline(
+            { script: payload.script, env: payload.env || {} },
+            { includeTrace: payload.includeTrace || false }
+          );
+          trace_push({ op: 'glyph.execute', ticks: result.ticks });
+          return result;
+        }
+        throw new Error('GlyphVM not available');
+
+      case 'glyph.compile':
+        // Compile K'UHUL script to program
+        if (typeof GlyphVM === 'function') {
+          const vm = new GlyphVM();
+          const compiled = vm.compileKUHUL(payload.script || '');
+          return {
+            program: compiled.program,
+            labels: compiled.labels,
+            count: compiled.program.length
+          };
+        }
+        throw new Error('GlyphVM not available');
+
+      case 'glyph.metrics':
+        // Get pipeline metrics
+        if (typeof getAllMetricStats === 'function') {
+          return { metrics: getAllMetricStats() };
+        }
+        return { metrics: {} };
+
       default:
         throw new Error(`Unknown route: ${payload.route}`);
     }

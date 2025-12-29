@@ -14,6 +14,9 @@ class GlyphVM {
     // VM State
     this.stack = [];
     this.memory = new Map();
+    this.env = {};           // Variables (K'UHUL environment)
+    this.labels = {};        // K'UHUL labels → PC
+    this.callStack = [];     // Return addresses for CALL/RETURN
     this.registers = {
       A: 0,      // Accumulator
       X: 0,      // Index X
@@ -30,6 +33,7 @@ class GlyphVM {
     this.halted = false;
     this.trace = [];
     this.tickCount = 0;
+    this.executionStartTime = 0;
 
     // π-KUHUL constants
     this.constants = {
@@ -47,6 +51,78 @@ class GlyphVM {
 
     // Primitive glyph opcodes
     this.opcodes = {
+      /* ============================================================
+         K'UHUL CORE OPCODES (8 Essential Instructions)
+         These form the brain pipeline execution foundation
+         ============================================================ */
+
+      // ⟁ NOOP - No operation (placeholder/alignment)
+      '⟁': () => { /* noop */ },
+
+      // ⊕ LOAD - Load value onto stack (alternate: push literal/variable)
+      // Usage: ⊕10 or ⊕varname
+      '⊕LOAD': (operand) => {
+        if (operand !== undefined) {
+          if (typeof operand === 'string' && this.env[operand] !== undefined) {
+            this.push(this.env[operand]);
+          } else {
+            this.push(operand);
+          }
+        }
+      },
+
+      // ⊗ STORE - Store value from stack into variable
+      // Usage: ⊗varname (pops value, stores in env[varname])
+      '⊗STORE': (varName) => {
+        if (varName !== undefined) {
+          this.env[varName] = this.pop();
+        }
+      },
+
+      // → JUMP - Unconditional jump to label
+      // Usage: →label
+      '→JUMP': (label) => {
+        if (this.labels[label] !== undefined) {
+          this.registers.P = this.labels[label] - 1; // -1 because P++ in loop
+        }
+      },
+
+      // ⤈ BRANCH - Conditional jump (pop condition, jump if truthy)
+      // Usage: ⤈label
+      '⤈BRANCH': (label) => {
+        const condition = this.pop();
+        if (condition && this.labels[label] !== undefined) {
+          this.registers.P = this.labels[label] - 1;
+        }
+      },
+
+      // ⨁ CALL - Call function (push return address, jump)
+      // Usage: ⨁funcLabel
+      '⨁CALL': (funcLabel) => {
+        if (this.labels[funcLabel] !== undefined) {
+          this.callStack.push(this.registers.P + 1);
+          this.registers.P = this.labels[funcLabel] - 1;
+        }
+      },
+
+      // ⨂ RETURN - Return from function (pop return address)
+      '⨂RETURN': () => {
+        if (this.callStack.length > 0) {
+          this.registers.P = this.callStack.pop() - 1;
+        } else {
+          this.halted = true;
+        }
+      },
+
+      // 🛑 HALT - Stop execution
+      '🛑HALT': () => {
+        this.halted = true;
+      },
+
+      /* ============================================================
+         NUMBERS (compressed) - Standard form
+         ============================================================ */
+
       // Numbers (compressed) - Standard form
       '⚡0': () => this.push(0),
       '⚡1': () => this.push(1),
@@ -1017,6 +1093,429 @@ class GlyphVM {
 
     return this;
   }
+
+  /* ============================================================
+     K'UHUL CORE EXECUTION — 8 Opcode Brain Pipeline
+     ============================================================ */
+
+  /**
+   * Load a K'UHUL program with labels
+   * Program format: array of [opcode, operand] tuples
+   * Labels format: { labelName: pc }
+   */
+  loadKUHULProgram(program, labels = {}) {
+    this.kuhulProgram = program;
+    this.labels = labels;
+    this.registers.P = 0;
+    this.halted = false;
+    this.callStack = [];
+    return this;
+  }
+
+  /**
+   * Execute K'UHUL program (8-opcode format)
+   * Returns: { stack, env, ticks, metrics }
+   */
+  executeKUHUL(program, labels = {}) {
+    this.loadKUHULProgram(program, labels);
+    this.executionStartTime = performance.now();
+    const startTicks = this.tickCount;
+
+    while (this.registers.P < program.length && !this.halted) {
+      const [opcode, operand] = program[this.registers.P];
+      this.executeKUHULOp(opcode, operand);
+      this.registers.P++;
+      this.tickCount++;
+
+      // Safety limit
+      if (this.tickCount - startTicks > 100000) {
+        console.warn('K\'UHUL: Max iterations reached');
+        break;
+      }
+    }
+
+    const executionTime = performance.now() - this.executionStartTime;
+
+    return {
+      stack: [...this.stack],
+      env: { ...this.env },
+      ticks: this.tickCount - startTicks,
+      executionTime,
+      halted: this.halted,
+      metrics: this.collectMetrics(executionTime)
+    };
+  }
+
+  /**
+   * Execute single K'UHUL opcode
+   */
+  executeKUHULOp(opcode, operand) {
+    // Record trace
+    this.trace.push({
+      pc: this.registers.P,
+      opcode,
+      operand,
+      stackBefore: [...this.stack],
+      tick: this.tickCount
+    });
+
+    switch (opcode) {
+      case '⟁':    // NOOP
+        break;
+
+      case '⊕':    // LOAD
+        if (operand !== undefined) {
+          if (typeof operand === 'string' && this.env[operand] !== undefined) {
+            this.push(this.env[operand]);
+          } else {
+            this.push(operand);
+          }
+        }
+        break;
+
+      case '⊗':    // STORE
+        if (operand !== undefined) {
+          this.env[operand] = this.pop();
+        }
+        break;
+
+      case '→':    // JUMP
+        if (this.labels[operand] !== undefined) {
+          this.registers.P = this.labels[operand] - 1;
+        }
+        break;
+
+      case '⤈':    // BRANCH
+        if (this.pop() && this.labels[operand] !== undefined) {
+          this.registers.P = this.labels[operand] - 1;
+        }
+        break;
+
+      case '⨁':    // CALL
+        if (this.labels[operand] !== undefined) {
+          this.callStack.push(this.registers.P + 1);
+          this.registers.P = this.labels[operand] - 1;
+        }
+        break;
+
+      case '⨂':    // RETURN
+        if (this.callStack.length > 0) {
+          this.registers.P = this.callStack.pop() - 1;
+        } else {
+          this.halted = true;
+        }
+        break;
+
+      case '🛑':   // HALT
+      case '🔄':   // HALT (alternate)
+        this.halted = true;
+        break;
+
+      // Extended: arithmetic (can be added to programs)
+      case '➕':
+        this.binaryOp((a, b) => a + b);
+        break;
+      case '➖':
+        this.binaryOp((a, b) => a - b);
+        break;
+      case '✖':
+        this.binaryOp((a, b) => a * b);
+        break;
+      case '➗':
+        this.binaryOp((a, b) => b !== 0 ? a / b : Infinity);
+        break;
+
+      // Extended: comparison
+      case '⚖':
+        this.binaryOp((a, b) => a === b ? 1 : 0);
+        break;
+      case '⊂':
+        this.binaryOp((a, b) => a < b ? 1 : 0);
+        break;
+      case '⊃':
+        this.binaryOp((a, b) => a > b ? 1 : 0);
+        break;
+
+      default:
+        // Try existing opcodes
+        if (this.opcodes[opcode]) {
+          this.opcodes[opcode]();
+        } else {
+          // Unknown - push as literal
+          this.push(opcode);
+        }
+    }
+  }
+
+  /**
+   * Compile K'UHUL script to program/labels
+   * Script format: lines of "opcode operand" or "@label"
+   */
+  compileKUHUL(script) {
+    const lines = script.trim().split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+    const program = [];
+    const labels = {};
+
+    for (const line of lines) {
+      // Label definition
+      if (line.startsWith('@')) {
+        labels[line.slice(1)] = program.length;
+        continue;
+      }
+
+      // Parse "opcode operand"
+      const match = line.match(/^([⟁⊕⊗→⤈⨁⨂🛑🔄➕➖✖➗⚖⊂⊃])\s*(.*)$/u);
+      if (match) {
+        const [, opcode, operandStr] = match;
+        let operand = operandStr.trim();
+
+        // Try to parse as number
+        if (operand && !isNaN(parseFloat(operand))) {
+          operand = parseFloat(operand);
+        }
+
+        program.push([opcode, operand || undefined]);
+      } else {
+        // Unknown line - treat as data
+        program.push(['⊕', line]);
+      }
+    }
+
+    return { program, labels };
+  }
+
+  /**
+   * Collect execution metrics
+   */
+  collectMetrics(executionTime) {
+    return {
+      execution_time: executionTime,
+      ticks: this.tickCount,
+      stack_depth: this.stack.length,
+      memory_size: this.memory.size,
+      env_size: Object.keys(this.env).length,
+      call_depth: this.callStack.length,
+      entropy: this.registers.Ω
+    };
+  }
+}
+
+/* ============================================================
+   PI_METRIC_TABLE — 30+ Metrics for Brain Pipeline
+   ============================================================ */
+
+const PI_METRIC_TABLE = {
+  // Execution Metrics
+  execution_time: [],
+  ticks: [],
+  stack_depth: [],
+  call_depth: [],
+
+  // Memory Metrics
+  memory_usage: [],
+  env_size: [],
+  cache_hits: [],
+  cache_misses: [],
+
+  // Compression Metrics
+  compression_ratio: [],
+  glyph_density: [],
+  token_count: [],
+
+  // Throughput Metrics
+  token_throughput: [],
+  ops_per_second: [],
+
+  // Branch Metrics
+  branch_taken: [],
+  branch_not_taken: [],
+  branch_hit_rate: [],
+
+  // Loop Metrics
+  loop_iterations: [],
+  loop_depth: [],
+
+  // Call Metrics
+  function_calls: [],
+  function_returns: [],
+  max_call_depth: [],
+
+  // Error Metrics
+  error_count: [],
+  stack_underflows: [],
+  undefined_ops: [],
+
+  // π-KUHUL Metrics
+  pi_waves_executed: [],
+  phi_transforms: [],
+  golden_ratios: [],
+  entropy_delta: [],
+
+  // Inference Metrics
+  inference_latency: [],
+  model_load_time: [],
+  tensor_ops: [],
+  activation_count: [],
+
+  // Quality Metrics
+  determinism_score: [],
+  replay_consistency: []
+};
+
+/**
+ * Update a metric in PI_METRIC_TABLE
+ */
+function updateMetric(metricType, value) {
+  if (PI_METRIC_TABLE[metricType]) {
+    PI_METRIC_TABLE[metricType].push({
+      value,
+      timestamp: Date.now()
+    });
+
+    // Keep only last 1000 entries
+    if (PI_METRIC_TABLE[metricType].length > 1000) {
+      PI_METRIC_TABLE[metricType].shift();
+    }
+  }
+}
+
+/**
+ * Get metric statistics
+ */
+function getMetricStats(metricType) {
+  const data = PI_METRIC_TABLE[metricType];
+  if (!data || data.length === 0) {
+    return { count: 0, avg: 0, min: 0, max: 0, last: null };
+  }
+
+  const values = data.map(d => d.value);
+  return {
+    count: values.length,
+    avg: values.reduce((a, b) => a + b, 0) / values.length,
+    min: Math.min(...values),
+    max: Math.max(...values),
+    last: values[values.length - 1]
+  };
+}
+
+/**
+ * Get all metric summaries
+ */
+function getAllMetricStats() {
+  const stats = {};
+  for (const key of Object.keys(PI_METRIC_TABLE)) {
+    stats[key] = getMetricStats(key);
+  }
+  return stats;
+}
+
+/* ============================================================
+   BRAIN PIPELINE — K'UHUL → GlyphVM → Metrics
+   ============================================================ */
+
+/**
+ * Execute brain pipeline: K'UHUL script → GlyphVM → Result + Metrics
+ * @param {string|object} input - K'UHUL script string or { script, env, labels }
+ * @param {object} options - Pipeline options
+ * @returns {object} - { result, env, metrics, trace }
+ */
+function executeBrainPipeline(input, options = {}) {
+  const startTime = performance.now();
+
+  // Parse input
+  let script, initialEnv = {}, initialLabels = {};
+  if (typeof input === 'string') {
+    script = input;
+  } else {
+    script = input.script || '';
+    initialEnv = input.env || {};
+    initialLabels = input.labels || {};
+  }
+
+  // Create VM instance
+  const vm = new GlyphVM();
+  vm.env = { ...initialEnv };
+
+  // Step 1: Parse/Compile K'UHUL script
+  const parseStart = performance.now();
+  let program, labels;
+
+  if (Array.isArray(script)) {
+    // Already compiled
+    program = script;
+    labels = initialLabels;
+  } else {
+    // Compile from script
+    const compiled = vm.compileKUHUL(script);
+    program = compiled.program;
+    labels = { ...compiled.labels, ...initialLabels };
+  }
+  const parseTime = performance.now() - parseStart;
+
+  // Step 2: Execute
+  const execStart = performance.now();
+  const result = vm.executeKUHUL(program, labels);
+  const execTime = performance.now() - execStart;
+
+  // Step 3: Update metrics
+  updateMetric('execution_time', execTime);
+  updateMetric('ticks', result.ticks);
+  updateMetric('stack_depth', result.stack.length);
+  updateMetric('env_size', Object.keys(result.env).length);
+
+  if (program.length > 0) {
+    updateMetric('glyph_density', program.length / (script.length || 1));
+    updateMetric('token_count', program.length);
+    updateMetric('ops_per_second', (result.ticks / execTime) * 1000);
+  }
+
+  // Calculate compression ratio
+  const outputSize = JSON.stringify(result).length;
+  const inputSize = (typeof script === 'string' ? script : JSON.stringify(script)).length;
+  if (inputSize > 0) {
+    updateMetric('compression_ratio', outputSize / inputSize);
+  }
+
+  const totalTime = performance.now() - startTime;
+
+  // Step 4: Return comprehensive result
+  return {
+    success: true,
+    result: result.stack[result.stack.length - 1],
+    stack: result.stack,
+    env: result.env,
+    ticks: result.ticks,
+    halted: result.halted,
+    timing: {
+      parse: parseTime,
+      execute: execTime,
+      total: totalTime
+    },
+    metrics: {
+      current: result.metrics,
+      aggregate: getAllMetricStats()
+    },
+    trace: options.includeTrace ? vm.getTrace() : undefined,
+    program: options.includeProgram ? program : undefined
+  };
+}
+
+/**
+ * Quick inference helper - execute K'UHUL and return result
+ */
+function kuhulInfer(script, env = {}) {
+  const result = executeBrainPipeline({ script, env });
+  return result.result;
+}
+
+/**
+ * Batch execution for multiple scripts
+ */
+function executeBrainPipelineBatch(scripts, options = {}) {
+  return scripts.map((script, idx) => ({
+    index: idx,
+    ...executeBrainPipeline(script, options)
+  }));
 }
 
 /**
@@ -1455,4 +1954,30 @@ if (typeof self !== 'undefined') {
   self.GlyphCompiler = GlyphCompiler;
   self.GlyphRegistry = GlyphRegistry;
   self.PiKUHUL = PiKUHUL;
+
+  // K'UHUL Pipeline exports
+  self.PI_METRIC_TABLE = PI_METRIC_TABLE;
+  self.executeBrainPipeline = executeBrainPipeline;
+  self.executeBrainPipelineBatch = executeBrainPipelineBatch;
+  self.kuhulInfer = kuhulInfer;
+  self.updateMetric = updateMetric;
+  self.getMetricStats = getMetricStats;
+  self.getAllMetricStats = getAllMetricStats;
+}
+
+// Export for Node.js/CommonJS
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    GlyphVM,
+    GlyphCompiler,
+    GlyphRegistry,
+    PiKUHUL,
+    PI_METRIC_TABLE,
+    executeBrainPipeline,
+    executeBrainPipelineBatch,
+    kuhulInfer,
+    updateMetric,
+    getMetricStats,
+    getAllMetricStats
+  };
 }

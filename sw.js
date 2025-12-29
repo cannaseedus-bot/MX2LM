@@ -486,12 +486,56 @@ class SupremeJSONRESTAPI {
   }
 
   async inferEndpoint(payload) {
-    const { prompt, temperature = 0.7, max_tokens = 100, mode = "standard", ngram_level = 3, use_memory = true, reinforcement_source } = payload;
-    
+    const { prompt, temperature = 0.7, max_tokens = 100, mode = "standard", ngram_level = 3, use_memory = true, reinforcement_source, script, env } = payload;
+
+    // K'UHUL Mode: Execute via brain pipeline if script is provided or mode is "kuhul"
+    if (script || mode === "kuhul" || mode === "glyph") {
+      try {
+        const pipelineInput = script || prompt;
+        const pipelineResult = executeBrainPipeline(
+          { script: pipelineInput, env: env || {} },
+          { includeTrace: false, includeProgram: false }
+        );
+
+        // Record activation for training
+        if (use_memory && MX2_MEM) {
+          try {
+            mx2_record_activation({
+              node: "KUHUL_INFER",
+              layer: "brain_pipeline",
+              token: "kuhul_exec",
+              weight: 1.0,
+              tokens: [pipelineInput.substring(0, 100)]
+            });
+          } catch (e) {}
+        }
+
+        return this.formatResponse(200, {
+          mode: "kuhul",
+          result: pipelineResult.result,
+          stack: pipelineResult.stack,
+          env: pipelineResult.env,
+          ticks: pipelineResult.ticks,
+          timing: pipelineResult.timing,
+          metrics: pipelineResult.metrics?.current,
+          entropy: KERNEL_STATE.entropy,
+          inference_id: Ω_id("kuhul", (pipelineInput || '').substring(0, 20), ΩCLOCK.tick),
+          quantum_state: "|Ψ⟩ = |KUHUL_EXECUTED⟩⊗|BRAIN_PIPELINE⟩"
+        });
+      } catch (err) {
+        return this.formatResponse(500, {
+          error: "kuhul_execution_failed",
+          message: err.message,
+          quantum_state: "|Ψ⟩ = |ERROR⟩⊗|KUHUL_FAULT⟩"
+        });
+      }
+    }
+
+    // Standard Mode: Original inference path
     // Tokenize and process
     const tokens = this.tokenizeText(prompt);
     const bundle = this.buildAllOrders(tokens, ngram_level);
-    
+
     // Memory ingestion if enabled
     if (use_memory && MX2_MEM) {
       try {
@@ -504,20 +548,21 @@ class SupremeJSONRESTAPI {
         });
       } catch (e) {}
     }
-    
+
     // Generate completion (simplified - in real implementation, call actual MX2LM)
     const completion = this.generateCompletion(tokens, {
       temperature,
       max_tokens,
       mode
     });
-    
+
     // Detect routines
     const routines = this.detectRoutines(completion);
     const blocks = this.matchASXBlocks(routines);
     const quantumCircuit = this.selectQuantumCircuit(mode);
-    
+
     return this.formatResponse(200, {
+      mode: "standard",
       completion,
       tokens_used: tokens.length,
       entropy: KERNEL_STATE.entropy,
@@ -3462,6 +3507,9 @@ const EXTENDED_API_PATHS = new Set([
   '/adapters/janus/infer', '/adapters/janus/image-to-text', '/adapters/janus/text-to-image',
   '/adapters/deepseek/infer', '/adapters/deepseek/route',
   '/providers/list', '/providers/configure', '/providers/request',
+  // GlyphVM & K'UHUL Pipeline
+  '/glyph/execute', '/glyph/compile', '/glyph/metrics', '/glyph/vm/status',
+  '/brain/pipeline', '/brain/infer',
   // Qwen-ASX (base training format)
   '/qwen-asx/infer', '/qwen-asx/test', '/qwen-asx/status',
   '/qwen-asx/training/record', '/qwen-asx/training/emit-delta',
@@ -3577,6 +3625,126 @@ async function handleExtendedAPI(url, request) {
         ...verifyResult,
         tick: ΩCLOCK.tick
       });
+
+    // ===== GlyphVM & K'UHUL Pipeline API =====
+    case '/glyph/execute':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        // Execute K'UHUL script via brain pipeline
+        const glyphResult = executeBrainPipeline(
+          {
+            script: payload.script || '',
+            env: payload.env || {},
+            labels: payload.labels || {}
+          },
+          {
+            includeTrace: payload.includeTrace || false,
+            includeProgram: payload.includeProgram || false
+          }
+        );
+        kuhulTick();
+        return mx2_json({
+          ok: true,
+          ...glyphResult,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({
+          ok: false,
+          error: err.message,
+          tick: ΩCLOCK.tick
+        }, 500);
+      }
+
+    case '/glyph/compile':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const vm = new GlyphVM();
+        const compiled = vm.compileKUHUL(payload.script || '');
+        return mx2_json({
+          ok: true,
+          program: compiled.program,
+          labels: compiled.labels,
+          instructionCount: compiled.program.length,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({
+          ok: false,
+          error: err.message,
+          tick: ΩCLOCK.tick
+        }, 500);
+      }
+
+    case '/glyph/metrics':
+      return mx2_json({
+        ok: true,
+        metrics: getAllMetricStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/glyph/vm/status':
+      return mx2_json({
+        ok: true,
+        opcodes: Object.keys(new GlyphVM().opcodes).length,
+        kuhulOpcodes: ['⟁', '⊕', '⊗', '→', '⤈', '⨁', '⨂', '🛑'],
+        metricTypes: Object.keys(PI_METRIC_TABLE),
+        version: 'GlyphVM.v2.0.0-KUHUL',
+        tick: ΩCLOCK.tick
+      });
+
+    case '/brain/pipeline':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const pipelineResult = executeBrainPipeline(
+          payload.input || payload.script || '',
+          {
+            includeTrace: true,
+            includeProgram: true
+          }
+        );
+        kuhulTick();
+        return mx2_json({
+          ok: true,
+          ...pipelineResult,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({
+          ok: false,
+          error: err.message,
+          tick: ΩCLOCK.tick
+        }, 500);
+      }
+
+    case '/brain/infer':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const inferResult = kuhulInfer(
+          payload.script || payload.input || '',
+          payload.env || {}
+        );
+        kuhulTick();
+        return mx2_json({
+          ok: true,
+          result: inferResult,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({
+          ok: false,
+          error: err.message,
+          tick: ΩCLOCK.tick
+        }, 500);
+      }
 
     // ===== Janus Adapter API =====
     case '/adapters/janus/infer':
