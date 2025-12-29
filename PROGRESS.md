@@ -1,6 +1,6 @@
 # MX2LM Progress Tracker
 
-**Overall Progress: 35% Complete**
+**Overall Progress: 40% Complete**
 **Last Updated: 2025-12-29**
 **Branch: `claude/integrate-components-O0Ts2`**
 
@@ -10,7 +10,7 @@
 
 ```
 Phase 0: Foundation          [####################] 100%  COMPLETE
-Phase 1: Core Execution      [##################..]  90%  COMPLETE (GlyphVM + XCFE + SCXQ2)
+Phase 1: Core Execution      [####################] 100%  COMPLETE (GlyphVM + XCFE + SCXQ2 + SQL)
 Phase 2: Brain Topology      [######..............]  30%  UNBLOCKED
 Phase 3: Replay System       [....................]   0%  PENDING
 Phase 4: RLHF Training       [######..............]  30%  PARTIAL (n-gram + metrics)
@@ -27,7 +27,7 @@ Phase 8: Production          [....................]   0%  FINAL PHASE
 | Phase | Status | Items | Done | Remaining | Blocking |
 |-------|--------|-------|------|-----------|----------|
 | **0: Foundation** | COMPLETE | 12 | 12 | 0 | - |
-| **1: Core Execution** | COMPLETE | 39 | 37 | 2 | - |
+| **1: Core Execution** | COMPLETE | 47 | 47 | 0 | - |
 | **2: Brain Topology** | UNBLOCKED | 22 | 6 | 16 | - |
 | **3: Replay System** | PENDING | 28 | 0 | 28 | - |
 | **4: RLHF Training** | PARTIAL | 22 | 8 | 14 | Phase 2.2 |
@@ -35,7 +35,7 @@ Phase 8: Production          [....................]   0%  FINAL PHASE
 | **6: Compiler** | UNBLOCKED | 23 | 5 | 18 | - |
 | **7: 3D Viz** | PENDING | 20 | 0 | 20 | None |
 | **8: Production** | FINAL | 22 | 0 | 22 | All phases |
-| **TOTAL** | - | **216** | **68** | **148** | - |
+| **TOTAL** | - | **224** | **78** | **146** | - |
 
 ---
 
@@ -138,11 +138,33 @@ All foundation components are implemented and working:
 
 **File:** `scxq2_engine.js` (600+ lines)
 
+### 1.4 SQL API Query Engine [100% - COMPLETE]
+
+**Done:**
+- [x] SQL Lexer with full token support
+- [x] SQL Parser for SELECT/INSERT/UPDATE/DELETE
+- [x] Expression parsing with operator precedence
+- [x] WHERE clause with AND/OR/NOT logic
+- [x] ORDER BY, LIMIT, OFFSET support
+- [x] GROUP BY and HAVING clauses
+- [x] Aggregate functions: COUNT, SUM, AVG, MIN, MAX
+- [x] π-KUHUL functions: PHI, GOLDEN, ENTROPY, COMPRESS, GLYPH, KUHUL
+- [x] JSON path expressions ($. syntax)
+- [x] Glyph literal support in queries
+- [x] Virtual tables for MX2LM state (brains, agents, metrics, weights, traces)
+- [x] Add `/sql/query` API endpoint
+- [x] Add `/sql/execute` API endpoint
+- [x] Add `/sql/parse` API endpoint
+- [x] Add `/sql/tables` API endpoint
+- [x] Add `/sql/schema` API endpoint
+
+**File:** `sql_api.js` (1100+ lines)
+
 ---
 
 ## Phase 2: Brain Topology Execution [UNBLOCKED - 30%]
 
-**Status:** GlyphVM + XCFE + SCXQ2 complete - ready to proceed
+**Status:** GlyphVM + XCFE + SCXQ2 + SQL complete - ready to proceed
 
 ### 2.1 Pi Calculus Engine Enhancement [20%]
 
@@ -482,10 +504,11 @@ Phase 1.1 (GlyphVM)
 | File | Lines | Focus Area | Status |
 |------|-------|------------|--------|
 | `glyph_vm.js` | 1,458 | Implement missing opcodes | ✅ Core done |
-| `sw.js` | 3,995 | Wire brain execution to `/infer` | ✅ Wired |
+| `sw.js` | 4,285 | Wire brain execution to `/infer` | ✅ Wired |
 | `sw.khl` | 500 | Connect to GlyphVM | ✅ Connected |
 | `xcfe_transform.js` | 900+ | XJSON → AST → Transform | ✅ COMPLETE |
 | `scxq2_engine.js` | 600+ | SVG parsing + compression | ✅ COMPLETE |
+| `sql_api.js` | 1,100+ | SQL query over IndexedDB | ✅ COMPLETE |
 | `block_runtime.js` | 1,508 | Complete atomic block execution | Pending |
 | `rlhf_ngram_engine.js` | 600 | Add IndexedDB persistence | Pending |
 
@@ -495,12 +518,13 @@ Phase 1.1 (GlyphVM)
 
 | Milestone | Target | Current |
 |-----------|--------|---------|
-| API endpoints working | 30 | 25+ |
+| API endpoints working | 35 | 30+ ✅ |
 | GlyphVM opcodes | 8 | 8 ✅ |
 | Brain topologies executable | 30 | 0 |
 | Model adapters complete | 10 | 3 |
 | XCFE transforms | 5 | 3 ✅ |
 | SCXQ2 compression | Yes | Yes ✅ |
+| SQL API | Yes | Yes ✅ |
 | Test coverage | 80% | 0% |
 | Deterministic replay verified | Yes | No |
 

@@ -3517,7 +3517,9 @@ const EXTENDED_API_PATHS = new Set([
   // Qwen-ASX (base training format)
   '/qwen-asx/infer', '/qwen-asx/test', '/qwen-asx/status',
   '/qwen-asx/training/record', '/qwen-asx/training/emit-delta',
-  '/qwen-asx/trace'
+  '/qwen-asx/trace',
+  // SQL API (IndexedDB query interface)
+  '/sql/query', '/sql/execute', '/sql/parse', '/sql/tables', '/sql/schema'
 ]);
 
 // Handle extended API requests
@@ -4096,6 +4098,121 @@ async function handleExtendedAPI(url, request) {
         tick: ΩCLOCK.tick
       });
 
+    // ===== SQL API (IndexedDB Query Interface) =====
+    case '/sql/query':
+    case '/sql/execute':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const sqlQuery = payload.query || payload.sql || '';
+        if (!sqlQuery.trim()) {
+          return mx2_json({ error: 'empty_query', message: 'SQL query is required' }, 400);
+        }
+        // Use in-memory tables with MX2LM state
+        const sqlExecutor = typeof createSQLExecutor !== 'undefined'
+          ? createSQLExecutor(null)
+          : new SQLExecutor(null);
+
+        // Register MX2LM virtual tables
+        if (typeof registerMX2Tables !== 'undefined') {
+          registerMX2Tables(sqlExecutor, {
+            brains: KERNEL_STATE.brain_topologies || {},
+            agents: KERNEL_STATE.micro_agents || {},
+            metrics: PI_METRIC_TABLE || {},
+            weights: KERNEL_STATE.ngram_weights || [],
+            traces: KERNEL_STATE.traces || [],
+            version: Ω.VERSION,
+            tick: ΩCLOCK.tick,
+            start_time: ΩCLOCK.epoch
+          });
+        }
+
+        // Register any custom tables from payload
+        if (payload.tables) {
+          for (const [name, data] of Object.entries(payload.tables)) {
+            sqlExecutor.registerTable(name, data);
+          }
+        }
+
+        const ast = typeof sqlParse !== 'undefined' ? sqlParse(sqlQuery) : [];
+        const results = [];
+        for (const stmt of ast) {
+          results.push(await sqlExecutor.execute(stmt));
+        }
+
+        kuhulTick();
+        return mx2_json({
+          ok: true,
+          result: results.length === 1 ? results[0] : results,
+          query: sqlQuery,
+          tick: ΩCLOCK.tick
+        });
+      } catch (sqlError) {
+        return mx2_json({
+          ok: false,
+          error: 'sql_error',
+          message: sqlError.message,
+          tick: ΩCLOCK.tick
+        }, 400);
+      }
+
+    case '/sql/parse':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const parseQuery = payload.query || payload.sql || '';
+        const parsedAst = typeof sqlParse !== 'undefined' ? sqlParse(parseQuery) : [];
+        return mx2_json({
+          ok: true,
+          ast: parsedAst,
+          statementCount: parsedAst.length,
+          tick: ΩCLOCK.tick
+        });
+      } catch (parseError) {
+        return mx2_json({
+          ok: false,
+          error: 'parse_error',
+          message: parseError.message,
+          tick: ΩCLOCK.tick
+        }, 400);
+      }
+
+    case '/sql/tables':
+      // List available virtual tables
+      return mx2_json({
+        ok: true,
+        tables: [
+          { name: 'brains', description: 'Brain topology registry', virtual: true },
+          { name: 'agents', description: 'Micro-agent registry', virtual: true },
+          { name: 'metrics', description: 'PI_METRIC_TABLE entries', virtual: true },
+          { name: 'weights', description: 'N-gram weight tables', virtual: true },
+          { name: 'traces', description: 'Execution traces', virtual: true },
+          { name: 'sys_info', description: 'System information', virtual: true }
+        ],
+        kuhulFunctions: ['PHI', 'GOLDEN', 'ENTROPY', 'COMPRESS', 'GLYPH', 'KUHUL'],
+        tick: ΩCLOCK.tick
+      });
+
+    case '/sql/schema':
+      // Get schema for a specific table
+      const tableName = payload.table || url.searchParams.get('table') || 'brains';
+      const schemas = {
+        brains: { id: 'string', name: 'string', type: 'string', layers: 'number', created_at: 'number' },
+        agents: { id: 'string', name: 'string', generation: 'number', status: 'string', last_active: 'number' },
+        metrics: { id: 'string', name: 'string', value: 'number', effect: 'string', timestamp: 'number' },
+        weights: { id: 'number', sequence: 'string', weight: 'number', count: 'number', last_updated: 'number' },
+        traces: { id: 'string', tick: 'number', operation: 'string', input_hash: 'string', output_hash: 'string', duration_ms: 'number' },
+        sys_info: { version: 'string', uptime_ms: 'number', phi: 'number', phi_inv: 'number', tick: 'number' }
+      };
+      return mx2_json({
+        ok: true,
+        table: tableName,
+        schema: schemas[tableName.toLowerCase()] || null,
+        tick: ΩCLOCK.tick
+      });
+
     default:
       return null;
   }
@@ -4134,6 +4251,7 @@ console.log(`
 ║ + DEEPSEEK MoE ADAPTER (π-KUHUL)                        ║
 ║ + QWEN-ASX BASE TRAINING FORMAT (sw.khl kernel)         ║
 ║ + MULTI-PROVIDER API (Claude/OpenAI/Deepseek/Mistral)   ║
+║ + SQL API (IndexedDB query interface + π-KUHUL funcs)   ║
 ║ Law: Ω-BLACK-PANEL | CC-v1                              ║
 ║ Architecture: NATIVE_JSON_REST_INSIDE_KERNEL           ║
 ║ Stack: XJSON ⇄ K'UHUL ⇄ ASX_RAM ⇄ MX2LM_INFERENCE      ║
@@ -4151,6 +4269,7 @@ console.log(`
 ║ BLOCKS:   /blocks        QWEN-ASX: /qwen-asx           ║
 ║ P2P:      /p2p           SCXQ2:    /scxq2              ║
 ║ CRYPTO:   /crypto        PROVIDERS:/providers          ║
+║ SQL:      /sql/query     XCFE:     /xcfe/pipeline      ║
 ║                                                         ║
 ║ External AI sees: multiple brains                      ║
 ║ Internal reality: unified training format + RLHF       ║
