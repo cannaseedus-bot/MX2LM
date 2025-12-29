@@ -3510,6 +3510,10 @@ const EXTENDED_API_PATHS = new Set([
   // GlyphVM & K'UHUL Pipeline
   '/glyph/execute', '/glyph/compile', '/glyph/metrics', '/glyph/vm/status',
   '/brain/pipeline', '/brain/infer',
+  // XCFE Transform Pipeline
+  '/xcfe/tokenize', '/xcfe/parse', '/xcfe/transform', '/xcfe/optimize', '/xcfe/pipeline',
+  // SCXQ2 Compression (enhanced)
+  '/scxq2/compress', '/scxq2/decompress', '/scxq2/dict',
   // Qwen-ASX (base training format)
   '/qwen-asx/infer', '/qwen-asx/test', '/qwen-asx/status',
   '/qwen-asx/training/record', '/qwen-asx/training/emit-delta',
@@ -3744,6 +3748,139 @@ async function handleExtendedAPI(url, request) {
           error: err.message,
           tick: ΩCLOCK.tick
         }, 500);
+      }
+
+    // ===== XCFE Transform Pipeline API =====
+    case '/xcfe/tokenize':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const tokens = xjsonTokenize(payload.source || '');
+        return mx2_json({
+          ok: true,
+          tokens,
+          count: tokens.length,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({ ok: false, error: err.message }, 500);
+      }
+
+    case '/xcfe/parse':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const { ast, errors } = xjsonParse(payload.source || '');
+        return mx2_json({
+          ok: errors.length === 0,
+          ast: ast?.toJSON(),
+          errors,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({ ok: false, error: err.message }, 500);
+      }
+
+    case '/xcfe/transform':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const { ast } = xjsonParse(payload.source || '');
+        const rules = (payload.rules || []).map(r =>
+          new TransformRule(r.name, r.pattern, eval(`(${r.transform})`), r.options)
+        );
+        const result = xcfeTransform(ast, rules);
+        return mx2_json({
+          ok: true,
+          ast: result.ast?.toJSON(),
+          metrics: result.metrics,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({ ok: false, error: err.message }, 500);
+      }
+
+    case '/xcfe/optimize':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const { ast } = xjsonParse(payload.source || '');
+        const result = xcfeOptimize(ast, payload.options || {});
+        return mx2_json({
+          ok: true,
+          ast: result.ast?.toJSON(),
+          metrics: result.metrics,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({ ok: false, error: err.message }, 500);
+      }
+
+    case '/xcfe/pipeline':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const result = xcfePipeline(payload.source || '', payload.options || {});
+        kuhulTick();
+        return mx2_json({
+          ...result,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({ ok: false, error: err.message }, 500);
+      }
+
+    // ===== SCXQ2 Compression API (Enhanced) =====
+    case '/scxq2/compress':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const compressed = scxq2Compress(payload.data || payload.source || '', payload.options || {});
+        kuhulTick();
+        return mx2_json({
+          ok: true,
+          ...compressed,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({ ok: false, error: err.message }, 500);
+      }
+
+    case '/scxq2/decompress':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const decompressed = scxq2Decompress(payload.compressed || {});
+        return mx2_json({
+          ok: true,
+          data: decompressed,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({ ok: false, error: err.message }, 500);
+      }
+
+    case '/scxq2/dict':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const dict = scxq2BuildDict(payload.data || payload.source || '');
+        return mx2_json({
+          ok: true,
+          dict,
+          size: Object.keys(dict).length,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({ ok: false, error: err.message }, 500);
       }
 
     // ===== Janus Adapter API =====
