@@ -3519,7 +3519,18 @@ const EXTENDED_API_PATHS = new Set([
   '/qwen-asx/training/record', '/qwen-asx/training/emit-delta',
   '/qwen-asx/trace',
   // SQL API (IndexedDB query interface)
-  '/sql/query', '/sql/execute', '/sql/parse', '/sql/tables', '/sql/schema'
+  '/sql/query', '/sql/execute', '/sql/parse', '/sql/tables', '/sql/schema',
+  // IDB Storage API (K'UHUL-integrated IndexedDB)
+  '/idb/tensor/store', '/idb/tensor/load', '/idb/tensor/query', '/idb/tensor/delete',
+  '/idb/rlhf/store', '/idb/rlhf/query', '/idb/rlhf/aggregate',
+  '/idb/events/store', '/idb/events/query',
+  '/idb/vocab/store', '/idb/vocab/load',
+  '/idb/weights/store', '/idb/weights/load',
+  '/idb/trace/store', '/idb/trace/query',
+  '/idb/delta/store', '/idb/delta/pending', '/idb/delta/apply',
+  '/idb/cache/set', '/idb/cache/get', '/idb/cache/prune',
+  '/idb/stats', '/idb/clear',
+  '/idb/compress', '/idb/decompress'
 ]);
 
 // Handle extended API requests
@@ -4213,6 +4224,327 @@ async function handleExtendedAPI(url, request) {
         tick: ΩCLOCK.tick
       });
 
+    // ===== IDB Storage API (K'UHUL-integrated IndexedDB) =====
+    case '/idb/tensor/store':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.storeTensor(payload.name, {
+          shape: payload.shape,
+          dtype: payload.dtype || 'float32',
+          data: payload.data,
+          compression: payload.compression || { method: 'none' },
+          metadata: payload.metadata || {}
+        });
+        kuhulTick();
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/tensor/load':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const tensor = await adapter.loadTensor(payload.name);
+        return mx2_json({ ok: !!tensor, tensor, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/tensor/query':
+      try {
+        const adapter = await getIDBAdapter();
+        const tensors = await adapter.queryTensors(payload.where || {});
+        return mx2_json({ ok: true, tensors, count: tensors.length, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/tensor/delete':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.deleteTensor(payload.name);
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/rlhf/store':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.storeRLHF(payload.data || payload);
+        kuhulTick();
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/rlhf/query':
+      try {
+        const adapter = await getIDBAdapter();
+        const results = await adapter.queryRLHF(payload.where || {}, {
+          orderBy: payload.orderBy,
+          limit: payload.limit,
+          offset: payload.offset
+        });
+        return mx2_json({ ok: true, results, count: results.length, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/rlhf/aggregate':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const results = await adapter.aggregateRLHF(payload.groupBy, payload.aggregates);
+        return mx2_json({ ok: true, results, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/events/store':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.storeEvents(payload.type, payload.events);
+        kuhulTick();
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/events/query':
+      try {
+        const adapter = await getIDBAdapter();
+        const events = await adapter.queryEvents(payload.type, payload.timeRange, {
+          limit: payload.limit
+        });
+        return mx2_json({ ok: true, events, count: events.length, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/vocab/store':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.storeVocabulary(payload.name, payload.vocab, payload.compression || 'scxq2');
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/vocab/load':
+      try {
+        const adapter = await getIDBAdapter();
+        const vocab = await adapter.loadVocabulary(payload.name || url.searchParams.get('name'));
+        return mx2_json({ ok: !!vocab, ...vocab, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/weights/store':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.storeWeights(payload.weights, payload.epoch || 0);
+        kuhulTick();
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/weights/load':
+      try {
+        const adapter = await getIDBAdapter();
+        const weights = await adapter.loadWeights(payload.epoch);
+        return mx2_json({ ok: true, weights, count: weights.length, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/trace/store':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.storeTrace(payload);
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/trace/query':
+      try {
+        const adapter = await getIDBAdapter();
+        const traces = await adapter.queryTraces(payload.where || {}, {
+          orderBy: payload.orderBy,
+          limit: payload.limit
+        });
+        return mx2_json({ ok: true, traces, count: traces.length, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/delta/store':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.storeDelta(payload);
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/delta/pending':
+      try {
+        const adapter = await getIDBAdapter();
+        const deltas = await adapter.getPendingDeltas();
+        return mx2_json({ ok: true, deltas, count: deltas.length, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/delta/apply':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.applyDelta(payload.id);
+        kuhulTick();
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/cache/set':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.cacheSet(payload.key, payload.value, payload.ttl || 3600000);
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/cache/get':
+      try {
+        const adapter = await getIDBAdapter();
+        const value = await adapter.cacheGet(payload.key || url.searchParams.get('key'));
+        return mx2_json({ ok: value !== null, value, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/cache/prune':
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.cachePrune();
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/stats':
+      try {
+        const adapter = await getIDBAdapter();
+        const stats = await adapter.getStats();
+        return mx2_json({ ok: true, stats, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/clear':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.clearAll();
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/compress':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        let result;
+        switch (payload.method || 'scxq2') {
+          case 'scxq2':
+            result = compressSCXQ2(payload.data, payload.params || {});
+            break;
+          case 'quantization':
+            result = quantize(payload.data, payload.params?.bits || 8);
+            break;
+          case 'delta':
+            result = deltaEncode(payload.data);
+            break;
+          case 'sparse':
+            result = sparseEncode(payload.data, payload.params?.threshold || 0);
+            break;
+          default:
+            return mx2_json({ ok: false, error: 'unknown_compression_method' }, 400);
+        }
+        return mx2_json({ ok: true, method: payload.method, ...result, tick: ΩCLOCK.tick });
+      } catch (compError) {
+        return mx2_json({ ok: false, error: 'compression_error', message: compError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/decompress':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        let result;
+        switch (payload.method || 'scxq2') {
+          case 'scxq2':
+            result = decompressSCXQ2(payload.data, payload.dictionary);
+            break;
+          case 'quantization':
+            result = dequantize(payload.data, payload.min, payload.max, payload.bits || 8);
+            break;
+          case 'delta':
+            result = deltaDecode(payload.data, payload.baseline);
+            break;
+          case 'sparse':
+            result = sparseDecode(payload.data);
+            break;
+          default:
+            return mx2_json({ ok: false, error: 'unknown_decompression_method' }, 400);
+        }
+        return mx2_json({ ok: true, method: payload.method, data: result, tick: ΩCLOCK.tick });
+      } catch (decompError) {
+        return mx2_json({ ok: false, error: 'decompression_error', message: decompError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
     default:
       return null;
   }
@@ -4252,6 +4584,7 @@ console.log(`
 ║ + QWEN-ASX BASE TRAINING FORMAT (sw.khl kernel)         ║
 ║ + MULTI-PROVIDER API (Claude/OpenAI/Deepseek/Mistral)   ║
 ║ + SQL API (IndexedDB query interface + π-KUHUL funcs)   ║
+║ + IDB STORAGE (Tensor/RLHF/Events + SCXQ2 compression)  ║
 ║ Law: Ω-BLACK-PANEL | CC-v1                              ║
 ║ Architecture: NATIVE_JSON_REST_INSIDE_KERNEL           ║
 ║ Stack: XJSON ⇄ K'UHUL ⇄ ASX_RAM ⇄ MX2LM_INFERENCE      ║
@@ -4270,6 +4603,7 @@ console.log(`
 ║ P2P:      /p2p           SCXQ2:    /scxq2              ║
 ║ CRYPTO:   /crypto        PROVIDERS:/providers          ║
 ║ SQL:      /sql/query     XCFE:     /xcfe/pipeline      ║
+║ IDB:      /idb/tensor    RLHF:     /idb/rlhf           ║
 ║                                                         ║
 ║ External AI sees: multiple brains                      ║
 ║ Internal reality: unified training format + RLHF       ║
