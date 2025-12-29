@@ -1,6 +1,6 @@
 # MX2LM Progress Tracker
 
-**Overall Progress: 48% Complete**
+**Overall Progress: 52% Complete**
 **Last Updated: 2025-12-29**
 **Branch: `claude/integrate-components-O0Ts2`**
 
@@ -27,7 +27,7 @@ Phase 8: Production          [....................]   0%  FINAL PHASE
 | Phase | Status | Items | Done | Remaining | Blocking |
 |-------|--------|-------|------|-----------|----------|
 | **0: Foundation** | COMPLETE | 12 | 12 | 0 | - |
-| **1: Core Execution** | COMPLETE | 72 | 72 | 0 | - |
+| **1: Core Execution** | COMPLETE | 88 | 88 | 0 | - |
 | **2: Brain Topology** | UNBLOCKED | 22 | 6 | 16 | - |
 | **3: Replay System** | PARTIAL | 28 | 6 | 22 | - |
 | **4: RLHF Training** | PARTIAL | 22 | 12 | 10 | - |
@@ -35,7 +35,7 @@ Phase 8: Production          [....................]   0%  FINAL PHASE
 | **6: Compiler** | UNBLOCKED | 23 | 5 | 18 | - |
 | **7: 3D Viz** | PENDING | 20 | 0 | 20 | None |
 | **8: Production** | FINAL | 22 | 0 | 22 | All phases |
-| **TOTAL** | - | **249** | **113** | **136** | - |
+| **TOTAL** | - | **265** | **129** | **136** | - |
 
 ---
 
@@ -187,6 +187,50 @@ All foundation components are implemented and working:
 - [x] Add `/idb/compress` and `/idb/decompress` endpoints
 
 **File:** `idb_storage.js` (1200+ lines)
+
+### 1.6 KQL Query Language Engine [100% - COMPLETE]
+
+**Done:**
+- [x] KQL Lexer with full glyph token support
+  - Multi-character glyph matching (⟁STORE⟁, ⟁LOAD⟁, etc.)
+  - Number, string, identifier, operator tokenization
+  - Source location tracking for all tokens
+  - Comment support (⟁* ... ⟁)
+- [x] KQL Parser for AST generation
+  - Complete EBNF grammar implementation
+  - Tensor statements (StoreTensor, LoadTensor, TensorSlice, TensorJoin)
+  - RLHF statements (StoreRLHF, LoadRLHF, AnalyzeRLHF)
+  - Event statements (StoreEvents, LoadEvents, CorrelateEvents)
+  - Vocab statements (StoreVocab, LoadVocab)
+  - Control flow (IfStatement, ForStatement, ReturnStatement)
+  - Expression parsing with operator precedence
+- [x] KQL Executor with IDB integration
+  - Tensor operations with compression
+  - RLHF data aggregation with GROUP BY
+  - Event correlation with time ranges
+  - All four compression methods:
+    - SCXQ2 dictionary encoding
+    - Quantization (1-16 bit)
+    - Delta encoding for timestamps
+    - Sparse encoding for attention weights
+- [x] π-KUHUL mathematical functions (phi, golden, entropy)
+- [x] Full compression/decompression roundtrip
+- [x] AST validation and error reporting
+- [x] Add `/kql/query` API endpoint
+- [x] Add `/kql/parse` API endpoint
+- [x] Add `/kql/tokenize` API endpoint
+- [x] Add `/kql/execute` API endpoint
+- [x] Add `/kql/validate` API endpoint
+- [x] Add `/kql/version` API endpoint
+- [x] Add `/kql/schema` API endpoint
+
+**Frozen ASX-R Components:**
+- KQL v1.0 is frozen as canonical ASX-R query dialect
+- CRFS-1 Core Runtime Fold Set defined (6 core folds)
+- ASX-R Language Header v1.0 locked
+- ASX-R/REF Reference Interpreter Profile specified
+
+**File:** `kql_engine.js` (1500+ lines)
 
 ---
 
@@ -532,12 +576,13 @@ Phase 1.1 (GlyphVM)
 | File | Lines | Focus Area | Status |
 |------|-------|------------|--------|
 | `glyph_vm.js` | 1,458 | Implement missing opcodes | ✅ Core done |
-| `sw.js` | 4,620 | Wire brain execution to `/infer` | ✅ Wired |
+| `sw.js` | 4,800+ | Wire brain execution to `/infer` | ✅ Wired |
 | `sw.khl` | 500 | Connect to GlyphVM | ✅ Connected |
 | `xcfe_transform.js` | 900+ | XJSON → AST → Transform | ✅ COMPLETE |
 | `scxq2_engine.js` | 600+ | SVG parsing + compression | ✅ COMPLETE |
 | `sql_api.js` | 1,100+ | SQL query over IndexedDB | ✅ COMPLETE |
 | `idb_storage.js` | 1,200+ | K'UHUL-integrated IDB storage | ✅ COMPLETE |
+| `kql_engine.js` | 1,500+ | K'UHUL Query Language engine | ✅ COMPLETE |
 | `block_runtime.js` | 1,508 | Complete atomic block execution | Pending |
 | `rlhf_ngram_engine.js` | 600 | Connect to IDB adapter | Partial |
 
@@ -547,7 +592,7 @@ Phase 1.1 (GlyphVM)
 
 | Milestone | Target | Current |
 |-----------|--------|---------|
-| API endpoints working | 50 | 48+ ✅ |
+| API endpoints working | 60 | 55+ ✅ |
 | GlyphVM opcodes | 8 | 8 ✅ |
 | Brain topologies executable | 30 | 0 |
 | Model adapters complete | 10 | 3 |
@@ -555,6 +600,8 @@ Phase 1.1 (GlyphVM)
 | SCXQ2 compression | Yes | Yes ✅ |
 | SQL API | Yes | Yes ✅ |
 | IDB Storage | Yes | Yes ✅ |
+| KQL Query Language | Yes | Yes ✅ |
+| ASX-R Spec Frozen | Yes | Yes ✅ |
 | Test coverage | 80% | 0% |
 | Deterministic replay verified | Yes | No |
 

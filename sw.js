@@ -3530,7 +3530,10 @@ const EXTENDED_API_PATHS = new Set([
   '/idb/delta/store', '/idb/delta/pending', '/idb/delta/apply',
   '/idb/cache/set', '/idb/cache/get', '/idb/cache/prune',
   '/idb/stats', '/idb/clear',
-  '/idb/compress', '/idb/decompress'
+  '/idb/compress', '/idb/decompress',
+  // KQL (K'UHUL Query Language) API
+  '/kql/query', '/kql/parse', '/kql/tokenize', '/kql/execute', '/kql/validate',
+  '/kql/version', '/kql/schema'
 ]);
 
 // Handle extended API requests
@@ -4545,9 +4548,211 @@ async function handleExtendedAPI(url, request) {
         return mx2_json({ ok: false, error: 'decompression_error', message: decompError.message, tick: ΩCLOCK.tick }, 500);
       }
 
+    // ===== KQL (K'UHUL Query Language) API =====
+    case '/kql/query':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const kqlQuery = payload.query || payload.kql || '';
+        if (!kqlQuery.trim()) {
+          return mx2_json({ ok: false, error: 'empty_query' }, 400);
+        }
+
+        // Initialize KQL API
+        const kqlApi = typeof KQLAPI !== 'undefined' ? new KQLAPI() : null;
+        if (!kqlApi) {
+          return mx2_json({ ok: false, error: 'kql_not_initialized' }, 500);
+        }
+
+        const result = await kqlApi.query(kqlQuery);
+        kuhulTick();
+        return mx2_json({
+          ok: result.success,
+          version: result.version,
+          result: result.result,
+          error: result.error,
+          tick: ΩCLOCK.tick
+        });
+      } catch (kqlError) {
+        return mx2_json({ ok: false, error: 'kql_error', message: kqlError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/kql/parse':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const parseQuery = payload.query || payload.kql || '';
+        if (!parseQuery.trim()) {
+          return mx2_json({ ok: false, error: 'empty_query' }, 400);
+        }
+
+        const kqlApi = typeof KQLAPI !== 'undefined' ? new KQLAPI() : null;
+        if (!kqlApi) {
+          return mx2_json({ ok: false, error: 'kql_not_initialized' }, 500);
+        }
+
+        const ast = kqlApi.parse(parseQuery);
+        return mx2_json({
+          ok: true,
+          ast: ast,
+          nodeCount: countASTNodes(ast),
+          tick: ΩCLOCK.tick
+        });
+      } catch (parseError) {
+        return mx2_json({ ok: false, error: 'kql_parse_error', message: parseError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/kql/tokenize':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const tokenQuery = payload.query || payload.kql || '';
+        if (!tokenQuery.trim()) {
+          return mx2_json({ ok: false, error: 'empty_query' }, 400);
+        }
+
+        const kqlApi = typeof KQLAPI !== 'undefined' ? new KQLAPI() : null;
+        if (!kqlApi) {
+          return mx2_json({ ok: false, error: 'kql_not_initialized' }, 500);
+        }
+
+        const tokens = kqlApi.tokenize(tokenQuery);
+        return mx2_json({
+          ok: true,
+          tokens: tokens,
+          tokenCount: tokens.length,
+          tick: ΩCLOCK.tick
+        });
+      } catch (tokenError) {
+        return mx2_json({ ok: false, error: 'kql_tokenize_error', message: tokenError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/kql/execute':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const ast = payload.ast;
+        if (!ast) {
+          return mx2_json({ ok: false, error: 'missing_ast' }, 400);
+        }
+
+        const kqlApi = typeof KQLAPI !== 'undefined' ? new KQLAPI() : null;
+        if (!kqlApi) {
+          return mx2_json({ ok: false, error: 'kql_not_initialized' }, 500);
+        }
+
+        const result = await kqlApi.execute(ast);
+        kuhulTick();
+        return mx2_json({
+          ok: true,
+          result: result,
+          tick: ΩCLOCK.tick
+        });
+      } catch (execError) {
+        return mx2_json({ ok: false, error: 'kql_execute_error', message: execError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/kql/validate':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const ast = payload.ast;
+        if (!ast) {
+          return mx2_json({ ok: false, error: 'missing_ast' }, 400);
+        }
+
+        const kqlApi = typeof KQLAPI !== 'undefined' ? new KQLAPI() : null;
+        if (!kqlApi) {
+          return mx2_json({ ok: false, error: 'kql_not_initialized' }, 500);
+        }
+
+        const validation = kqlApi.validate(ast);
+        return mx2_json({
+          ok: true,
+          valid: validation.valid,
+          errors: validation.errors,
+          tick: ΩCLOCK.tick
+        });
+      } catch (validateError) {
+        return mx2_json({ ok: false, error: 'kql_validate_error', message: validateError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/kql/version':
+      return mx2_json({
+        ok: true,
+        version: typeof KQL_VERSION !== 'undefined' ? KQL_VERSION : '1.0.0',
+        language: 'KQL',
+        family: 'ASX-R',
+        dialect: 'K\'UHUL Query Language',
+        status: 'FROZEN',
+        features: [
+          'glyph-based syntax',
+          'tensor operations',
+          'RLHF queries',
+          'event correlation',
+          'SCXQ2 compression',
+          'delta encoding',
+          'sparse encoding',
+          'quantization'
+        ],
+        tick: ΩCLOCK.tick
+      });
+
+    case '/kql/schema':
+      return mx2_json({
+        ok: true,
+        schema: {
+          statements: [
+            'StoreTensor', 'LoadTensor', 'TensorSlice', 'TensorJoin', 'TensorAggregate',
+            'StoreRLHF', 'LoadRLHF', 'AnalyzeRLHF',
+            'StoreEvents', 'LoadEvents', 'CorrelateEvents',
+            'StoreVocab', 'LoadVocab',
+            'IndexStatement', 'CompressStatement', 'DecompressStatement',
+            'IfStatement', 'ForStatement', 'ReturnStatement'
+          ],
+          expressions: [
+            'Literal', 'Identifier', 'BinaryExpression', 'UnaryExpression',
+            'FunctionCall', 'ArrayExpression', 'MemberExpression'
+          ],
+          compressionMethods: ['scxq2', 'quantization', 'delta', 'sparse'],
+          aggregateFunctions: ['mean', 'std', 'count', 'sum', 'min', 'max', 'avg'],
+          dataTypes: ['float32', 'float16', 'int32', 'int16', 'int8', 'uint8', 'bool', 'string'],
+          glyphs: [
+            '⟁STORE⟁', '⟁LOAD⟁', '⟁TENSOR⟁', '⟁RLHF⟁', '⟁EVENTS⟁', '⟁VOCAB⟁',
+            '⟁SHAPE⟁', '⟁DTYPE⟁', '⟁DATA⟁', '⟁COMPRESS⟁', '⟁DECOMPRESS⟁',
+            '⟁WHERE⟁', '⟁LIMIT⟁', '⟁AS⟁', '⟁ON⟁', '⟁BETWEEN⟁',
+            '⟁ANALYZE⟁', '⟁GROUP⟁', '⟁AGGREGATE⟁', '⟁CORRELATE⟁',
+            '⟁IF⟁', '⟁THEN⟁', '⟁ELSE⟁', '⟁FOR⟁', '⟁IN⟁', '⟁DO⟁', '⟁RETURN⟁',
+            '⟁AND⟁', '⟁OR⟁', '⟁NOT⟁', '⟁Xul⟁'
+          ]
+        },
+        tick: ΩCLOCK.tick
+      });
+
     default:
       return null;
   }
+}
+
+// Helper function to count AST nodes
+function countASTNodes(node) {
+  if (!node || typeof node !== 'object') return 0;
+  let count = 1;
+  for (const value of Object.values(node)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        count += countASTNodes(item);
+      }
+    } else if (typeof value === 'object' && value !== null) {
+      count += countASTNodes(value);
+    }
+  }
+  return count;
 }
 
 // Add extended routes to fetch handler
