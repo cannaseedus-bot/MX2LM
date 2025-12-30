@@ -91,6 +91,8 @@ const SCXQ2_GLYPHS = Object.freeze({
    KERNEL STATE (NON-UI)
 -------------------------------- */
 
+let SUPREME_API = null;
+
 const KERNEL_STATE = {
   manifest: null,
   brain: null,
@@ -102,10 +104,16 @@ const KERNEL_STATE = {
 
   entropy: 0.32,
   ticks: 0,
+  micro: {
+    agents: [],
+    builders: [],
+    jobs: []
+  },
   
   // Supreme JSON REST API State
   api: {
     routes: null,
+    registry: new Map(),
     performance: {
       health: 0,
       infer: 0,
@@ -135,7 +143,8 @@ const KERNEL_STATE = {
       auth_failures: 0,
       rate_limit_hits: 0,
       avg_response_time: 0
-    }
+    },
+    route_metrics: {}
   }
 };
 
@@ -152,9 +161,47 @@ async function loadManifest() {
   // Load API routes from manifest
   if (manifest["🌐NATIVE_JSON_REST_API"]?.api_routes) {
     KERNEL_STATE.api.routes = manifest["🌐NATIVE_JSON_REST_API"].api_routes;
+    applyManifestToKernel(manifest);
   }
   
   return manifest;
+}
+
+function hydrateMicroState(manifest) {
+  const microRoot = manifest?.["👷🌀MICRO_AGENTS_BUILDERS_RECURSIVE_ECOSYSTEM"];
+  const tables = microRoot?.tables || {};
+  const agentSeeds = tables["🤖🌀micro_agents"]?.seed_agents || [];
+  const builderSeeds = tables["🛠🌀micro_builders"]?.seed_builders || [];
+
+  KERNEL_STATE.micro.agents = agentSeeds;
+  KERNEL_STATE.micro.builders = builderSeeds;
+  KERNEL_STATE.micro.jobs = KERNEL_STATE.micro.jobs || [];
+}
+
+const DEFAULT_API_PATHS = [
+  "/health","/infer","/memory/read","/memory/write",
+  "/reinforce","/penalize","/ngrams/snapshot",
+  "/routines/detect","/asx/blocks","/weights",
+  "/micro/jobs/submit","/micro/agents/status","/micro/builders/status"
+];
+
+let API_PATHS = new Set(DEFAULT_API_PATHS);
+
+function updateApiPathSet() {
+  const manifestRoutes = KERNEL_STATE.manifest?.["🌐NATIVE_JSON_REST_API"]?.api_routes;
+  if (manifestRoutes) {
+    API_PATHS = new Set(Object.keys(manifestRoutes));
+  } else {
+    API_PATHS = new Set(DEFAULT_API_PATHS);
+  }
+}
+
+function applyManifestToKernel(manifest) {
+  hydrateMicroState(manifest);
+  if (SUPREME_API?.setManifest) {
+    SUPREME_API.setManifest(manifest);
+  }
+  updateApiPathSet();
 }
 
 /* ============================================================
@@ -173,8 +220,8 @@ function extractBrain(manifest, brainId = "mx2lm_v1_1") {
    ============================================================ */
 
 function expandNodeGlyph(node, layout) {
-  const [x, y] = layout.⟁P;
-  const [w, h] = layout.⟁S;
+  const [x, y] = layout["⟁P"];
+  const [w, h] = layout["⟁S"];
 
   const bindNode = node?.bind?.node || "UNKNOWN_NODE";
   const bindLayer = node?.bind?.layer || "unknown";
@@ -192,17 +239,17 @@ function expandNodeGlyph(node, layout) {
 }
 
 function expandLayer(layer, nodes) {
-  const layout = layer.layout || { ⟁P: [64, 64], ⟁S: [960, 118] };
-  const baseX = (layout.⟁P && layout.⟁P[0]) || 0;
-  const baseY = (layout.⟁P && layout.⟁P[1]) || 0;
+  const layout = layer.layout || { "⟁P": [64, 64], "⟁S": [960, 118] };
+  const baseX = (layout["⟁P"] && layout["⟁P"][0]) || 0;
+  const baseY = (layout["⟁P"] && layout["⟁P"][1]) || 0;
 
   const offsetX = baseX;
   const offsetY = baseY + 40;
 
   return (nodes || []).map((node, i) =>
     expandNodeGlyph(node, {
-      ⟁P: [offsetX + i * 320, offsetY],
-      ⟁S: [300, 58]
+      "⟁P": [offsetX + i * 320, offsetY],
+      "⟁S": [300, 58]
     })
   ).join("");
 }
@@ -275,6 +322,9 @@ class SupremeJSONRESTAPI {
     this.quantumCircuits = new Map();
     this.entanglementPairs = new Map();
     this.scxEngine = new SCXQ2Engine();
+    this.codec = new SCXQ2Codec(this.scxEngine);
+    this.manifest = null;
+    this.routeRegistry = new Map();
   }
 
   // UTF-8 safe base64 encoding/decoding
@@ -292,6 +342,76 @@ class SupremeJSONRESTAPI {
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     const s = new TextDecoder().decode(bytes);
     return JSON.parse(s);
+  }
+
+  setManifest(manifest) {
+    this.manifest = manifest || null;
+    KERNEL_STATE.manifest = this.manifest;
+    const routes = manifest?.["🌐NATIVE_JSON_REST_API"]?.api_routes || {};
+    this.routeRegistry = new Map();
+    KERNEL_STATE.api.registry = this.routeRegistry;
+    KERNEL_STATE.api.routes = routes;
+    const handlerMap = this.getHandlerMap();
+    Object.entries(routes).forEach(([path, def]) => {
+      const handler = handlerMap[path];
+      if (!handler) return;
+      this.routeRegistry.set(path, {
+        method: def.method || "GET",
+        handler,
+        schema: {
+          request: def.request_schema || null,
+          response: def.response_schema || null
+        },
+        latency_target_ticks: def.latency_target_ticks || 0
+      });
+      this.ensureRouteMetric(path);
+    });
+    updateApiPathSet();
+  }
+
+  getHandlerMap() {
+    return {
+      "/health": this.healthEndpoint.bind(this),
+      "/infer": this.inferEndpoint.bind(this),
+      "/memory/read": this.memoryReadEndpoint.bind(this),
+      "/memory/write": this.memoryWriteEndpoint.bind(this),
+      "/reinforce": this.reinforceEndpoint.bind(this),
+      "/penalize": this.penalizeEndpoint.bind(this),
+      "/ngrams/snapshot": this.ngramsSnapshotEndpoint.bind(this),
+      "/routines/detect": this.routinesDetectEndpoint.bind(this),
+      "/asx/blocks": this.asxBlocksEndpoint.bind(this),
+      "/weights": this.weightsEndpoint.bind(this),
+      "/micro/jobs/submit": this.microJobsSubmitEndpoint.bind(this),
+      "/micro/agents/status": this.microAgentsStatusEndpoint.bind(this),
+      "/micro/builders/status": this.microBuildersStatusEndpoint.bind(this)
+    };
+  }
+
+  getRouteEntry(path, method) {
+    const entry = this.routeRegistry.get(path);
+    if (!entry) return null;
+    if ((entry.method || "GET") !== method) return null;
+    return entry;
+  }
+
+  ensureRouteMetric(path) {
+    if (!KERNEL_STATE.api.route_metrics[path]) {
+      KERNEL_STATE.api.route_metrics[path] = {
+        requests: 0,
+        total_latency_ticks: 0,
+        last_latency_ticks: 0
+      };
+    }
+  }
+
+  updateRouteMetrics(path, startTick) {
+    this.ensureRouteMetric(path);
+    const metrics = KERNEL_STATE.api.route_metrics[path];
+    const latencyTicks = Math.max(1, ΩCLOCK.tick - startTick);
+    metrics.requests += 1;
+    metrics.total_latency_ticks += latencyTicks;
+    metrics.last_latency_ticks = latencyTicks;
+    return latencyTicks;
   }
 
   // API Authentication
@@ -372,7 +492,17 @@ class SupremeJSONRESTAPI {
   // Route Dispatcher
   async dispatchRoute(path, method, payload, authToken) {
     const wallStart = performance.now(); // non-authoritative telemetry only
+    const startTick = ΩCLOCK.tick;
+    kuhulTick(); // deterministic tick for every route
     KERNEL_STATE.api.metrics.total_requests++;
+
+    const routeEntry = this.getRouteEntry(path, method);
+    if (!routeEntry) {
+      return this.formatResponse(404, {
+        error: "route_not_found",
+        available_routes: Object.keys(KERNEL_STATE.api.routes || {})
+      });
+    }
     
     // Authentication
     if (!this.validateAuthToken(authToken, method, path)) {
@@ -391,59 +521,39 @@ class SupremeJSONRESTAPI {
         retry_after_ms: 1000
       });
     }
+
+    const parsedPayload = this.codec.decodeRequest(routeEntry.schema.request, payload);
+    if (!parsedPayload.ok) {
+      return this.formatResponse(400, {
+        error: "invalid_request_payload",
+        reason: parsedPayload.error
+      });
+    }
     
     let response;
     
     try {
-      switch(path) {
-        case "/health":
-          response = await this.healthEndpoint();
-          break;
-        case "/infer":
-          response = await this.inferEndpoint(payload);
-          break;
-        case "/memory/read":
-          response = await this.memoryReadEndpoint(payload);
-          break;
-        case "/memory/write":
-          response = await this.memoryWriteEndpoint(payload);
-          break;
-        case "/reinforce":
-          response = await this.reinforceEndpoint(payload);
-          break;
-        case "/penalize":
-          response = await this.penalizeEndpoint(payload);
-          break;
-        case "/ngrams/snapshot":
-          response = await this.ngramsSnapshotEndpoint();
-          break;
-        case "/routines/detect":
-          response = await this.routinesDetectEndpoint(payload);
-          break;
-        case "/asx/blocks":
-          response = await this.asxBlocksEndpoint();
-          break;
-        case "/weights":
-          response = await this.weightsEndpoint();
-          break;
-        default:
-          return this.formatResponse(404, {
-            error: "route_not_found",
-            available_routes: Object.keys(KERNEL_STATE.api.routes || {})
-          });
+      response = await routeEntry.handler(parsedPayload.body, routeEntry);
+
+      if (!response || typeof response.status !== "number" || !response.headers || !response.data) {
+        response = this.formatResponse(200, response || {});
       }
+
+      response.data = this.codec.encodeResponse(routeEntry.schema.response, response.data);
       
       const wallEnd = performance.now();
       const responseTime = wallEnd - wallStart;
+      const latencyTicks = this.updateRouteMetrics(path, startTick);
       
       // Update performance metrics
-      this.updatePerformanceMetrics(endpoint, responseTime);
+      this.updatePerformanceMetrics(endpoint, responseTime, latencyTicks);
       
       // Add timing info (non-authoritative telemetry)
       if (response.data) {
         response.data.response_time_ms = responseTime;
         response.data.telemetry_wall_ms = responseTime;
         response.data.quantum_routing_ms = responseTime * 0.1;
+        response.data.latency_ticks = latencyTicks;
       }
       
       KERNEL_STATE.api.metrics.successful_requests++;
@@ -474,6 +584,12 @@ class SupremeJSONRESTAPI {
       memory_utilization: this.calculateMemoryUtilization(),
       uptime_ticks: state.ticks,
       quantum_coherence: this.calculateQuantumCoherence(),
+      route_metrics: KERNEL_STATE.api.route_metrics,
+      micro_state: {
+        agents: KERNEL_STATE.micro.agents.length,
+        builders: KERNEL_STATE.micro.builders.length,
+        jobs: KERNEL_STATE.micro.jobs.length
+      },
       api_metrics: {
         total_requests: KERNEL_STATE.api.metrics.total_requests,
         successful_requests: KERNEL_STATE.api.metrics.successful_requests,
@@ -712,6 +828,42 @@ class SupremeJSONRESTAPI {
     });
   }
 
+  async microJobsSubmitEndpoint(payload) {
+    const payloadCopy = { ...(payload || {}) };
+    const jobId = payloadCopy.job_id || Ω_id("micro_job", JSON.stringify(payloadCopy), ΩCLOCK.tick);
+    const job = {
+      id: jobId,
+      status: "queued",
+      received_tick: ΩCLOCK.tick,
+      payload: this.codec.canonicalize(payloadCopy)
+    };
+    KERNEL_STATE.micro.jobs.push(job);
+    return this.formatResponse(200, {
+      status: "accepted",
+      job_id: jobId,
+      queued_jobs: KERNEL_STATE.micro.jobs.length,
+      quantum_state: "|Ψ⟩ = |MICRO_JOB|⊗|QUEUED|"
+    });
+  }
+
+  async microAgentsStatusEndpoint() {
+    const agents = KERNEL_STATE.micro.agents || [];
+    return this.formatResponse(200, {
+      agents,
+      total_agents: agents.length,
+      quantum_state: "|Ψ⟩ = Σ|AGENT⟩"
+    });
+  }
+
+  async microBuildersStatusEndpoint() {
+    const builders = KERNEL_STATE.micro.builders || [];
+    return this.formatResponse(200, {
+      builders,
+      total_builders: builders.length,
+      quantum_state: "|Ψ⟩ = Σ|BUILDER⟩"
+    });
+  }
+
   // Helper Methods
   formatResponse(status, data) {
     return {
@@ -733,17 +885,22 @@ class SupremeJSONRESTAPI {
   }
 
   getEndpointFromPath(path) {
+    if (path === "/health") return "health";
     if (path === "/infer") return "infer";
     if (path.startsWith("/memory/")) return "memory_ops";
     if (path === "/reinforce" || path === "/penalize") return "reinforcement";
     if (path === "/ngrams/snapshot") return "snapshots";
+    if (path.startsWith("/micro/")) return "micro_jobs";
     return "other";
   }
 
-  updatePerformanceMetrics(endpoint, responseTime) {
+  updatePerformanceMetrics(endpoint, responseTime, latencyTicks = null) {
     const metricKey = endpoint.replace("/", "_");
     if (KERNEL_STATE.api.performance[metricKey] !== undefined) {
       KERNEL_STATE.api.performance[metricKey] = responseTime;
+    }
+    if (latencyTicks != null) {
+      KERNEL_STATE.api.performance[`${metricKey}_ticks`] = latencyTicks;
     }
     
     // Update average response time (telemetry only)
@@ -855,6 +1012,82 @@ class SCXQ2Engine {
   
   currentRatio() {
     return this.compressionRatio;
+  }
+}
+
+/* ============================================================
+   SCXQ2 CODEC (Deterministic wrapper around SCXQ2 engine)
+   - canonical encoding/decoding
+   - schema-aware payload validation
+   ============================================================ */
+
+class SCXQ2Codec {
+  constructor(engine) {
+    this.engine = engine;
+  }
+
+  canonicalize(value) {
+    if (Array.isArray(value)) {
+      return value.map(v => this.canonicalize(v));
+    }
+    if (value && typeof value === "object") {
+      const sorted = {};
+      Object.keys(value).sort().forEach(k => {
+        sorted[k] = this.canonicalize(value[k]);
+      });
+      return sorted;
+    }
+    return value;
+  }
+
+  encode(value) {
+    const canonical = this.canonicalize(value ?? {});
+    const encoded = this.engine.b64encUtf8(canonical);
+    const fingerprint = Ω_hash32(encoded);
+    return `⟁SCXQ2:${fingerprint}:${encoded}⟁`;
+  }
+
+  decode(scxString) {
+    if (typeof scxString !== "string") {
+      return { ok: false, error: "invalid_scx_type" };
+    }
+    const trimmed = scxString.replace(/^⟁/, "").replace(/⟁$/, "");
+    const parts = trimmed.split(":");
+    if (parts.length < 3 || parts[0] !== "SCXQ2") {
+      return { ok: false, error: "invalid_scx_format" };
+    }
+
+    const base64Payload = parts.slice(2).join(":");
+    try {
+      const decoded = this.engine.b64decUtf8(base64Payload);
+      return { ok: true, decoded };
+    } catch {
+      return { ok: false, error: "decode_failure" };
+    }
+  }
+
+  decodeRequest(schema, payload) {
+    if (schema?.scx === "string") {
+      if (!payload || typeof payload.scx !== "string") {
+        return { ok: false, error: "request_scx_missing" };
+      }
+      const decoded = this.decode(payload.scx);
+      if (!decoded.ok) return decoded;
+
+      const body = typeof decoded.decoded === "object" ? decoded.decoded : { value: decoded.decoded };
+      const merged = { ...body, ...(payload || {}) };
+      return { ok: true, body: merged, decoded: decoded.decoded };
+    }
+    return { ok: true, body: payload || {} };
+  }
+
+  encodeResponse(schema, data) {
+    const base = data || {};
+    if (schema?.scx === "string") {
+      const scx = this.encode(base);
+      return { ...base, scx };
+    }
+    return base;
   }
 }
 
@@ -1267,7 +1500,8 @@ function mx2_json(obj, status = 200) {
 }
 
 // Initialize Supreme JSON REST API
-const SUPREME_API = new SupremeJSONRESTAPI();
+SUPREME_API = new SupremeJSONRESTAPI();
+updateApiPathSet();
 
 async function mx2_route_api(url, request) {
   const path = url.pathname;
@@ -1581,13 +1815,6 @@ self.addEventListener("message", async (event) => {
    - Single unified fetch handler (prevents collisions)
    ============================================================ */
 
-// Exact API route matching
-const API_PATHS = new Set([
-  "/health","/infer","/memory/read","/memory/write",
-  "/reinforce","/penalize","/ngrams/snapshot",
-  "/routines/detect","/asx/blocks","/weights"
-]);
-
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
@@ -1642,6 +1869,22 @@ self.addEventListener("activate", (e) => {
     await self.clients.claim();
   })());
 });
+
+// Exports for deterministic local simulations / unit tests
+if (typeof module !== "undefined") {
+  module.exports = {
+    SupremeJSONRESTAPI,
+    SCXQ2Engine,
+    SCXQ2Codec,
+    KERNEL_STATE,
+    ΩCLOCK,
+    Ω_tick,
+    kuhulTick,
+    hydrateMicroState,
+    updateApiPathSet,
+    applyManifestToKernel
+  };
+}
 
 /* ============================================================
    SUPREME API SEAL
