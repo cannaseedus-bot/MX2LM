@@ -73,6 +73,8 @@ SCXQ2 enforces:
 
 **K’UHUL π** is not a scripting language — it is a **constraint-based math law executor**.
 
+See `docs/kuhul_pi_grammar.md` for the frozen π grammar, function set, and constraints.
+
 It provides:
 
 * deterministic transforms
