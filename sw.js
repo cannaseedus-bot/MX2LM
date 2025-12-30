@@ -299,6 +299,456 @@ function symbolicWeight(tokens) {
 }
 
 /* ============================================================
+   π — HELPER BRIDGE + SVG SHELL RENDERER
+   ============================================================ */
+
+function piVecNorm(v = []) {
+  if (!Array.isArray(v)) return 0;
+  return Math.sqrt(v.reduce((acc, val) => {
+    const n = Number(val) || 0;
+    return acc + n * n;
+  }, 0));
+}
+
+function piSoftmax(xs = []) {
+  if (!Array.isArray(xs) || xs.length === 0) return [];
+  const normalized = xs.map((x) => Number(x) || 0);
+  const maxX = Math.max(...normalized);
+  const exps = normalized.map((x) => Math.exp(x - maxX));
+  const sumE = exps.reduce((a, b) => a + b, 0) || 1;
+  return exps.map((e) => e / sumE);
+}
+
+function piEntropy(probs = []) {
+  if (!Array.isArray(probs)) return 0;
+  return probs.reduce((H, pRaw) => {
+    const p = Number(pRaw) || 0;
+    if (p > 0) {
+      return H - (p * Math.log2(p));
+    }
+    return H;
+  }, 0);
+}
+
+function piNgramProb(count, total) {
+  const c = Number(count) || 0;
+  const t = Number(total) || 0;
+  if (t <= 0) return 0;
+  return c / t;
+}
+
+function piPmi(p_xy, p_x, p_y) {
+  const pxy = Number(p_xy) || 0;
+  const px = Number(p_x) || 0;
+  const py = Number(p_y) || 0;
+  if (pxy <= 0 || px <= 0 || py <= 0) return 0;
+  return Math.log2(pxy / (px * py));
+}
+
+function piAngleFromVec(v = []) {
+  const arr = Array.isArray(v) ? v : [0, 0];
+  const x = Number(arr[0]) || 0;
+  const y = Number(arr[1]) || 0;
+  let theta = Math.atan2(y, x);
+  if (theta < 0) theta += (2 * Math.PI);
+  return theta;
+}
+
+function piClamp(x, lo, hi) {
+  const v = Number(x);
+  if (!Number.isFinite(v)) return lo;
+  if (v < lo) return lo;
+  if (v > hi) return hi;
+  return v;
+}
+
+const PI_BRIDGE = Object.freeze({
+  vecNorm: piVecNorm,
+  softmax: piSoftmax,
+  entropy: piEntropy,
+  ngramProb: piNgramProb,
+  pmi: piPmi,
+  angleFromVec: piAngleFromVec,
+  clamp: piClamp
+});
+
+async function loadJSON(fetchImpl, url) {
+  if (typeof fetchImpl !== "function") {
+    throw new Error("Ω: fetch implementation required for model loading");
+  }
+  const res = await fetchImpl(url);
+  if (!res || !res.ok) throw new Error(`Ω: Failed to load ${url}`);
+  return res.json();
+}
+
+async function loadModelAssets(modelId, fetchImpl = (typeof fetch !== "undefined" ? fetch : null)) {
+  if (!modelId) throw new Error("Ω: model_id is required");
+  if (typeof fetchImpl !== "function") throw new Error("Ω: fetch implementation required for model assets");
+  const base = `/models/${modelId}`;
+  const [tokenizer, checkpoint] = await Promise.all([
+    loadJSON(fetchImpl, `${base}/tokenizer.json`),
+    loadJSON(fetchImpl, `${base}/checkpoint.json`)
+  ]);
+  return { tokenizer, checkpoint };
+}
+
+function percentileThreshold(sorted, fraction) {
+  if (!Array.isArray(sorted) || sorted.length === 0) return 0;
+  const idx = Math.min(sorted.length - 1, Math.floor(fraction * sorted.length));
+  return sorted[idx];
+}
+
+function classToColor(clazz) {
+  switch (clazz) {
+    case "special": return "#ff6b6b";
+    case "punct": return "#feca57";
+    case "number": return "#54a0ff";
+    case "api": return "#5f27cd";
+    default: return "#1dd1a1";
+  }
+}
+
+function buildOrbitalHaloData(tok = {}) {
+  const vocab = Array.isArray(tok.vocab) ? tok.vocab : [];
+  const total = tok.ngrams?.unigram_total || 0;
+  const embeddings = tok.embeddings?.vectors || {};
+  const freqs = vocab.map((t) => Number(t.freq) || 0);
+  const sorted = [...freqs].sort((a, b) => b - a);
+  const innerThresh = percentileThreshold(sorted, 0.05);
+  const midThresh = percentileThreshold(sorted, 0.35);
+
+  const rings = { inner: [], mid: [], outer: [] };
+
+  for (const t of vocab) {
+    const freq = Number(t.freq) || 0;
+    const p = piNgramProb(freq, total);
+    const size = Math.log10(freq + 10) * 2.0;
+    const v = embeddings[String(t.id)] || embeddings[t.id] || [0, 0];
+    const theta = piAngleFromVec(v);
+    const elev = (1 - p) * 60.0;
+    const glyph = {
+      id: t.id,
+      token: t.token,
+      theta,
+      phi: elev,
+      color: classToColor(t.class),
+      size,
+      prob: p
+    };
+
+    if (freq >= innerThresh) {
+      rings.inner.push(glyph);
+    } else if (freq >= midThresh) {
+      rings.mid.push(glyph);
+    } else {
+      rings.outer.push(glyph);
+    }
+  }
+
+  return { halo: rings };
+}
+
+function buildStackGridData(ckpt = {}) {
+  const layers = Array.isArray(ckpt.layers) ? ckpt.layers : [];
+  const blocks = [];
+  const cols = 4;
+  const rows = 3;
+
+  for (let i = 0; i < layers.length; i++) {
+    const layer = layers[i] || {};
+    const col = i % cols;
+    const row = Math.floor(i / cols) % rows;
+    const layerZ = Math.floor(i / (cols * rows));
+    const params = Number(layer.params) || 0;
+    const entropy = Number(layer.entropy) || 0;
+
+    const block = {
+      col,
+      row,
+      layer: layerZ,
+      height: Math.log10(params + 10) * 6.0,
+      tone: piClamp(entropy / 8.0, 0.0, 1.0),
+      glyph_id: `layer_${typeof layer.id === "undefined" ? i : layer.id}`
+    };
+
+    blocks.push(block);
+  }
+
+  return { blocks };
+}
+
+function buildTunnelStreamData(tok = {}) {
+  const ngrams = tok.ngrams || {};
+  const bigram = ngrams.bigram || {};
+  const total = ngrams.unigram_total || 0;
+  const vocab = Array.isArray(tok.vocab) ? tok.vocab : [];
+  const uniCount = {};
+  for (const t of vocab) {
+    uniCount[t.token] = Number(t.freq) || 0;
+  }
+
+  const packetsLeft = [];
+  const packetsRight = [];
+  const packetsTop = [];
+
+  const entries = Object.entries(bigram).sort(([a], [b]) => a.localeCompare(b));
+
+  for (let index = 0; index < entries.length && index <= 256; index++) {
+    const [key, rawCount] = entries[index];
+    const parts = key.split(" ");
+    if (parts.length !== 2) continue;
+    const [x, y] = parts;
+    const count = Number(rawCount) || 0;
+
+    const p_xy = piNgramProb(count, total);
+    const p_x = piNgramProb(uniCount[x] ?? 1, total);
+    const p_y = piNgramProb(uniCount[y] ?? 1, total);
+    const pmi = piPmi(p_xy, p_x, p_y);
+
+    const packet = {
+      glyph: `${x}→${y}`,
+      depth: index * 4.0,
+      lane: 0,
+      energy: Math.abs(pmi)
+    };
+
+    if (pmi > 2.0) {
+      packetsTop.push({ ...packet, lane: 0 });
+    } else if (pmi > 0.0) {
+      packetsLeft.push({ ...packet, lane: -1 });
+    } else {
+      packetsRight.push({ ...packet, lane: 1 });
+    }
+  }
+
+  return {
+    left_stream: packetsLeft,
+    right_stream: packetsRight,
+    top_stream: packetsTop
+  };
+}
+
+function buildFractalTreeData(tok = {}) {
+  const merges = Array.isArray(tok.merges) ? tok.merges : [];
+  const nodes = {};
+  const rootId = "ROOT";
+  nodes[rootId] = {
+    id: rootId,
+    parent: null,
+    depth: 0,
+    weight: 0,
+    glyph_id: "root"
+  };
+
+  for (let i = 0; i < merges.length; i++) {
+    const m = merges[i] || {};
+    const id = `m${i}`;
+    nodes[id] = {
+      id,
+      parent: rootId,
+      depth: Math.floor(i / 64),
+      weight: Math.log10((Number(m.count) || 0) + 10),
+      glyph_id: `${m.left}+${m.right}`
+    };
+  }
+
+  return { root: rootId, nodes };
+}
+
+function buildHudRingData(ckpt = {}) {
+  const stats = ckpt.stats || {};
+  return {
+    shards: [
+      { name: "CPU", status: "ok",   load: 0.4, glyph_id: "CPU" },
+      { name: "GPU", status: "warn", load: 0.7, glyph_id: "GPU" },
+      { name: "TPU", status: "ok",   load: 0.5, glyph_id: "TPU" },
+      { name: "RLHF", status: "ok",  load: 0.3, glyph_id: "RLHF" }
+    ],
+    runtimes: [
+      { name: "ASXR",     status: "ok",   load: 0.5, glyph_id: "ASXR" },
+      { name: "ASXR-GPU", status: "ok",   load: 0.6, glyph_id: "ASXR-GPU" },
+      { name: "TPU-OS",   status: "warn", load: 0.7, glyph_id: "TPU-OS" },
+      { name: "BROWSER",  status: "ok",   load: 0.2, glyph_id: "DOM" }
+    ],
+    core: [
+      { name: "XJSON", status: "ok", load: 0.3, glyph_id: "XJSON" },
+      { name: "K'UHUL", status: "ok", load: 0.4, glyph_id: "KUHUL" },
+      { name: "SCXQ2", status: "ok", load: 0.2, glyph_id: "SCXQ2" },
+      { name: "KLH",   status: "ok", load: 0.35, glyph_id: "KLH" }
+    ],
+    center: {
+      name: "MX2LM",
+      status: "ok",
+      load: piClamp((stats.avg_entropy || 0) / 8.0, 0.0, 1.0),
+      glyph_id: "MX2LM"
+    }
+  };
+}
+
+const SHELL_LAYOUT = Object.freeze({
+  orbital: { x: 260, y: 240 },
+  stack: { x: 720, y: 240 },
+  tunnel: { x: 260, y: 720 },
+  tree: { x: 720, y: 720 },
+  hud: { x: 1180, y: 460 }
+});
+
+const SHELL_CANVAS = Object.freeze({ width: 1400, height: 920 });
+
+function fmt(num) {
+  return Number.isFinite(num) ? Number(num).toFixed(3) : "0.000";
+}
+
+function piIsoCoords(col, row, layer, height) {
+  const cell = 32.0;
+  const x2d = (col - row) * (cell * 0.866);
+  const y2d = ((col + row) * (cell * 0.5)) - (layer * 22.0) - height;
+  const points = `${fmt(-10)},${fmt(0)} ${fmt(0)},${fmt(-height)} ${fmt(10)},${fmt(0)} ${fmt(0)},${fmt(height)}`;
+  return { x: x2d, y: y2d, points };
+}
+
+function renderOrbitalHalo(halo = {}) {
+  const rings = [
+    { key: "inner", radius: 60 },
+    { key: "mid", radius: 110 },
+    { key: "outer", radius: 160 }
+  ];
+
+  const ringMarkup = rings.map(({ key, radius }) => {
+    const glyphs = (halo[key] || []).map((g) => {
+      const x = radius * Math.cos(g.theta || 0);
+      const y = radius * Math.sin(g.theta || 0);
+      return `<circle cx="${fmt(x)}" cy="${fmt(y)}" r="${fmt(g.size)}" fill="${g.color}" class="glyph-node" data-id="${g.id}" data-token="${g.token}" data-prob="${fmt(g.prob)}" data-phi="${fmt(g.phi)}"></circle>`;
+    }).join("");
+    return `<g data-layer="${key}" data-radius="${radius}">${glyphs}</g>`;
+  }).join("");
+
+  return `<g data-shell="orbital_halo">${ringMarkup}</g>`;
+}
+
+function renderStackGrid(grid = {}) {
+  const blocks = Array.isArray(grid.blocks) ? grid.blocks : [];
+  const cells = blocks.map((b) => {
+    const iso = piIsoCoords(b.col || 0, b.row || 0, b.layer || 0, b.height || 0);
+    return `<g data-block="${b.glyph_id}" transform="translate(${fmt(iso.x)},${fmt(iso.y)})"><polygon points="${iso.points}" class="block-stack" data-tone="${fmt(b.tone)}"></polygon></g>`;
+  }).join("");
+  return `<g data-shell="stack_grid">${cells}</g>`;
+}
+
+function renderTunnelRail(streams = {}) {
+  const rails = ["left_stream", "right_stream", "top_stream"];
+  const railMarkup = rails.map((railId) => {
+    const packets = Array.isArray(streams[railId]) ? streams[railId] : [];
+    const packetMarkup = packets.map((p) => {
+      const z = Number(p.depth) || 0;
+      const scale = 1.0 - piClamp(z / 600.0, 0.0, 0.9);
+      const y = -40 + z * 0.1;
+      const x = (Number(p.lane) || 0) * 40;
+      return `<rect x="${fmt(x - 4)}" y="${fmt(y)}" width="${fmt(8 * scale)}" height="${fmt(4 * scale)}" class="packet" data-energy="${fmt(p.energy)}"></rect>`;
+    }).join("");
+    return `<g data-rail="${railId}">${packetMarkup}</g>`;
+  }).join("");
+  return `<g data-shell="tunnel_rail">${railMarkup}</g>`;
+}
+
+function renderFractalTree(tree = {}) {
+  const nodes = tree.nodes || {};
+  const rootId = tree.root;
+  if (!rootId || !nodes[rootId]) return `<g data-shell="fractal_tree"></g>`;
+
+  const childMap = {};
+  for (const [id, node] of Object.entries(nodes)) {
+    if (node.parent) {
+      childMap[node.parent] = childMap[node.parent] || [];
+      childMap[node.parent].push(id);
+    }
+  }
+  for (const key of Object.keys(childMap)) {
+    childMap[key].sort();
+  }
+
+  const segments = [];
+  function renderNode(nodeId, depth, x, y) {
+    const node = nodes[nodeId] || {};
+    segments.push(`<circle cx="${fmt(x)}" cy="${fmt(y)}" r="${fmt(3 + (node.weight || 0))}" class="tree-node" data-id="${nodeId}" data-depth="${depth}"></circle>`);
+    const children = childMap[nodeId] || [];
+    const angleStart = -40;
+    const angleStep = 80 / Math.max(1, children.length);
+    children.forEach((cid, index) => {
+      const a = angleStart + (index * angleStep);
+      const rad = a * (Math.PI / 180);
+      const length = 40 * (0.8 ** depth);
+      const x2 = x + (length * Math.cos(rad));
+      const y2 = y + (length * Math.sin(rad));
+      segments.push(`<line x1="${fmt(x)}" y1="${fmt(y)}" x2="${fmt(x2)}" y2="${fmt(y2)}" class="tree-branch"></line>`);
+      renderNode(cid, depth + 1, x2, y2);
+    });
+  }
+
+  renderNode(rootId, 0, 0, -120);
+  return `<g data-shell="fractal_tree">${segments.join("")}</g>`;
+}
+
+function renderHudRingLayer(ringId, items = [], radius) {
+  const n = items.length;
+  if (!n) return "";
+  const arcs = items.map((item, i) => {
+    const theta = (2 * Math.PI * i) / n;
+    const theta2 = (2 * Math.PI * (i + 1)) / n;
+    const x1 = radius * Math.cos(theta);
+    const y1 = radius * Math.sin(theta);
+    const x2 = radius * Math.cos(theta2);
+    const y2 = radius * Math.sin(theta2);
+    return `<path d="M ${fmt(x1)} ${fmt(y1)} A ${fmt(radius)} ${fmt(radius)} 0 0 1 ${fmt(x2)} ${fmt(y2)}" class="hud-segment" data-name="${item.name}" data-status="${item.status}" data-load="${fmt(item.load)}"></path>`;
+  }).join("");
+  return `<g data-ring="${ringId}" data-radius="${radius}">${arcs}</g>`;
+}
+
+function renderHudCenter(center = {}) {
+  return `<g class="hud-center"><circle cx="0" cy="0" r="24" data-load="${fmt(center.load || 0)}"></circle><text x="0" y="4" text-anchor="middle" font-size="12">${center.name || ""}</text></g>`;
+}
+
+function renderHudRing(hud = {}) {
+  const shards = renderHudRingLayer("outer_status", hud.shards, 140);
+  const runtimes = renderHudRingLayer("mid_runtime", hud.runtimes, 100);
+  const core = renderHudRingLayer("inner_core", hud.core, 60);
+  const center = renderHudCenter(hud.center || {});
+  return `<g data-shell="hud_ring">${shards}${runtimes}${core}${center}</g>`;
+}
+
+function renderShellsFromData(tokenizer, checkpoint) {
+  const haloData = buildOrbitalHaloData(tokenizer);
+  const gridData = buildStackGridData(checkpoint);
+  const tunnelData = buildTunnelStreamData(tokenizer);
+  const treeData = buildFractalTreeData(tokenizer);
+  const hudData = buildHudRingData(checkpoint);
+
+  const sections = [
+    { pos: SHELL_LAYOUT.orbital, svg: renderOrbitalHalo(haloData.halo) },
+    { pos: SHELL_LAYOUT.stack, svg: renderStackGrid(gridData) },
+    { pos: SHELL_LAYOUT.tunnel, svg: renderTunnelRail(tunnelData) },
+    { pos: SHELL_LAYOUT.tree, svg: renderFractalTree(treeData) },
+    { pos: SHELL_LAYOUT.hud, svg: renderHudRing(hudData) }
+  ];
+
+  const rendered = sections.map(({ pos, svg }) => `<g transform="translate(${fmt(pos.x)},${fmt(pos.y)})">${svg}</g>`).join("");
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SHELL_CANVAS.width} ${SHELL_CANVAS.height}" data-shell-renderer="kuhul_pi_bridge"><rect width="100%" height="100%" fill="#070b12"></rect>${rendered}</svg>`;
+}
+
+async function renderModelShells(modelId, { assets = null, fetchImpl = (typeof fetch !== "undefined" ? fetch : null) } = {}) {
+  const modelAssets = assets || await loadModelAssets(modelId, fetchImpl);
+  const svg = renderShellsFromData(modelAssets.tokenizer, modelAssets.checkpoint);
+  KERNEL_STATE.expandedSVG = svg;
+  return svg;
+}
+
+// Expose entrypoint for UI projections
+if (typeof self !== "undefined") {
+  self.render_model_shells = renderModelShells;
+}
+
+/* ============================================================
    K'UHUL EXECUTION TICK
    ============================================================ */
 
@@ -1982,6 +2432,15 @@ if (typeof module !== "undefined") {
     SupremeJSONRESTAPI,
     SCXQ2Engine,
     SCXQ2Codec,
+    PI_BRIDGE,
+    buildOrbitalHaloData,
+    buildStackGridData,
+    buildTunnelStreamData,
+    buildFractalTreeData,
+    buildHudRingData,
+    renderShellsFromData,
+    renderModelShells,
+    loadModelAssets,
     KERNEL_STATE,
     ΩCLOCK,
     Ω_tick,
