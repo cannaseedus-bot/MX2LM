@@ -130,7 +130,8 @@ const KERNEL_STATE = {
       inference:      { cap: 1000,  tokens: 1000,  reset_tick: 0, window_ticks: 1000 },
       memory_ops:     { cap: 10000, tokens: 10000, reset_tick: 0, window_ticks: 1000 },
       reinforcement:  { cap: 5000,  tokens: 5000,  reset_tick: 0, window_ticks: 1000 },
-      snapshots:      { cap: 100,   tokens: 100,   reset_tick: 0, window_ticks: 1000 }
+      snapshots:      { cap: 100,   tokens: 100,   reset_tick: 0, window_ticks: 1000 },
+      micro_jobs:     { cap: 100,   tokens: 100,   reset_tick: 0, window_ticks: 1000 }
     },
     authentication: {
       kernel_tokens: new Set(),
@@ -327,6 +328,51 @@ class SupremeJSONRESTAPI {
     this.routeRegistry = new Map();
   }
 
+  registerAuthToken(token, meta) {
+    try {
+      MX2_MEM?.maps?.authTokens?.set(token, meta);
+    } catch (_) {}
+  }
+
+  issueKernelToken(subject = "kernel") {
+    const token = Ω_id("kernel_token", subject, ΩCLOCK.tick.toString());
+    KERNEL_STATE.api.authentication.kernel_tokens.add(token);
+    this.registerAuthToken(token, { type: "kernel", issued_tick: ΩCLOCK.tick });
+    return token;
+  }
+
+  issueExternalToken({ subject = "external", scope = "api", ttl_ticks = 1000 } = {}) {
+    const payload = {
+      subject,
+      scope,
+      issued_tick: ΩCLOCK.tick,
+      expires_tick: ΩCLOCK.tick + ttl_ticks
+    };
+    const encoded = this.scxEngine.b64encUtf8(payload);
+    const token = `⟁EXT:${Ω_hash32(encoded)}:${encoded}⟁`;
+    KERNEL_STATE.api.authentication.external_tokens.set(token, payload);
+    this.registerAuthToken(token, { type: "external", expires_tick: payload.expires_tick, scope });
+    return token;
+  }
+
+  issueQuantumSignature(id = "default", ttl_ticks = 2048) {
+    const signature = this.generateQuantumSignature(id);
+    const cleanSig = signature.replace(/^⟁Q/, "").replace(/⟁$/, "");
+    const [entangledPairId, proof] = cleanSig.split("|");
+    const pair = this.entanglementPairs.get(entangledPairId) || { coherence: 0 };
+    const entry = {
+      id,
+      entangledPairId,
+      proof,
+      issued_tick: ΩCLOCK.tick,
+      expires_tick: ΩCLOCK.tick + ttl_ticks,
+      coherence: pair.coherence
+    };
+    KERNEL_STATE.api.authentication.quantum_signatures.set(signature, entry);
+    this.registerAuthToken(signature, { type: "quantum", expires_tick: entry.expires_tick });
+    return signature;
+  }
+
   // UTF-8 safe base64 encoding/decoding
   b64encUtf8(obj) {
     const s = JSON.stringify(obj);
@@ -358,6 +404,7 @@ class SupremeJSONRESTAPI {
       this.routeRegistry.set(path, {
         method: def.method || "GET",
         handler,
+        authentication: def.authentication || "KERNEL_TOKEN_OPTIONAL",
         schema: {
           request: def.request_schema || null,
           response: def.response_schema || null
@@ -415,32 +462,71 @@ class SupremeJSONRESTAPI {
   }
 
   // API Authentication
-  validateAuthToken(token, method, path) {
-    if (path === "/health" && method === "GET") return true;
-    
-    // Kernel internal tokens
+  validateAuthToken(token) {
+    if (!token) return { ok: false, reason: "missing_token" };
+
     if (KERNEL_STATE.api.authentication.kernel_tokens.has(token)) {
-      return true;
+      return { ok: true, type: "kernel" };
     }
     
-    // External tokens (SCXQ2 encrypted)
-    if (KERNEL_STATE.api.authentication.external_tokens.has(token)) {
-      const tokenData = KERNEL_STATE.api.authentication.external_tokens.get(token);
-      if (Ω_now() < tokenData.expires) {
-        return true;
+    const externalData = KERNEL_STATE.api.authentication.external_tokens.get(token);
+    if (externalData) {
+      if (ΩCLOCK.tick <= externalData.expires_tick) {
+        return { ok: true, type: "external", meta: externalData };
       }
+      return { ok: false, type: "external", reason: "token_expired" };
     }
     
-    // Quantum signatures
-    if (token?.startsWith("⟁Q") && token?.endsWith("⟁")) {
-      const signature = this.verifyQuantumSignature(token);
-      return signature.valid;
+    const quantumVerification = this.verifyQuantumSignature(token);
+    if (quantumVerification.valid) {
+      return { ok: true, type: "quantum", meta: quantumVerification };
     }
-    
-    return false;
+
+    return { ok: false, reason: "token_unrecognized" };
+  }
+
+  enforceRouteAuthentication(routeEntry, authToken) {
+    const mode = routeEntry.authentication || "KERNEL_TOKEN_OPTIONAL";
+    const validation = this.validateAuthToken(authToken);
+
+    if (mode === "NONE_KERNEL_INTERNAL") {
+      return { ok: true, mode };
+    }
+
+    if (mode === "KERNEL_TOKEN_OPTIONAL") {
+      if (!authToken) return { ok: true, mode };
+      return validation.ok ? { ok: true, mode, type: validation.type } : { ok: false, mode, reason: validation.reason };
+    }
+
+    if (mode === "KERNEL_REQUIRED") {
+      if (!authToken) return { ok: false, mode, reason: "kernel_token_missing" };
+      if (validation.ok && (validation.type === "kernel" || validation.type === "quantum")) {
+        return { ok: true, mode, type: validation.type };
+      }
+      return { ok: false, mode, reason: validation.reason || "kernel_token_invalid" };
+    }
+
+    if (mode === "KERNEL_OR_EXTERNAL_TOKEN") {
+      if (!authToken) return { ok: false, mode, reason: "token_missing" };
+      if (validation.ok && (validation.type === "kernel" || validation.type === "external" || validation.type === "quantum")) {
+        return { ok: true, mode, type: validation.type };
+      }
+      return { ok: false, mode, reason: validation.reason || "token_invalid" };
+    }
+
+    return { ok: false, mode, reason: "authentication_mode_unknown" };
   }
 
   verifyQuantumSignature(signature) {
+    const stored = KERNEL_STATE.api.authentication.quantum_signatures.get(signature);
+    if (stored) {
+      const valid = ΩCLOCK.tick <= stored.expires_tick;
+      return { valid, entangledPairId: stored.entangledPairId, coherence: stored.coherence };
+    }
+    return this.verifyEntanglementSignature(signature);
+  }
+
+  verifyEntanglementSignature(signature) {
     try {
       const cleanSig = signature.replace(/^⟁Q/, "").replace(/⟁$/, "");
       const [entangledPairId, proof] = cleanSig.split("|");
@@ -474,19 +560,23 @@ class SupremeJSONRESTAPI {
       case "memory_ops": limit = KERNEL_STATE.api.rate_limits.memory_ops; break;
       case "reinforcement": limit = KERNEL_STATE.api.rate_limits.reinforcement; break;
       case "snapshots": limit = KERNEL_STATE.api.rate_limits.snapshots; break;
-      default: return true;
+      case "micro_jobs": limit = KERNEL_STATE.api.rate_limits.micro_jobs; break;
+      default: return { allowed: true, limit: null };
     }
     
     // Reset if needed
-    rate_reset_if_needed(limit);
+    if (ΩCLOCK.tick >= limit.reset_tick || limit.reset_tick === 0) {
+      limit.tokens = limit.cap;
+      limit.reset_tick = ΩCLOCK.tick + limit.window_ticks;
+    }
     
     if (limit.tokens > 0) {
       limit.tokens--;
-      return true;
+      return { allowed: true, limit };
     }
     
     KERNEL_STATE.api.metrics.rate_limit_hits++;
-    return false;
+    return { allowed: false, limit };
   }
 
   // Route Dispatcher
@@ -505,20 +595,27 @@ class SupremeJSONRESTAPI {
     }
     
     // Authentication
-    if (!this.validateAuthToken(authToken, method, path)) {
+    const authResult = this.enforceRouteAuthentication(routeEntry, authToken);
+    if (!authResult.ok) {
       KERNEL_STATE.api.metrics.auth_failures++;
       return this.formatResponse(401, {
         error: "authentication_failed",
+        auth_mode: authResult.mode,
+        reason: authResult.reason,
         quantum_state: "|Ψ⟩ = |AUTH_FAILURE⟩"
       });
     }
     
     // Rate limiting
     const endpoint = this.getEndpointFromPath(path);
-    if (!this.checkRateLimit(endpoint)) {
+    const rateCheck = this.checkRateLimit(endpoint);
+    if (!rateCheck.allowed) {
       return this.formatResponse(429, {
         error: "rate_limit_exceeded",
-        retry_after_ms: 1000
+        retry_after_ms: Math.max(0, (rateCheck.limit.reset_tick - ΩCLOCK.tick) * ΩCLOCK.step_ms),
+        reset_tick: rateCheck.limit.reset_tick,
+        window_ticks: rateCheck.limit.window_ticks,
+        remaining_tokens: rateCheck.limit.tokens
       });
     }
 
@@ -718,7 +815,7 @@ class SupremeJSONRESTAPI {
       memory_updated: true,
       inference_bias_applied: true,
       reinforcement_id,
-      quantum_signature: this.generateQuantumSignature(reinforcement_id)
+      quantum_signature: this.issueQuantumSignature(reinforcement_id)
     });
   }
 
@@ -1686,14 +1783,23 @@ self.addEventListener("message", async (event) => {
   
   // Supreme API messages
   if (type === "api.generate_token") {
-    const token = Ω_id("kernel_token", ΩCLOCK.tick.toString());
-    KERNEL_STATE.api.authentication.kernel_tokens.add(token);
+    const token = SUPREME_API.issueKernelToken(msg.subject || "kernel");
     postBack(event.source, { type: "api.token_generated", token });
+    return;
+  }
+
+  if (type === "api.external_token") {
+    const token = SUPREME_API.issueExternalToken({
+      subject: msg.subject || "external",
+      scope: msg.scope || "api",
+      ttl_ticks: msg.ttl_ticks || 1000
+    });
+    postBack(event.source, { type: "api.external_token", token });
     return;
   }
   
   if (type === "api.quantum_signature") {
-    const signature = SUPREME_API.generateQuantumSignature(msg.id || "default");
+    const signature = SUPREME_API.issueQuantumSignature(msg.id || "default");
     postBack(event.source, { type: "api.quantum_signature", signature });
     return;
   }
