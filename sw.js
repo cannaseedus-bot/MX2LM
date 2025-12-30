@@ -143,6 +143,7 @@ const KERNEL_STATE = {
       successful_requests: 0,
       auth_failures: 0,
       rate_limit_hits: 0,
+      capability_denials: 0,
       avg_response_time: 0
     },
     route_metrics: {}
@@ -186,6 +187,18 @@ const DEFAULT_API_PATHS = [
   "/micro/jobs/submit","/micro/agents/status","/micro/builders/status"
 ];
 
+const CAPABILITY_RULES = Object.freeze({
+  "/memory/read": ["cap:memory.read"],
+  "/memory/write": ["cap:memory.write"],
+  "/reinforce": ["cap:rlhf"],
+  "/penalize": ["cap:rlhf"],
+  "/micro/jobs/submit": ["cap:micro.submit"],
+  "/micro/agents/status": ["cap:micro.status"],
+  "/micro/builders/status": ["cap:micro.status"]
+});
+
+const ASX_PHASE_ORDER = ["@Pop", "@Wo", "@Sek", "@Collapse"];
+
 let API_PATHS = new Set(DEFAULT_API_PATHS);
 
 function updateApiPathSet() {
@@ -203,6 +216,47 @@ function applyManifestToKernel(manifest) {
     SUPREME_API.setManifest(manifest);
   }
   updateApiPathSet();
+}
+
+function isPlainObject(obj) {
+  return Object.prototype.toString.call(obj) === "[object Object]" &&
+    (Object.getPrototypeOf(obj) === Object.prototype || Object.getPrototypeOf(obj) === null);
+}
+
+function assertStructuralLegality(value, path = "root") {
+  if (typeof value === "function" || typeof value === "symbol") {
+    throw new Error(`Ω: structural_illegal at ${path}`);
+  }
+  if (Array.isArray(value)) {
+    value.forEach((v, i) => assertStructuralLegality(v, `${path}[${i}]`));
+    return;
+  }
+  if (value && typeof value === "object") {
+    if (!isPlainObject(value)) throw new Error(`Ω: non_plain_object at ${path}`);
+    Object.keys(value).forEach((k) => {
+      if (k === "__proto__") throw new Error(`Ω: proto_pollution_blocked at ${path}`);
+      assertStructuralLegality(value[k], `${path}.${k}`);
+    });
+  }
+}
+
+function deepFreeze(value) {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    Object.getOwnPropertyNames(value).forEach((prop) => deepFreeze(value[prop]));
+  }
+  return value;
+}
+
+function sealProjection(svgString) {
+  const sealed = Object.freeze({
+    svg: String(svgString),
+    tick: ΩCLOCK.tick,
+    proof: Ω_hash32(String(svgString))
+  });
+  KERNEL_STATE.expandedSVG = sealed.svg;
+  KERNEL_STATE.projection = sealed;
+  return sealed;
 }
 
 /* ============================================================
@@ -274,8 +328,8 @@ function expandBrainToSVG(brain) {
   }
 
   svg += `</svg>`;
-  KERNEL_STATE.expandedSVG = svg;
-  return svg;
+  const sealed = sealProjection(svg);
+  return sealed.svg;
 }
 
 /* ============================================================
@@ -739,8 +793,8 @@ function renderShellsFromData(tokenizer, checkpoint) {
 async function renderModelShells(modelId, { assets = null, fetchImpl = (typeof fetch !== "undefined" ? fetch : null) } = {}) {
   const modelAssets = assets || await loadModelAssets(modelId, fetchImpl);
   const svg = renderShellsFromData(modelAssets.tokenizer, modelAssets.checkpoint);
-  KERNEL_STATE.expandedSVG = svg;
-  return svg;
+  const sealed = sealProjection(svg);
+  return sealed.svg;
 }
 
 // Expose entrypoint for UI projections
@@ -776,6 +830,91 @@ class SupremeJSONRESTAPI {
     this.codec = new SCXQ2Codec(this.scxEngine);
     this.manifest = null;
     this.routeRegistry = new Map();
+  }
+
+  createPhaseController(routeEntry) {
+    return {
+      order: ASX_PHASE_ORDER.slice(),
+      index: -1,
+      route: routeEntry ? routeEntry.path : "unknown"
+    };
+  }
+
+  advancePhase(controller, name, fn) {
+    const expected = controller.order[controller.index + 1];
+    if (expected !== name) {
+      throw new Error(`Ω: phase_order_violation expected=${expected} got=${name}`);
+    }
+    controller.index += 1;
+    return fn();
+  }
+
+  computeProof(body) {
+    const canonical = this.codec.canonicalize(body);
+    const proof = Ω_hash32(JSON.stringify(canonical));
+    return { proof, canonical };
+  }
+
+  enforceProofIntegrity(canonicalBody, providedProof) {
+    const { proof, canonical } = this.computeProof(canonicalBody);
+    if (providedProof && providedProof !== proof) {
+      return { ok: false, reason: "proof_mismatch", proof, canonical };
+    }
+    return { ok: true, proof, canonical };
+  }
+
+  runPhasePipeline(routeEntry, rawPayload) {
+    const controller = this.createPhaseController(routeEntry);
+    let decoded;
+    try {
+      decoded = this.advancePhase(controller, "@Pop", () => this.codec.decodeRequest(routeEntry.schema.request, rawPayload));
+    } catch (err) {
+      return { ok: false, status: 400, error: "phase_pop_failed", reason: err.message };
+    }
+
+    if (!decoded.ok) {
+      return { ok: false, status: 400, error: "invalid_request_payload", reason: decoded.error, phase: "@Pop" };
+    }
+
+    let canonicalBody;
+    try {
+      canonicalBody = this.advancePhase(controller, "@Wo", () => {
+        const body = this.codec.canonicalize(decoded.body);
+        assertStructuralLegality(body);
+        return body;
+      });
+    } catch (err) {
+      return { ok: false, status: 400, error: "structural_illegal", reason: err.message, phase: "@Wo" };
+    }
+
+    const proofResult = this.advancePhase(controller, "@Sek", () =>
+      this.enforceProofIntegrity(canonicalBody, rawPayload?.scx_proof || decoded.body?.scx_proof)
+    );
+
+    if (!proofResult.ok) {
+      return { ok: false, status: 400, error: "proof_invalid", reason: proofResult.reason, phase: "@Sek" };
+    }
+
+    const sealed = this.advancePhase(controller, "@Collapse", () => {
+      const frozen = deepFreeze({ ...canonicalBody, scx_proof: proofResult.proof });
+      return { body: frozen, proof: proofResult.proof };
+    });
+
+    return { ok: true, body: sealed.body, proof: sealed.proof };
+  }
+
+  enforceCapability(path, authResult) {
+    const required = CAPABILITY_RULES[path];
+    if (!required || required.length === 0) return { ok: true };
+    if (authResult?.type === "kernel" || authResult?.type === "quantum") return { ok: true };
+    if (authResult?.type === "external") {
+      const scopeRaw = authResult.meta?.scope || "";
+      const scopes = Array.isArray(scopeRaw) ? scopeRaw : String(scopeRaw).split(/\s+/).filter(Boolean);
+      const missing = required.filter((r) => !scopes.includes(r));
+      if (missing.length === 0) return { ok: true, type: "external" };
+      return { ok: false, reason: "capability_missing", missing };
+    }
+    return { ok: false, reason: "capability_requires_authenticated_principal" };
   }
 
   registerAuthToken(token, meta) {
@@ -847,16 +986,17 @@ class SupremeJSONRESTAPI {
     this.routeRegistry = new Map();
     KERNEL_STATE.api.registry = this.routeRegistry;
     KERNEL_STATE.api.routes = routes;
-    const handlerMap = this.getHandlerMap();
-    Object.entries(routes).forEach(([path, def]) => {
-      const handler = handlerMap[path];
-      if (!handler) return;
-      this.routeRegistry.set(path, {
-        method: def.method || "GET",
-        handler,
-        authentication: def.authentication || "KERNEL_TOKEN_OPTIONAL",
-        schema: {
-          request: def.request_schema || null,
+      const handlerMap = this.getHandlerMap();
+      Object.entries(routes).forEach(([path, def]) => {
+        const handler = handlerMap[path];
+        if (!handler) return;
+        this.routeRegistry.set(path, {
+          path,
+          method: def.method || "GET",
+          handler,
+          authentication: def.authentication || "KERNEL_TOKEN_OPTIONAL",
+          schema: {
+            request: def.request_schema || null,
           response: def.response_schema || null
         },
         latency_target_ticks: def.latency_target_ticks || 0
@@ -1056,6 +1196,17 @@ class SupremeJSONRESTAPI {
       });
     }
     
+    const capabilityResult = this.enforceCapability(path, authResult);
+    if (!capabilityResult.ok) {
+      KERNEL_STATE.api.metrics.capability_denials++;
+      return this.formatResponse(403, {
+        error: "capability_required",
+        reason: capabilityResult.reason,
+        missing: capabilityResult.missing || [],
+        quantum_state: "|Ψ⟩ = |CAPABILITY_DENIED⟩"
+      });
+    }
+    
     // Rate limiting
     const endpoint = this.getEndpointFromPath(path);
     const rateCheck = this.checkRateLimit(endpoint);
@@ -1069,24 +1220,29 @@ class SupremeJSONRESTAPI {
       });
     }
 
-    const parsedPayload = this.codec.decodeRequest(routeEntry.schema.request, payload);
-    if (!parsedPayload.ok) {
-      return this.formatResponse(400, {
-        error: "invalid_request_payload",
-        reason: parsedPayload.error
+    const phaseResult = this.runPhasePipeline(routeEntry, payload);
+    if (!phaseResult.ok) {
+      return this.formatResponse(phaseResult.status || 400, {
+        error: phaseResult.error,
+        reason: phaseResult.reason,
+        phase: phaseResult.phase
       });
     }
-    
+
     let response;
     
     try {
-      response = await routeEntry.handler(parsedPayload.body, routeEntry);
+      response = await routeEntry.handler(phaseResult.body, routeEntry);
 
       if (!response || typeof response.status !== "number" || !response.headers || !response.data) {
         response = this.formatResponse(200, response || {});
       }
 
       response.data = this.codec.encodeResponse(routeEntry.schema.response, response.data);
+      if (phaseResult.proof) {
+        response.data.request_proof = phaseResult.proof;
+        response.data.phase_order = ASX_PHASE_ORDER;
+      }
       
       const wallEnd = performance.now();
       const responseTime = wallEnd - wallStart;
@@ -1140,13 +1296,14 @@ class SupremeJSONRESTAPI {
       api_metrics: {
         total_requests: KERNEL_STATE.api.metrics.total_requests,
         successful_requests: KERNEL_STATE.api.metrics.successful_requests,
-        auth_failures: KERNEL_STATE.api.metrics.auth_failures,
-        rate_limit_hits: KERNEL_STATE.api.metrics.rate_limit_hits,
-        avg_response_time: KERNEL_STATE.api.metrics.avg_response_time
-      },
-      quantum_state: "|Ψ⟩ = α|HEALTHY⟩⊗β|COHERENT⟩⊗γ|READY⟩"
-    });
-  }
+          auth_failures: KERNEL_STATE.api.metrics.auth_failures,
+          rate_limit_hits: KERNEL_STATE.api.metrics.rate_limit_hits,
+          capability_denials: KERNEL_STATE.api.metrics.capability_denials,
+          avg_response_time: KERNEL_STATE.api.metrics.avg_response_time
+        },
+        quantum_state: "|Ψ⟩ = α|HEALTHY⟩⊗β|COHERENT⟩⊗γ|READY⟩"
+      });
+    }
 
   async inferEndpoint(payload) {
     const { prompt, temperature = 0.7, max_tokens = 100, mode = "standard", ngram_level = 3, use_memory = true, reinforcement_source } = payload;
