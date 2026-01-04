@@ -73,6 +73,8 @@ SCXQ2 enforces:
 
 **K’UHUL π** is not a scripting language — it is a **constraint-based math law executor**.
 
+See `docs/kuhul_pi_grammar.md` for the frozen π grammar, function set, and constraints.
+
 It provides:
 
 * deterministic transforms
@@ -197,6 +199,12 @@ Not by gradient noise.
 * Not magic
 * Not consciousness
 * Not a replacement for transformers
+
+## External generators you can plug into MX2LM orchestration
+
+MX2LM stays deterministic and symbolic, but you can still route jobs to outside generative models when you want fast scaffolded apps or UI drafts:
+
+* **Google Gemini API on Vertex AI (Gemini 2.5 / Gemini 2.0 Flash / Flash-Lite):** Use `generateContent` or `streamGenerateContent` with a `contents` array (each entry has `role` + `parts`) and optional `systemInstruction` + `generationConfig`. It’s multimodal (text + images via `inlineData`/`fileData`) and works well for rapid app blueprints and code stubs. Authenticate with an API key for simple REST calls or with a Google Cloud access token when using the OpenAI-compatible endpoint (`chat.completions`) to stream UI/app ideas into MX2LM’s builders.
 
 It is:
 

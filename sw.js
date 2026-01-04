@@ -91,6 +91,8 @@ const SCXQ2_GLYPHS = Object.freeze({
    KERNEL STATE (NON-UI)
 -------------------------------- */
 
+let SUPREME_API = null;
+
 const KERNEL_STATE = {
   manifest: null,
   brain: null,
@@ -102,10 +104,16 @@ const KERNEL_STATE = {
 
   entropy: 0.32,
   ticks: 0,
+  micro: {
+    agents: [],
+    builders: [],
+    jobs: []
+  },
   
   // Supreme JSON REST API State
   api: {
     routes: null,
+    registry: new Map(),
     performance: {
       health: 0,
       infer: 0,
@@ -122,7 +130,8 @@ const KERNEL_STATE = {
       inference:      { cap: 1000,  tokens: 1000,  reset_tick: 0, window_ticks: 1000 },
       memory_ops:     { cap: 10000, tokens: 10000, reset_tick: 0, window_ticks: 1000 },
       reinforcement:  { cap: 5000,  tokens: 5000,  reset_tick: 0, window_ticks: 1000 },
-      snapshots:      { cap: 100,   tokens: 100,   reset_tick: 0, window_ticks: 1000 }
+      snapshots:      { cap: 100,   tokens: 100,   reset_tick: 0, window_ticks: 1000 },
+      micro_jobs:     { cap: 100,   tokens: 100,   reset_tick: 0, window_ticks: 1000 }
     },
     authentication: {
       kernel_tokens: new Set(),
@@ -134,8 +143,10 @@ const KERNEL_STATE = {
       successful_requests: 0,
       auth_failures: 0,
       rate_limit_hits: 0,
+      capability_denials: 0,
       avg_response_time: 0
-    }
+    },
+    route_metrics: {}
   }
 };
 
@@ -152,9 +163,100 @@ async function loadManifest() {
   // Load API routes from manifest
   if (manifest["🌐NATIVE_JSON_REST_API"]?.api_routes) {
     KERNEL_STATE.api.routes = manifest["🌐NATIVE_JSON_REST_API"].api_routes;
+    applyManifestToKernel(manifest);
   }
   
   return manifest;
+}
+
+function hydrateMicroState(manifest) {
+  const microRoot = manifest?.["👷🌀MICRO_AGENTS_BUILDERS_RECURSIVE_ECOSYSTEM"];
+  const tables = microRoot?.tables || {};
+  const agentSeeds = tables["🤖🌀micro_agents"]?.seed_agents || [];
+  const builderSeeds = tables["🛠🌀micro_builders"]?.seed_builders || [];
+
+  KERNEL_STATE.micro.agents = agentSeeds;
+  KERNEL_STATE.micro.builders = builderSeeds;
+  KERNEL_STATE.micro.jobs = KERNEL_STATE.micro.jobs || [];
+}
+
+const DEFAULT_API_PATHS = [
+  "/health","/infer","/memory/read","/memory/write",
+  "/reinforce","/penalize","/ngrams/snapshot",
+  "/routines/detect","/asx/blocks","/weights",
+  "/micro/jobs/submit","/micro/agents/status","/micro/builders/status"
+];
+
+const CAPABILITY_RULES = Object.freeze({
+  "/memory/read": ["cap:memory.read"],
+  "/memory/write": ["cap:memory.write"],
+  "/reinforce": ["cap:rlhf"],
+  "/penalize": ["cap:rlhf"],
+  "/micro/jobs/submit": ["cap:micro.submit"],
+  "/micro/agents/status": ["cap:micro.status"],
+  "/micro/builders/status": ["cap:micro.status"]
+});
+
+const ASX_PHASE_ORDER = ["@Pop", "@Wo", "@Sek", "@Collapse"];
+
+let API_PATHS = new Set(DEFAULT_API_PATHS);
+
+function updateApiPathSet() {
+  const manifestRoutes = KERNEL_STATE.manifest?.["🌐NATIVE_JSON_REST_API"]?.api_routes;
+  if (manifestRoutes) {
+    API_PATHS = new Set(Object.keys(manifestRoutes));
+  } else {
+    API_PATHS = new Set(DEFAULT_API_PATHS);
+  }
+}
+
+function applyManifestToKernel(manifest) {
+  hydrateMicroState(manifest);
+  if (SUPREME_API?.setManifest) {
+    SUPREME_API.setManifest(manifest);
+  }
+  updateApiPathSet();
+}
+
+function isPlainObject(obj) {
+  return Object.prototype.toString.call(obj) === "[object Object]" &&
+    (Object.getPrototypeOf(obj) === Object.prototype || Object.getPrototypeOf(obj) === null);
+}
+
+function assertStructuralLegality(value, path = "root") {
+  if (typeof value === "function" || typeof value === "symbol") {
+    throw new Error(`Ω: structural_illegal at ${path}`);
+  }
+  if (Array.isArray(value)) {
+    value.forEach((v, i) => assertStructuralLegality(v, `${path}[${i}]`));
+    return;
+  }
+  if (value && typeof value === "object") {
+    if (!isPlainObject(value)) throw new Error(`Ω: non_plain_object at ${path}`);
+    Object.keys(value).forEach((k) => {
+      if (k === "__proto__") throw new Error(`Ω: proto_pollution_blocked at ${path}`);
+      assertStructuralLegality(value[k], `${path}.${k}`);
+    });
+  }
+}
+
+function deepFreeze(value) {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    Object.getOwnPropertyNames(value).forEach((prop) => deepFreeze(value[prop]));
+  }
+  return value;
+}
+
+function sealProjection(svgString) {
+  const sealed = Object.freeze({
+    svg: String(svgString),
+    tick: ΩCLOCK.tick,
+    proof: Ω_hash32(String(svgString))
+  });
+  KERNEL_STATE.expandedSVG = sealed.svg;
+  KERNEL_STATE.projection = sealed;
+  return sealed;
 }
 
 /* ============================================================
@@ -173,8 +275,8 @@ function extractBrain(manifest, brainId = "mx2lm_v1_1") {
    ============================================================ */
 
 function expandNodeGlyph(node, layout) {
-  const [x, y] = layout.⟁P;
-  const [w, h] = layout.⟁S;
+  const [x, y] = layout["⟁P"];
+  const [w, h] = layout["⟁S"];
 
   const bindNode = node?.bind?.node || "UNKNOWN_NODE";
   const bindLayer = node?.bind?.layer || "unknown";
@@ -192,17 +294,17 @@ function expandNodeGlyph(node, layout) {
 }
 
 function expandLayer(layer, nodes) {
-  const layout = layer.layout || { ⟁P: [64, 64], ⟁S: [960, 118] };
-  const baseX = (layout.⟁P && layout.⟁P[0]) || 0;
-  const baseY = (layout.⟁P && layout.⟁P[1]) || 0;
+  const layout = layer.layout || { "⟁P": [64, 64], "⟁S": [960, 118] };
+  const baseX = (layout["⟁P"] && layout["⟁P"][0]) || 0;
+  const baseY = (layout["⟁P"] && layout["⟁P"][1]) || 0;
 
   const offsetX = baseX;
   const offsetY = baseY + 40;
 
   return (nodes || []).map((node, i) =>
     expandNodeGlyph(node, {
-      ⟁P: [offsetX + i * 320, offsetY],
-      ⟁S: [300, 58]
+      "⟁P": [offsetX + i * 320, offsetY],
+      "⟁S": [300, 58]
     })
   ).join("");
 }
@@ -226,8 +328,8 @@ function expandBrainToSVG(brain) {
   }
 
   svg += `</svg>`;
-  KERNEL_STATE.expandedSVG = svg;
-  return svg;
+  const sealed = sealProjection(svg);
+  return sealed.svg;
 }
 
 /* ============================================================
@@ -248,6 +350,456 @@ function symbolicWeight(tokens) {
     if (t === "e") return sum + π.E;
     return sum + 1;
   }, 0);
+}
+
+/* ============================================================
+   π — HELPER BRIDGE + SVG SHELL RENDERER
+   ============================================================ */
+
+function piVecNorm(v = []) {
+  if (!Array.isArray(v)) return 0;
+  return Math.sqrt(v.reduce((acc, val) => {
+    const n = Number(val) || 0;
+    return acc + n * n;
+  }, 0));
+}
+
+function piSoftmax(xs = []) {
+  if (!Array.isArray(xs) || xs.length === 0) return [];
+  const normalized = xs.map((x) => Number(x) || 0);
+  const maxX = Math.max(...normalized);
+  const exps = normalized.map((x) => Math.exp(x - maxX));
+  const sumE = exps.reduce((a, b) => a + b, 0) || 1;
+  return exps.map((e) => e / sumE);
+}
+
+function piEntropy(probs = []) {
+  if (!Array.isArray(probs)) return 0;
+  return probs.reduce((H, pRaw) => {
+    const p = Number(pRaw) || 0;
+    if (p > 0) {
+      return H - (p * Math.log2(p));
+    }
+    return H;
+  }, 0);
+}
+
+function piNgramProb(count, total) {
+  const c = Number(count) || 0;
+  const t = Number(total) || 0;
+  if (t <= 0) return 0;
+  return c / t;
+}
+
+function piPmi(p_xy, p_x, p_y) {
+  const pxy = Number(p_xy) || 0;
+  const px = Number(p_x) || 0;
+  const py = Number(p_y) || 0;
+  if (pxy <= 0 || px <= 0 || py <= 0) return 0;
+  return Math.log2(pxy / (px * py));
+}
+
+function piAngleFromVec(v = []) {
+  const arr = Array.isArray(v) ? v : [0, 0];
+  const x = Number(arr[0]) || 0;
+  const y = Number(arr[1]) || 0;
+  let theta = Math.atan2(y, x);
+  if (theta < 0) theta += (2 * Math.PI);
+  return theta;
+}
+
+function piClamp(x, lo, hi) {
+  const v = Number(x);
+  if (!Number.isFinite(v)) return lo;
+  if (v < lo) return lo;
+  if (v > hi) return hi;
+  return v;
+}
+
+const PI_BRIDGE = Object.freeze({
+  vecNorm: piVecNorm,
+  softmax: piSoftmax,
+  entropy: piEntropy,
+  ngramProb: piNgramProb,
+  pmi: piPmi,
+  angleFromVec: piAngleFromVec,
+  clamp: piClamp
+});
+
+async function loadJSON(fetchImpl, url) {
+  if (typeof fetchImpl !== "function") {
+    throw new Error("Ω: fetch implementation required for model loading");
+  }
+  const res = await fetchImpl(url);
+  if (!res || !res.ok) throw new Error(`Ω: Failed to load ${url}`);
+  return res.json();
+}
+
+async function loadModelAssets(modelId, fetchImpl = (typeof fetch !== "undefined" ? fetch : null)) {
+  if (!modelId) throw new Error("Ω: model_id is required");
+  if (typeof fetchImpl !== "function") throw new Error("Ω: fetch implementation required for model assets");
+  const base = `/models/${modelId}`;
+  const [tokenizer, checkpoint] = await Promise.all([
+    loadJSON(fetchImpl, `${base}/tokenizer.json`),
+    loadJSON(fetchImpl, `${base}/checkpoint.json`)
+  ]);
+  return { tokenizer, checkpoint };
+}
+
+function percentileThreshold(sorted, fraction) {
+  if (!Array.isArray(sorted) || sorted.length === 0) return 0;
+  const idx = Math.min(sorted.length - 1, Math.floor(fraction * sorted.length));
+  return sorted[idx];
+}
+
+function classToColor(clazz) {
+  switch (clazz) {
+    case "special": return "#ff6b6b";
+    case "punct": return "#feca57";
+    case "number": return "#54a0ff";
+    case "api": return "#5f27cd";
+    default: return "#1dd1a1";
+  }
+}
+
+function buildOrbitalHaloData(tok = {}) {
+  const vocab = Array.isArray(tok.vocab) ? tok.vocab : [];
+  const total = tok.ngrams?.unigram_total || 0;
+  const embeddings = tok.embeddings?.vectors || {};
+  const freqs = vocab.map((t) => Number(t.freq) || 0);
+  const sorted = [...freqs].sort((a, b) => b - a);
+  const innerThresh = percentileThreshold(sorted, 0.05);
+  const midThresh = percentileThreshold(sorted, 0.35);
+
+  const rings = { inner: [], mid: [], outer: [] };
+
+  for (const t of vocab) {
+    const freq = Number(t.freq) || 0;
+    const p = piNgramProb(freq, total);
+    const size = Math.log10(freq + 10) * 2.0;
+    const v = embeddings[String(t.id)] || embeddings[t.id] || [0, 0];
+    const theta = piAngleFromVec(v);
+    const elev = (1 - p) * 60.0;
+    const glyph = {
+      id: t.id,
+      token: t.token,
+      theta,
+      phi: elev,
+      color: classToColor(t.class),
+      size,
+      prob: p
+    };
+
+    if (freq >= innerThresh) {
+      rings.inner.push(glyph);
+    } else if (freq >= midThresh) {
+      rings.mid.push(glyph);
+    } else {
+      rings.outer.push(glyph);
+    }
+  }
+
+  return { halo: rings };
+}
+
+function buildStackGridData(ckpt = {}) {
+  const layers = Array.isArray(ckpt.layers) ? ckpt.layers : [];
+  const blocks = [];
+  const cols = 4;
+  const rows = 3;
+
+  for (let i = 0; i < layers.length; i++) {
+    const layer = layers[i] || {};
+    const col = i % cols;
+    const row = Math.floor(i / cols) % rows;
+    const layerZ = Math.floor(i / (cols * rows));
+    const params = Number(layer.params) || 0;
+    const entropy = Number(layer.entropy) || 0;
+
+    const block = {
+      col,
+      row,
+      layer: layerZ,
+      height: Math.log10(params + 10) * 6.0,
+      tone: piClamp(entropy / 8.0, 0.0, 1.0),
+      glyph_id: `layer_${typeof layer.id === "undefined" ? i : layer.id}`
+    };
+
+    blocks.push(block);
+  }
+
+  return { blocks };
+}
+
+function buildTunnelStreamData(tok = {}) {
+  const ngrams = tok.ngrams || {};
+  const bigram = ngrams.bigram || {};
+  const total = ngrams.unigram_total || 0;
+  const vocab = Array.isArray(tok.vocab) ? tok.vocab : [];
+  const uniCount = {};
+  for (const t of vocab) {
+    uniCount[t.token] = Number(t.freq) || 0;
+  }
+
+  const packetsLeft = [];
+  const packetsRight = [];
+  const packetsTop = [];
+
+  const entries = Object.entries(bigram).sort(([a], [b]) => a.localeCompare(b));
+
+  for (let index = 0; index < entries.length && index <= 256; index++) {
+    const [key, rawCount] = entries[index];
+    const parts = key.split(" ");
+    if (parts.length !== 2) continue;
+    const [x, y] = parts;
+    const count = Number(rawCount) || 0;
+
+    const p_xy = piNgramProb(count, total);
+    const p_x = piNgramProb(uniCount[x] ?? 1, total);
+    const p_y = piNgramProb(uniCount[y] ?? 1, total);
+    const pmi = piPmi(p_xy, p_x, p_y);
+
+    const packet = {
+      glyph: `${x}→${y}`,
+      depth: index * 4.0,
+      lane: 0,
+      energy: Math.abs(pmi)
+    };
+
+    if (pmi > 2.0) {
+      packetsTop.push({ ...packet, lane: 0 });
+    } else if (pmi > 0.0) {
+      packetsLeft.push({ ...packet, lane: -1 });
+    } else {
+      packetsRight.push({ ...packet, lane: 1 });
+    }
+  }
+
+  return {
+    left_stream: packetsLeft,
+    right_stream: packetsRight,
+    top_stream: packetsTop
+  };
+}
+
+function buildFractalTreeData(tok = {}) {
+  const merges = Array.isArray(tok.merges) ? tok.merges : [];
+  const nodes = {};
+  const rootId = "ROOT";
+  nodes[rootId] = {
+    id: rootId,
+    parent: null,
+    depth: 0,
+    weight: 0,
+    glyph_id: "root"
+  };
+
+  for (let i = 0; i < merges.length; i++) {
+    const m = merges[i] || {};
+    const id = `m${i}`;
+    nodes[id] = {
+      id,
+      parent: rootId,
+      depth: Math.floor(i / 64),
+      weight: Math.log10((Number(m.count) || 0) + 10),
+      glyph_id: `${m.left}+${m.right}`
+    };
+  }
+
+  return { root: rootId, nodes };
+}
+
+function buildHudRingData(ckpt = {}) {
+  const stats = ckpt.stats || {};
+  return {
+    shards: [
+      { name: "CPU", status: "ok",   load: 0.4, glyph_id: "CPU" },
+      { name: "GPU", status: "warn", load: 0.7, glyph_id: "GPU" },
+      { name: "TPU", status: "ok",   load: 0.5, glyph_id: "TPU" },
+      { name: "RLHF", status: "ok",  load: 0.3, glyph_id: "RLHF" }
+    ],
+    runtimes: [
+      { name: "ASXR",     status: "ok",   load: 0.5, glyph_id: "ASXR" },
+      { name: "ASXR-GPU", status: "ok",   load: 0.6, glyph_id: "ASXR-GPU" },
+      { name: "TPU-OS",   status: "warn", load: 0.7, glyph_id: "TPU-OS" },
+      { name: "BROWSER",  status: "ok",   load: 0.2, glyph_id: "DOM" }
+    ],
+    core: [
+      { name: "XJSON", status: "ok", load: 0.3, glyph_id: "XJSON" },
+      { name: "K'UHUL", status: "ok", load: 0.4, glyph_id: "KUHUL" },
+      { name: "SCXQ2", status: "ok", load: 0.2, glyph_id: "SCXQ2" },
+      { name: "KLH",   status: "ok", load: 0.35, glyph_id: "KLH" }
+    ],
+    center: {
+      name: "MX2LM",
+      status: "ok",
+      load: piClamp((stats.avg_entropy || 0) / 8.0, 0.0, 1.0),
+      glyph_id: "MX2LM"
+    }
+  };
+}
+
+const SHELL_LAYOUT = Object.freeze({
+  orbital: { x: 260, y: 240 },
+  stack: { x: 720, y: 240 },
+  tunnel: { x: 260, y: 720 },
+  tree: { x: 720, y: 720 },
+  hud: { x: 1180, y: 460 }
+});
+
+const SHELL_CANVAS = Object.freeze({ width: 1400, height: 920 });
+
+function fmt(num) {
+  return Number.isFinite(num) ? Number(num).toFixed(3) : "0.000";
+}
+
+function piIsoCoords(col, row, layer, height) {
+  const cell = 32.0;
+  const x2d = (col - row) * (cell * 0.866);
+  const y2d = ((col + row) * (cell * 0.5)) - (layer * 22.0) - height;
+  const points = `${fmt(-10)},${fmt(0)} ${fmt(0)},${fmt(-height)} ${fmt(10)},${fmt(0)} ${fmt(0)},${fmt(height)}`;
+  return { x: x2d, y: y2d, points };
+}
+
+function renderOrbitalHalo(halo = {}) {
+  const rings = [
+    { key: "inner", radius: 60 },
+    { key: "mid", radius: 110 },
+    { key: "outer", radius: 160 }
+  ];
+
+  const ringMarkup = rings.map(({ key, radius }) => {
+    const glyphs = (halo[key] || []).map((g) => {
+      const x = radius * Math.cos(g.theta || 0);
+      const y = radius * Math.sin(g.theta || 0);
+      return `<circle cx="${fmt(x)}" cy="${fmt(y)}" r="${fmt(g.size)}" fill="${g.color}" class="glyph-node" data-id="${g.id}" data-token="${g.token}" data-prob="${fmt(g.prob)}" data-phi="${fmt(g.phi)}"></circle>`;
+    }).join("");
+    return `<g data-layer="${key}" data-radius="${radius}">${glyphs}</g>`;
+  }).join("");
+
+  return `<g data-shell="orbital_halo">${ringMarkup}</g>`;
+}
+
+function renderStackGrid(grid = {}) {
+  const blocks = Array.isArray(grid.blocks) ? grid.blocks : [];
+  const cells = blocks.map((b) => {
+    const iso = piIsoCoords(b.col || 0, b.row || 0, b.layer || 0, b.height || 0);
+    return `<g data-block="${b.glyph_id}" transform="translate(${fmt(iso.x)},${fmt(iso.y)})"><polygon points="${iso.points}" class="block-stack" data-tone="${fmt(b.tone)}"></polygon></g>`;
+  }).join("");
+  return `<g data-shell="stack_grid">${cells}</g>`;
+}
+
+function renderTunnelRail(streams = {}) {
+  const rails = ["left_stream", "right_stream", "top_stream"];
+  const railMarkup = rails.map((railId) => {
+    const packets = Array.isArray(streams[railId]) ? streams[railId] : [];
+    const packetMarkup = packets.map((p) => {
+      const z = Number(p.depth) || 0;
+      const scale = 1.0 - piClamp(z / 600.0, 0.0, 0.9);
+      const y = -40 + z * 0.1;
+      const x = (Number(p.lane) || 0) * 40;
+      return `<rect x="${fmt(x - 4)}" y="${fmt(y)}" width="${fmt(8 * scale)}" height="${fmt(4 * scale)}" class="packet" data-energy="${fmt(p.energy)}"></rect>`;
+    }).join("");
+    return `<g data-rail="${railId}">${packetMarkup}</g>`;
+  }).join("");
+  return `<g data-shell="tunnel_rail">${railMarkup}</g>`;
+}
+
+function renderFractalTree(tree = {}) {
+  const nodes = tree.nodes || {};
+  const rootId = tree.root;
+  if (!rootId || !nodes[rootId]) return `<g data-shell="fractal_tree"></g>`;
+
+  const childMap = {};
+  for (const [id, node] of Object.entries(nodes)) {
+    if (node.parent) {
+      childMap[node.parent] = childMap[node.parent] || [];
+      childMap[node.parent].push(id);
+    }
+  }
+  for (const key of Object.keys(childMap)) {
+    childMap[key].sort();
+  }
+
+  const segments = [];
+  function renderNode(nodeId, depth, x, y) {
+    const node = nodes[nodeId] || {};
+    segments.push(`<circle cx="${fmt(x)}" cy="${fmt(y)}" r="${fmt(3 + (node.weight || 0))}" class="tree-node" data-id="${nodeId}" data-depth="${depth}"></circle>`);
+    const children = childMap[nodeId] || [];
+    const angleStart = -40;
+    const angleStep = 80 / Math.max(1, children.length);
+    children.forEach((cid, index) => {
+      const a = angleStart + (index * angleStep);
+      const rad = a * (Math.PI / 180);
+      const length = 40 * (0.8 ** depth);
+      const x2 = x + (length * Math.cos(rad));
+      const y2 = y + (length * Math.sin(rad));
+      segments.push(`<line x1="${fmt(x)}" y1="${fmt(y)}" x2="${fmt(x2)}" y2="${fmt(y2)}" class="tree-branch"></line>`);
+      renderNode(cid, depth + 1, x2, y2);
+    });
+  }
+
+  renderNode(rootId, 0, 0, -120);
+  return `<g data-shell="fractal_tree">${segments.join("")}</g>`;
+}
+
+function renderHudRingLayer(ringId, items = [], radius) {
+  const n = items.length;
+  if (!n) return "";
+  const arcs = items.map((item, i) => {
+    const theta = (2 * Math.PI * i) / n;
+    const theta2 = (2 * Math.PI * (i + 1)) / n;
+    const x1 = radius * Math.cos(theta);
+    const y1 = radius * Math.sin(theta);
+    const x2 = radius * Math.cos(theta2);
+    const y2 = radius * Math.sin(theta2);
+    return `<path d="M ${fmt(x1)} ${fmt(y1)} A ${fmt(radius)} ${fmt(radius)} 0 0 1 ${fmt(x2)} ${fmt(y2)}" class="hud-segment" data-name="${item.name}" data-status="${item.status}" data-load="${fmt(item.load)}"></path>`;
+  }).join("");
+  return `<g data-ring="${ringId}" data-radius="${radius}">${arcs}</g>`;
+}
+
+function renderHudCenter(center = {}) {
+  return `<g class="hud-center"><circle cx="0" cy="0" r="24" data-load="${fmt(center.load || 0)}"></circle><text x="0" y="4" text-anchor="middle" font-size="12">${center.name || ""}</text></g>`;
+}
+
+function renderHudRing(hud = {}) {
+  const shards = renderHudRingLayer("outer_status", hud.shards, 140);
+  const runtimes = renderHudRingLayer("mid_runtime", hud.runtimes, 100);
+  const core = renderHudRingLayer("inner_core", hud.core, 60);
+  const center = renderHudCenter(hud.center || {});
+  return `<g data-shell="hud_ring">${shards}${runtimes}${core}${center}</g>`;
+}
+
+function renderShellsFromData(tokenizer, checkpoint) {
+  const haloData = buildOrbitalHaloData(tokenizer);
+  const gridData = buildStackGridData(checkpoint);
+  const tunnelData = buildTunnelStreamData(tokenizer);
+  const treeData = buildFractalTreeData(tokenizer);
+  const hudData = buildHudRingData(checkpoint);
+
+  const sections = [
+    { pos: SHELL_LAYOUT.orbital, svg: renderOrbitalHalo(haloData.halo) },
+    { pos: SHELL_LAYOUT.stack, svg: renderStackGrid(gridData) },
+    { pos: SHELL_LAYOUT.tunnel, svg: renderTunnelRail(tunnelData) },
+    { pos: SHELL_LAYOUT.tree, svg: renderFractalTree(treeData) },
+    { pos: SHELL_LAYOUT.hud, svg: renderHudRing(hudData) }
+  ];
+
+  const rendered = sections.map(({ pos, svg }) => `<g transform="translate(${fmt(pos.x)},${fmt(pos.y)})">${svg}</g>`).join("");
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SHELL_CANVAS.width} ${SHELL_CANVAS.height}" data-shell-renderer="kuhul_pi_bridge"><rect width="100%" height="100%" fill="#070b12"></rect>${rendered}</svg>`;
+}
+
+async function renderModelShells(modelId, { assets = null, fetchImpl = (typeof fetch !== "undefined" ? fetch : null) } = {}) {
+  const modelAssets = assets || await loadModelAssets(modelId, fetchImpl);
+  const svg = renderShellsFromData(modelAssets.tokenizer, modelAssets.checkpoint);
+  const sealed = sealProjection(svg);
+  return sealed.svg;
+}
+
+// Expose entrypoint for UI projections
+if (typeof self !== "undefined") {
+  self.render_model_shells = renderModelShells;
 }
 
 /* ============================================================
@@ -275,6 +827,139 @@ class SupremeJSONRESTAPI {
     this.quantumCircuits = new Map();
     this.entanglementPairs = new Map();
     this.scxEngine = new SCXQ2Engine();
+    this.codec = new SCXQ2Codec(this.scxEngine);
+    this.manifest = null;
+    this.routeRegistry = new Map();
+  }
+
+  createPhaseController(routeEntry) {
+    return {
+      order: ASX_PHASE_ORDER.slice(),
+      index: -1,
+      route: routeEntry ? routeEntry.path : "unknown"
+    };
+  }
+
+  advancePhase(controller, name, fn) {
+    const expected = controller.order[controller.index + 1];
+    if (expected !== name) {
+      throw new Error(`Ω: phase_order_violation expected=${expected} got=${name}`);
+    }
+    controller.index += 1;
+    return fn();
+  }
+
+  computeProof(body) {
+    const canonical = this.codec.canonicalize(body);
+    const proof = Ω_hash32(JSON.stringify(canonical));
+    return { proof, canonical };
+  }
+
+  enforceProofIntegrity(canonicalBody, providedProof) {
+    const { proof, canonical } = this.computeProof(canonicalBody);
+    if (providedProof && providedProof !== proof) {
+      return { ok: false, reason: "proof_mismatch", proof, canonical };
+    }
+    return { ok: true, proof, canonical };
+  }
+
+  runPhasePipeline(routeEntry, rawPayload) {
+    const controller = this.createPhaseController(routeEntry);
+    let decoded;
+    try {
+      decoded = this.advancePhase(controller, "@Pop", () => this.codec.decodeRequest(routeEntry.schema.request, rawPayload));
+    } catch (err) {
+      return { ok: false, status: 400, error: "phase_pop_failed", reason: err.message };
+    }
+
+    if (!decoded.ok) {
+      return { ok: false, status: 400, error: "invalid_request_payload", reason: decoded.error, phase: "@Pop" };
+    }
+
+    let canonicalBody;
+    try {
+      canonicalBody = this.advancePhase(controller, "@Wo", () => {
+        const body = this.codec.canonicalize(decoded.body);
+        assertStructuralLegality(body);
+        return body;
+      });
+    } catch (err) {
+      return { ok: false, status: 400, error: "structural_illegal", reason: err.message, phase: "@Wo" };
+    }
+
+    const proofResult = this.advancePhase(controller, "@Sek", () =>
+      this.enforceProofIntegrity(canonicalBody, rawPayload?.scx_proof || decoded.body?.scx_proof)
+    );
+
+    if (!proofResult.ok) {
+      return { ok: false, status: 400, error: "proof_invalid", reason: proofResult.reason, phase: "@Sek" };
+    }
+
+    const sealed = this.advancePhase(controller, "@Collapse", () => {
+      const frozen = deepFreeze({ ...canonicalBody, scx_proof: proofResult.proof });
+      return { body: frozen, proof: proofResult.proof };
+    });
+
+    return { ok: true, body: sealed.body, proof: sealed.proof };
+  }
+
+  enforceCapability(path, authResult) {
+    const required = CAPABILITY_RULES[path];
+    if (!required || required.length === 0) return { ok: true };
+    if (authResult?.type === "kernel" || authResult?.type === "quantum") return { ok: true };
+    if (authResult?.type === "external") {
+      const scopeRaw = authResult.meta?.scope || "";
+      const scopes = Array.isArray(scopeRaw) ? scopeRaw : String(scopeRaw).split(/\s+/).filter(Boolean);
+      const missing = required.filter((r) => !scopes.includes(r));
+      if (missing.length === 0) return { ok: true, type: "external" };
+      return { ok: false, reason: "capability_missing", missing };
+    }
+    return { ok: false, reason: "capability_requires_authenticated_principal" };
+  }
+
+  registerAuthToken(token, meta) {
+    try {
+      MX2_MEM?.maps?.authTokens?.set(token, meta);
+    } catch (_) {}
+  }
+
+  issueKernelToken(subject = "kernel") {
+    const token = Ω_id("kernel_token", subject, ΩCLOCK.tick.toString());
+    KERNEL_STATE.api.authentication.kernel_tokens.add(token);
+    this.registerAuthToken(token, { type: "kernel", issued_tick: ΩCLOCK.tick });
+    return token;
+  }
+
+  issueExternalToken({ subject = "external", scope = "api", ttl_ticks = 1000 } = {}) {
+    const payload = {
+      subject,
+      scope,
+      issued_tick: ΩCLOCK.tick,
+      expires_tick: ΩCLOCK.tick + ttl_ticks
+    };
+    const encoded = this.scxEngine.b64encUtf8(payload);
+    const token = `⟁EXT:${Ω_hash32(encoded)}:${encoded}⟁`;
+    KERNEL_STATE.api.authentication.external_tokens.set(token, payload);
+    this.registerAuthToken(token, { type: "external", expires_tick: payload.expires_tick, scope });
+    return token;
+  }
+
+  issueQuantumSignature(id = "default", ttl_ticks = 2048) {
+    const signature = this.generateQuantumSignature(id);
+    const cleanSig = signature.replace(/^⟁Q/, "").replace(/⟁$/, "");
+    const [entangledPairId, proof] = cleanSig.split("|");
+    const pair = this.entanglementPairs.get(entangledPairId) || { coherence: 0 };
+    const entry = {
+      id,
+      entangledPairId,
+      proof,
+      issued_tick: ΩCLOCK.tick,
+      expires_tick: ΩCLOCK.tick + ttl_ticks,
+      coherence: pair.coherence
+    };
+    KERNEL_STATE.api.authentication.quantum_signatures.set(signature, entry);
+    this.registerAuthToken(signature, { type: "quantum", expires_tick: entry.expires_tick });
+    return signature;
   }
 
   // UTF-8 safe base64 encoding/decoding
@@ -294,33 +979,144 @@ class SupremeJSONRESTAPI {
     return JSON.parse(s);
   }
 
+  setManifest(manifest) {
+    this.manifest = manifest || null;
+    KERNEL_STATE.manifest = this.manifest;
+    const routes = manifest?.["🌐NATIVE_JSON_REST_API"]?.api_routes || {};
+    this.routeRegistry = new Map();
+    KERNEL_STATE.api.registry = this.routeRegistry;
+    KERNEL_STATE.api.routes = routes;
+      const handlerMap = this.getHandlerMap();
+      Object.entries(routes).forEach(([path, def]) => {
+        const handler = handlerMap[path];
+        if (!handler) return;
+        this.routeRegistry.set(path, {
+          path,
+          method: def.method || "GET",
+          handler,
+          authentication: def.authentication || "KERNEL_TOKEN_OPTIONAL",
+          schema: {
+            request: def.request_schema || null,
+          response: def.response_schema || null
+        },
+        latency_target_ticks: def.latency_target_ticks || 0
+      });
+      this.ensureRouteMetric(path);
+    });
+    updateApiPathSet();
+  }
+
+  getHandlerMap() {
+    return {
+      "/health": this.healthEndpoint.bind(this),
+      "/infer": this.inferEndpoint.bind(this),
+      "/memory/read": this.memoryReadEndpoint.bind(this),
+      "/memory/write": this.memoryWriteEndpoint.bind(this),
+      "/reinforce": this.reinforceEndpoint.bind(this),
+      "/penalize": this.penalizeEndpoint.bind(this),
+      "/ngrams/snapshot": this.ngramsSnapshotEndpoint.bind(this),
+      "/routines/detect": this.routinesDetectEndpoint.bind(this),
+      "/asx/blocks": this.asxBlocksEndpoint.bind(this),
+      "/weights": this.weightsEndpoint.bind(this),
+      "/micro/jobs/submit": this.microJobsSubmitEndpoint.bind(this),
+      "/micro/agents/status": this.microAgentsStatusEndpoint.bind(this),
+      "/micro/builders/status": this.microBuildersStatusEndpoint.bind(this)
+    };
+  }
+
+  getRouteEntry(path, method) {
+    const entry = this.routeRegistry.get(path);
+    if (!entry) return null;
+    if ((entry.method || "GET") !== method) return null;
+    return entry;
+  }
+
+  ensureRouteMetric(path) {
+    if (!KERNEL_STATE.api.route_metrics[path]) {
+      KERNEL_STATE.api.route_metrics[path] = {
+        requests: 0,
+        total_latency_ticks: 0,
+        last_latency_ticks: 0
+      };
+    }
+  }
+
+  updateRouteMetrics(path, startTick) {
+    this.ensureRouteMetric(path);
+    const metrics = KERNEL_STATE.api.route_metrics[path];
+    const latencyTicks = Math.max(1, ΩCLOCK.tick - startTick);
+    metrics.requests += 1;
+    metrics.total_latency_ticks += latencyTicks;
+    metrics.last_latency_ticks = latencyTicks;
+    return latencyTicks;
+  }
+
   // API Authentication
-  validateAuthToken(token, method, path) {
-    if (path === "/health" && method === "GET") return true;
-    
-    // Kernel internal tokens
+  validateAuthToken(token) {
+    if (!token) return { ok: false, reason: "missing_token" };
+
     if (KERNEL_STATE.api.authentication.kernel_tokens.has(token)) {
-      return true;
+      return { ok: true, type: "kernel" };
     }
     
-    // External tokens (SCXQ2 encrypted)
-    if (KERNEL_STATE.api.authentication.external_tokens.has(token)) {
-      const tokenData = KERNEL_STATE.api.authentication.external_tokens.get(token);
-      if (Ω_now() < tokenData.expires) {
-        return true;
+    const externalData = KERNEL_STATE.api.authentication.external_tokens.get(token);
+    if (externalData) {
+      if (ΩCLOCK.tick <= externalData.expires_tick) {
+        return { ok: true, type: "external", meta: externalData };
       }
+      return { ok: false, type: "external", reason: "token_expired" };
     }
     
-    // Quantum signatures
-    if (token?.startsWith("⟁Q") && token?.endsWith("⟁")) {
-      const signature = this.verifyQuantumSignature(token);
-      return signature.valid;
+    const quantumVerification = this.verifyQuantumSignature(token);
+    if (quantumVerification.valid) {
+      return { ok: true, type: "quantum", meta: quantumVerification };
     }
-    
-    return false;
+
+    return { ok: false, reason: "token_unrecognized" };
+  }
+
+  enforceRouteAuthentication(routeEntry, authToken) {
+    const mode = routeEntry.authentication || "KERNEL_TOKEN_OPTIONAL";
+    const validation = this.validateAuthToken(authToken);
+
+    if (mode === "NONE_KERNEL_INTERNAL") {
+      return { ok: true, mode };
+    }
+
+    if (mode === "KERNEL_TOKEN_OPTIONAL") {
+      if (!authToken) return { ok: true, mode };
+      return validation.ok ? { ok: true, mode, type: validation.type } : { ok: false, mode, reason: validation.reason };
+    }
+
+    if (mode === "KERNEL_REQUIRED") {
+      if (!authToken) return { ok: false, mode, reason: "kernel_token_missing" };
+      if (validation.ok && (validation.type === "kernel" || validation.type === "quantum")) {
+        return { ok: true, mode, type: validation.type };
+      }
+      return { ok: false, mode, reason: validation.reason || "kernel_token_invalid" };
+    }
+
+    if (mode === "KERNEL_OR_EXTERNAL_TOKEN") {
+      if (!authToken) return { ok: false, mode, reason: "token_missing" };
+      if (validation.ok && (validation.type === "kernel" || validation.type === "external" || validation.type === "quantum")) {
+        return { ok: true, mode, type: validation.type };
+      }
+      return { ok: false, mode, reason: validation.reason || "token_invalid" };
+    }
+
+    return { ok: false, mode, reason: "authentication_mode_unknown" };
   }
 
   verifyQuantumSignature(signature) {
+    const stored = KERNEL_STATE.api.authentication.quantum_signatures.get(signature);
+    if (stored) {
+      const valid = ΩCLOCK.tick <= stored.expires_tick;
+      return { valid, entangledPairId: stored.entangledPairId, coherence: stored.coherence };
+    }
+    return this.verifyEntanglementSignature(signature);
+  }
+
+  verifyEntanglementSignature(signature) {
     try {
       const cleanSig = signature.replace(/^⟁Q/, "").replace(/⟁$/, "");
       const [entangledPairId, proof] = cleanSig.split("|");
@@ -354,96 +1150,113 @@ class SupremeJSONRESTAPI {
       case "memory_ops": limit = KERNEL_STATE.api.rate_limits.memory_ops; break;
       case "reinforcement": limit = KERNEL_STATE.api.rate_limits.reinforcement; break;
       case "snapshots": limit = KERNEL_STATE.api.rate_limits.snapshots; break;
-      default: return true;
+      case "micro_jobs": limit = KERNEL_STATE.api.rate_limits.micro_jobs; break;
+      default: return { allowed: true, limit: null };
     }
     
     // Reset if needed
-    rate_reset_if_needed(limit);
+    if (ΩCLOCK.tick >= limit.reset_tick || limit.reset_tick === 0) {
+      limit.tokens = limit.cap;
+      limit.reset_tick = ΩCLOCK.tick + limit.window_ticks;
+    }
     
     if (limit.tokens > 0) {
       limit.tokens--;
-      return true;
+      return { allowed: true, limit };
     }
     
     KERNEL_STATE.api.metrics.rate_limit_hits++;
-    return false;
+    return { allowed: false, limit };
   }
 
   // Route Dispatcher
   async dispatchRoute(path, method, payload, authToken) {
     const wallStart = performance.now(); // non-authoritative telemetry only
+    const startTick = ΩCLOCK.tick;
+    kuhulTick(); // deterministic tick for every route
     KERNEL_STATE.api.metrics.total_requests++;
+
+    const routeEntry = this.getRouteEntry(path, method);
+    if (!routeEntry) {
+      return this.formatResponse(404, {
+        error: "route_not_found",
+        available_routes: Object.keys(KERNEL_STATE.api.routes || {})
+      });
+    }
     
     // Authentication
-    if (!this.validateAuthToken(authToken, method, path)) {
+    const authResult = this.enforceRouteAuthentication(routeEntry, authToken);
+    if (!authResult.ok) {
       KERNEL_STATE.api.metrics.auth_failures++;
       return this.formatResponse(401, {
         error: "authentication_failed",
+        auth_mode: authResult.mode,
+        reason: authResult.reason,
         quantum_state: "|Ψ⟩ = |AUTH_FAILURE⟩"
+      });
+    }
+    
+    const capabilityResult = this.enforceCapability(path, authResult);
+    if (!capabilityResult.ok) {
+      KERNEL_STATE.api.metrics.capability_denials++;
+      return this.formatResponse(403, {
+        error: "capability_required",
+        reason: capabilityResult.reason,
+        missing: capabilityResult.missing || [],
+        quantum_state: "|Ψ⟩ = |CAPABILITY_DENIED⟩"
       });
     }
     
     // Rate limiting
     const endpoint = this.getEndpointFromPath(path);
-    if (!this.checkRateLimit(endpoint)) {
+    const rateCheck = this.checkRateLimit(endpoint);
+    if (!rateCheck.allowed) {
       return this.formatResponse(429, {
         error: "rate_limit_exceeded",
-        retry_after_ms: 1000
+        retry_after_ms: Math.max(0, (rateCheck.limit.reset_tick - ΩCLOCK.tick) * ΩCLOCK.step_ms),
+        reset_tick: rateCheck.limit.reset_tick,
+        window_ticks: rateCheck.limit.window_ticks,
+        remaining_tokens: rateCheck.limit.tokens
       });
     }
-    
+
+    const phaseResult = this.runPhasePipeline(routeEntry, payload);
+    if (!phaseResult.ok) {
+      return this.formatResponse(phaseResult.status || 400, {
+        error: phaseResult.error,
+        reason: phaseResult.reason,
+        phase: phaseResult.phase
+      });
+    }
+
     let response;
     
     try {
-      switch(path) {
-        case "/health":
-          response = await this.healthEndpoint();
-          break;
-        case "/infer":
-          response = await this.inferEndpoint(payload);
-          break;
-        case "/memory/read":
-          response = await this.memoryReadEndpoint(payload);
-          break;
-        case "/memory/write":
-          response = await this.memoryWriteEndpoint(payload);
-          break;
-        case "/reinforce":
-          response = await this.reinforceEndpoint(payload);
-          break;
-        case "/penalize":
-          response = await this.penalizeEndpoint(payload);
-          break;
-        case "/ngrams/snapshot":
-          response = await this.ngramsSnapshotEndpoint();
-          break;
-        case "/routines/detect":
-          response = await this.routinesDetectEndpoint(payload);
-          break;
-        case "/asx/blocks":
-          response = await this.asxBlocksEndpoint();
-          break;
-        case "/weights":
-          response = await this.weightsEndpoint();
-          break;
-        default:
-          return this.formatResponse(404, {
-            error: "route_not_found",
-            available_routes: Object.keys(KERNEL_STATE.api.routes || {})
-          });
+      response = await routeEntry.handler(phaseResult.body, routeEntry);
+
+      if (!response || typeof response.status !== "number" || !response.headers || !response.data) {
+        response = this.formatResponse(200, response || {});
+      }
+
+      response.data = this.codec.encodeResponse(routeEntry.schema.response, response.data);
+      if (phaseResult.proof) {
+        response.data.request_proof = phaseResult.proof;
+        response.data.phase_order = ASX_PHASE_ORDER;
       }
       
       const wallEnd = performance.now();
       const responseTime = wallEnd - wallStart;
+      const latencyTicks = this.updateRouteMetrics(path, startTick);
       
       // Update performance metrics
-      this.updatePerformanceMetrics(endpoint, responseTime);
+      this.updatePerformanceMetrics(endpoint, responseTime, latencyTicks);
       
       // Add timing info (non-authoritative telemetry)
       if (response.data) {
         response.data.response_time_ms = responseTime;
         response.data.telemetry_wall_ms = responseTime;
         response.data.quantum_routing_ms = responseTime * 0.1;
+        response.data.latency_ticks = latencyTicks;
       }
       
       KERNEL_STATE.api.metrics.successful_requests++;
@@ -474,16 +1287,23 @@ class SupremeJSONRESTAPI {
       memory_utilization: this.calculateMemoryUtilization(),
       uptime_ticks: state.ticks,
       quantum_coherence: this.calculateQuantumCoherence(),
+      route_metrics: KERNEL_STATE.api.route_metrics,
+      micro_state: {
+        agents: KERNEL_STATE.micro.agents.length,
+        builders: KERNEL_STATE.micro.builders.length,
+        jobs: KERNEL_STATE.micro.jobs.length
+      },
       api_metrics: {
         total_requests: KERNEL_STATE.api.metrics.total_requests,
         successful_requests: KERNEL_STATE.api.metrics.successful_requests,
-        auth_failures: KERNEL_STATE.api.metrics.auth_failures,
-        rate_limit_hits: KERNEL_STATE.api.metrics.rate_limit_hits,
-        avg_response_time: KERNEL_STATE.api.metrics.avg_response_time
-      },
-      quantum_state: "|Ψ⟩ = α|HEALTHY⟩⊗β|COHERENT⟩⊗γ|READY⟩"
-    });
-  }
+          auth_failures: KERNEL_STATE.api.metrics.auth_failures,
+          rate_limit_hits: KERNEL_STATE.api.metrics.rate_limit_hits,
+          capability_denials: KERNEL_STATE.api.metrics.capability_denials,
+          avg_response_time: KERNEL_STATE.api.metrics.avg_response_time
+        },
+        quantum_state: "|Ψ⟩ = α|HEALTHY⟩⊗β|COHERENT⟩⊗γ|READY⟩"
+      });
+    }
 
   async inferEndpoint(payload) {
     const { prompt, temperature = 0.7, max_tokens = 100, mode = "standard", ngram_level = 3, use_memory = true, reinforcement_source, script, env } = payload;
@@ -647,7 +1467,7 @@ class SupremeJSONRESTAPI {
       memory_updated: true,
       inference_bias_applied: true,
       reinforcement_id,
-      quantum_signature: this.generateQuantumSignature(reinforcement_id)
+      quantum_signature: this.issueQuantumSignature(reinforcement_id)
     });
   }
 
@@ -757,6 +1577,42 @@ class SupremeJSONRESTAPI {
     });
   }
 
+  async microJobsSubmitEndpoint(payload) {
+    const payloadCopy = { ...(payload || {}) };
+    const jobId = payloadCopy.job_id || Ω_id("micro_job", JSON.stringify(payloadCopy), ΩCLOCK.tick);
+    const job = {
+      id: jobId,
+      status: "queued",
+      received_tick: ΩCLOCK.tick,
+      payload: this.codec.canonicalize(payloadCopy)
+    };
+    KERNEL_STATE.micro.jobs.push(job);
+    return this.formatResponse(200, {
+      status: "accepted",
+      job_id: jobId,
+      queued_jobs: KERNEL_STATE.micro.jobs.length,
+      quantum_state: "|Ψ⟩ = |MICRO_JOB|⊗|QUEUED|"
+    });
+  }
+
+  async microAgentsStatusEndpoint() {
+    const agents = KERNEL_STATE.micro.agents || [];
+    return this.formatResponse(200, {
+      agents,
+      total_agents: agents.length,
+      quantum_state: "|Ψ⟩ = Σ|AGENT⟩"
+    });
+  }
+
+  async microBuildersStatusEndpoint() {
+    const builders = KERNEL_STATE.micro.builders || [];
+    return this.formatResponse(200, {
+      builders,
+      total_builders: builders.length,
+      quantum_state: "|Ψ⟩ = Σ|BUILDER⟩"
+    });
+  }
+
   // Helper Methods
   formatResponse(status, data) {
     return {
@@ -778,17 +1634,22 @@ class SupremeJSONRESTAPI {
   }
 
   getEndpointFromPath(path) {
+    if (path === "/health") return "health";
     if (path === "/infer") return "infer";
     if (path.startsWith("/memory/")) return "memory_ops";
     if (path === "/reinforce" || path === "/penalize") return "reinforcement";
     if (path === "/ngrams/snapshot") return "snapshots";
+    if (path.startsWith("/micro/")) return "micro_jobs";
     return "other";
   }
 
-  updatePerformanceMetrics(endpoint, responseTime) {
+  updatePerformanceMetrics(endpoint, responseTime, latencyTicks = null) {
     const metricKey = endpoint.replace("/", "_");
     if (KERNEL_STATE.api.performance[metricKey] !== undefined) {
       KERNEL_STATE.api.performance[metricKey] = responseTime;
+    }
+    if (latencyTicks != null) {
+      KERNEL_STATE.api.performance[`${metricKey}_ticks`] = latencyTicks;
     }
     
     // Update average response time (telemetry only)
@@ -900,6 +1761,82 @@ class SCXQ2Engine {
   
   currentRatio() {
     return this.compressionRatio;
+  }
+}
+
+/* ============================================================
+   SCXQ2 CODEC (Deterministic wrapper around SCXQ2 engine)
+   - canonical encoding/decoding
+   - schema-aware payload validation
+   ============================================================ */
+
+class SCXQ2Codec {
+  constructor(engine) {
+    this.engine = engine;
+  }
+
+  canonicalize(value) {
+    if (Array.isArray(value)) {
+      return value.map(v => this.canonicalize(v));
+    }
+    if (value && typeof value === "object") {
+      const sorted = {};
+      Object.keys(value).sort().forEach(k => {
+        sorted[k] = this.canonicalize(value[k]);
+      });
+      return sorted;
+    }
+    return value;
+  }
+
+  encode(value) {
+    const canonical = this.canonicalize(value ?? {});
+    const encoded = this.engine.b64encUtf8(canonical);
+    const fingerprint = Ω_hash32(encoded);
+    return `⟁SCXQ2:${fingerprint}:${encoded}⟁`;
+  }
+
+  decode(scxString) {
+    if (typeof scxString !== "string") {
+      return { ok: false, error: "invalid_scx_type" };
+    }
+    const trimmed = scxString.replace(/^⟁/, "").replace(/⟁$/, "");
+    const parts = trimmed.split(":");
+    if (parts.length < 3 || parts[0] !== "SCXQ2") {
+      return { ok: false, error: "invalid_scx_format" };
+    }
+
+    const base64Payload = parts.slice(2).join(":");
+    try {
+      const decoded = this.engine.b64decUtf8(base64Payload);
+      return { ok: true, decoded };
+    } catch {
+      return { ok: false, error: "decode_failure" };
+    }
+  }
+
+  decodeRequest(schema, payload) {
+    if (schema?.scx === "string") {
+      if (!payload || typeof payload.scx !== "string") {
+        return { ok: false, error: "request_scx_missing" };
+      }
+      const decoded = this.decode(payload.scx);
+      if (!decoded.ok) return decoded;
+
+      const body = typeof decoded.decoded === "object" ? decoded.decoded : { value: decoded.decoded };
+      const merged = { ...body, ...(payload || {}) };
+      return { ok: true, body: merged, decoded: decoded.decoded };
+    }
+    return { ok: true, body: payload || {} };
+  }
+
+  encodeResponse(schema, data) {
+    const base = data || {};
+    if (schema?.scx === "string") {
+      const scx = this.encode(base);
+      return { ...base, scx };
+    }
+    return base;
   }
 }
 
@@ -1312,7 +2249,8 @@ function mx2_json(obj, status = 200) {
 }
 
 // Initialize Supreme JSON REST API
-const SUPREME_API = new SupremeJSONRESTAPI();
+SUPREME_API = new SupremeJSONRESTAPI();
+updateApiPathSet();
 
 async function mx2_route_api(url, request) {
   const path = url.pathname;
@@ -1497,14 +2435,23 @@ self.addEventListener("message", async (event) => {
   
   // Supreme API messages
   if (type === "api.generate_token") {
-    const token = Ω_id("kernel_token", ΩCLOCK.tick.toString());
-    KERNEL_STATE.api.authentication.kernel_tokens.add(token);
+    const token = SUPREME_API.issueKernelToken(msg.subject || "kernel");
     postBack(event.source, { type: "api.token_generated", token });
+    return;
+  }
+
+  if (type === "api.external_token") {
+    const token = SUPREME_API.issueExternalToken({
+      subject: msg.subject || "external",
+      scope: msg.scope || "api",
+      ttl_ticks: msg.ttl_ticks || 1000
+    });
+    postBack(event.source, { type: "api.external_token", token });
     return;
   }
   
   if (type === "api.quantum_signature") {
-    const signature = SUPREME_API.generateQuantumSignature(msg.id || "default");
+    const signature = SUPREME_API.issueQuantumSignature(msg.id || "default");
     postBack(event.source, { type: "api.quantum_signature", signature });
     return;
   }
@@ -1626,13 +2573,6 @@ self.addEventListener("message", async (event) => {
    - Single unified fetch handler (prevents collisions)
    ============================================================ */
 
-// Exact API route matching
-const API_PATHS = new Set([
-  "/health","/infer","/memory/read","/memory/write",
-  "/reinforce","/penalize","/ngrams/snapshot",
-  "/routines/detect","/asx/blocks","/weights"
-]);
-
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
@@ -1687,6 +2627,31 @@ self.addEventListener("activate", (e) => {
     await self.clients.claim();
   })());
 });
+
+// Exports for deterministic local simulations / unit tests
+if (typeof module !== "undefined") {
+  module.exports = {
+    SupremeJSONRESTAPI,
+    SCXQ2Engine,
+    SCXQ2Codec,
+    PI_BRIDGE,
+    buildOrbitalHaloData,
+    buildStackGridData,
+    buildTunnelStreamData,
+    buildFractalTreeData,
+    buildHudRingData,
+    renderShellsFromData,
+    renderModelShells,
+    loadModelAssets,
+    KERNEL_STATE,
+    ΩCLOCK,
+    Ω_tick,
+    kuhulTick,
+    hydrateMicroState,
+    updateApiPathSet,
+    applyManifestToKernel
+  };
+}
 
 /* ============================================================
    BRAIN TOPOLOGY EXECUTION ENGINE
