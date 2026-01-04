@@ -1,0 +1,52 @@
+{
+  "$schema": "xjson://schema/draft/2020-12",
+  "$id": "asx://schema/cc/cc_proof.v1",
+  "type": "object",
+  "required": ["@cc_proof"],
+  "properties": {
+    "@cc_proof": {
+      "type": "object",
+      "required": [
+        "@cc",
+        "@input_hash",
+        "@output_hash",
+        "@proof_hash",
+        "@operators_used",
+        "@invariants_verified",
+        "@xcfe_signature"
+      ],
+      "properties": {
+        "@cc": { "const": "CC-v1" },
+        "@input_hash": { "type": "string" },
+        "@output_hash": { "type": "string" },
+        "@proof_hash": { "type": "string" },
+        "@operators_used": {
+          "type": "array",
+          "items": { "enum": ["⊕", "π̂", "⊗", "≈", "τ"] }
+        },
+        "@invariants_verified": {
+          "type": "array",
+          "items": { "enum": ["I1", "I2", "I3", "I4"] }
+        },
+        "@xcfe_signature": {
+          "type": "object",
+          "required": ["@graph_hash_in", "@graph_hash_out"],
+          "properties": {
+            "@graph_hash_in": { "type": "string" },
+            "@graph_hash_out": { "type": "string" },
+            "@isomorphism": {
+              "type": ["object", "null"],
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "@projection": { "type": ["object", "null"] },
+        "@quant": { "type": ["object", "null"] },
+        "@temporal": { "type": ["object", "null"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

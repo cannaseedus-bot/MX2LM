@@ -1,6 +1,452 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MX2LM Supreme Cognitive Runtime</title>
+  <style>
+    :root {
+      --bg-primary: #070b12;
+      --bg-secondary: #0b1322;
+      --bg-tertiary: #101828;
+      --fg-primary: #e8f5ff;
+      --fg-secondary: #8ba4c0;
+      --accent-cyan: #00d4ff;
+      --accent-green: #00ff88;
+      --accent-purple: #a855f7;
+      --accent-orange: #ff8800;
+      --accent-red: #ff4444;
+      --border-color: #1a2b44;
+      --glow-cyan: 0 0 20px rgba(0, 212, 255, 0.3);
+      --glow-green: 0 0 20px rgba(0, 255, 136, 0.3);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+      background: var(--bg-primary);
+      color: var(--fg-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 20px;
+    }
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--accent-cyan);
+      text-shadow: var(--glow-cyan);
+    }
+    .status-bar {
+      display: flex;
+      gap: 20px;
+      font-size: 12px;
+    }
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    .status-dot.online { background: var(--accent-green); box-shadow: var(--glow-green); }
+    .status-dot.offline { background: var(--accent-red); }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 1200px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .metric {
+      background: var(--bg-tertiary);
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .metric-value {
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--accent-cyan);
+    }
+    .metric-label {
+      font-size: 10px;
+      color: var(--fg-secondary);
+      margin-top: 4px;
+      text-transform: uppercase;
+    }
+    .brain-viewer {
+      background: var(--bg-primary);
+      border-radius: 8px;
+      min-height: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+    .brain-viewer svg {
+      max-width: 100%;
+      max-height: 100%;
+    }
+    .api-tester {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .endpoint-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--fg-primary);
+      padding: 12px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+      font-family: inherit;
+      font-size: 13px;
+    }
+    .endpoint-btn:hover {
+      border-color: var(--accent-cyan);
+      background: rgba(0, 212, 255, 0.1);
+    }
+    .endpoint-method {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    .method-get { background: var(--accent-green); color: #000; }
+    .method-post { background: var(--accent-orange); color: #000; }
+    .response-panel {
+      background: var(--bg-primary);
+      border-radius: 8px;
+      padding: 16px;
+      max-height: 300px;
+      overflow: auto;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+    .response-panel pre {
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .brain-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .brain-item {
+      background: var(--bg-tertiary);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+    .brain-item:hover {
+      border-color: var(--accent-purple);
+    }
+    .brain-item.active {
+      border-color: var(--accent-cyan);
+      box-shadow: var(--glow-cyan);
+    }
+    .brain-id {
+      font-weight: bold;
+      color: var(--accent-cyan);
+      font-size: 12px;
+    }
+    .brain-domain {
+      font-size: 10px;
+      color: var(--fg-secondary);
+      margin-top: 4px;
+    }
+    .brain-metrics {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .brain-metric-tag {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(168, 85, 247, 0.2);
+      color: var(--accent-purple);
+    }
+    .inference-input {
+      width: 100%;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--fg-primary);
+      padding: 12px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 13px;
+      resize: vertical;
+      min-height: 80px;
+    }
+    .inference-input:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      border: none;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: bold;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
+    }
+    .quantum-state {
+      font-size: 11px;
+      color: var(--fg-secondary);
+      padding: 8px 12px;
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      margin-top: 12px;
+      font-style: italic;
+    }
+    .log-entry {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 11px;
+    }
+    .log-time {
+      color: var(--fg-secondary);
+      margin-right: 8px;
+    }
+    .log-type {
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 9px;
+      margin-right: 8px;
+    }
+    .log-type.info { background: var(--accent-cyan); color: #000; }
+    .log-type.success { background: var(--accent-green); color: #000; }
+    .log-type.error { background: var(--accent-red); color: #fff; }
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      gap: 20px;
+    }
+    .loading-spinner {
+      width: 60px;
+      height: 60px;
+      border: 3px solid var(--border-color);
+      border-top-color: var(--accent-cyan);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading" class="loading">
+    <div class="loading-spinner"></div>
+    <div style="color: var(--accent-cyan);">Initializing K'UHUL-PI Kernel...</div>
+    <div style="color: var(--fg-secondary); font-size: 12px;">Law: omega-BLACK-PANEL</div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app" class="container hidden">
+    <header>
+      <div class="logo">MX2LM</div>
+      <div class="status-bar">
+        <div class="status-item">
+          <div id="kernel-status" class="status-dot offline"></div>
+          <span>Kernel</span>
+        </div>
+        <div class="status-item">
+          <div id="api-status" class="status-dot offline"></div>
+          <span>API</span>
+        </div>
+        <div class="status-item">
+          <span id="tick-display">Tick: 0</span>
+        </div>
+        <div class="status-item">
+          <span id="entropy-display">Entropy: 0.32</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Kernel Metrics Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Kernel Metrics</span>
+        </div>
+        <div class="metrics-grid">
+          <div class="metric">
+            <div id="metric-ticks" class="metric-value">0</div>
+            <div class="metric-label">Ticks</div>
+          </div>
+          <div class="metric">
+            <div id="metric-entropy" class="metric-value">0.32</div>
+            <div class="metric-label">Entropy</div>
+          </div>
+          <div class="metric">
+            <div id="metric-tokens" class="metric-value">0</div>
+            <div class="metric-label">Tokens</div>
+          </div>
+          <div class="metric">
+            <div id="metric-activations" class="metric-value">0</div>
+            <div class="metric-label">Activations</div>
+          </div>
+          <div class="metric">
+            <div id="metric-requests" class="metric-value">0</div>
+            <div class="metric-label">API Requests</div>
+          </div>
+          <div class="metric">
+            <div id="metric-coherence" class="metric-value">0.95</div>
+            <div class="metric-label">Coherence</div>
+          </div>
+        </div>
+        <div class="quantum-state" id="quantum-state">
+          |psi> = alpha|INIT>otimesbeta|LOADING>
+        </div>
+      </div>
+
+      <!-- API Tester Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Supreme JSON REST API</span>
+        </div>
+        <div class="api-tester">
+          <button class="endpoint-btn" onclick="testEndpoint('/health', 'GET')">
+            <span>/health</span>
+            <span class="endpoint-method method-get">GET</span>
+          </button>
+          <button class="endpoint-btn" onclick="testEndpoint('/infer', 'POST', {prompt: 'Hello MX2LM'})">
+            <span>/infer</span>
+            <span class="endpoint-method method-post">POST</span>
+          </button>
+          <button class="endpoint-btn" onclick="testEndpoint('/asx/blocks', 'GET')">
+            <span>/asx/blocks</span>
+            <span class="endpoint-method method-get">GET</span>
+          </button>
+          <button class="endpoint-btn" onclick="testEndpoint('/weights', 'GET')">
+            <span>/weights</span>
+            <span class="endpoint-method method-get">GET</span>
+          </button>
+          <button class="endpoint-btn" onclick="testEndpoint('/brain/list', 'GET')">
+            <span>/brain/list</span>
+            <span class="endpoint-method method-get">GET</span>
+          </button>
+          <button class="endpoint-btn" onclick="testEndpoint('/micro/agents/status', 'GET')">
+            <span>/micro/agents/status</span>
+            <span class="endpoint-method method-get">GET</span>
+          </button>
+        </div>
+        <div class="response-panel" id="api-response">
+          <pre>// API response will appear here</pre>
+        </div>
+      </div>
+
+      <!-- Brain Topology Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Brain Topology</span>
+        </div>
+        <div class="brain-list" id="brain-list">
+          <!-- Brain items populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Brain Viewer Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Brain Visualization</span>
+        </div>
+        <div class="brain-viewer" id="brain-viewer">
+          <div style="color: var(--fg-secondary);">Select a brain to visualize</div>
+        </div>
+      </div>
+
+      <!-- Inference Panel -->
+      <div class="panel" style="grid-column: span 2;">
+        <div class="panel-header">
+          <span class="panel-title">MX2LM Inference</span>
+        </div>
+        <textarea class="inference-input" id="inference-input" placeholder="Enter your prompt here..."></textarea>
+        <div style="display: flex; gap: 12px; margin-top: 12px;">
+          <button class="btn-primary" onclick="runInference()">Run Inference</button>
+          <button class="btn-primary" onclick="activateBrain()" style="background: linear-gradient(135deg, var(--accent-purple), var(--accent-orange));">Activate Brain</button>
+        </div>
+        <div class="response-panel" id="inference-response" style="margin-top: 16px;">
+          <pre>// Inference result will appear here</pre>
+        </div>
+      </div>
+
+      <!-- Activity Log Panel -->
+      <div class="panel" style="grid-column: span 2;">
+        <div class="panel-header">
+          <span class="panel-title">Activity Log</span>
+        </div>
+        <div id="activity-log" style="max-height: 200px; overflow-y: auto;">
+          <!-- Log entries populated dynamically -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Inference Bridge — Qwen + Cline</title>
@@ -194,6 +640,393 @@
   </div>
 
   <script>
+    /* ============================================================
+       MX2LM UI CONTROLLER
+       Law: UI reads state; state never reads UI
+       ============================================================ */
+
+    const UI = {
+      kernelReady: false,
+      apiReady: false,
+      brains: [],
+      selectedBrain: null,
+      authToken: null
+    };
+
+    // Service Worker Registration
+    async function registerServiceWorker() {
+      if (!('serviceWorker' in navigator)) {
+        log('error', 'Service Workers not supported');
+        return false;
+      }
+
+      try {
+        const reg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+        log('info', 'Service Worker registered');
+
+        // Wait for activation
+        await navigator.serviceWorker.ready;
+        log('success', 'Service Worker active');
+
+        return true;
+      } catch (err) {
+        log('error', `SW registration failed: ${err.message}`);
+        return false;
+      }
+    }
+
+    // Message Bridge to Kernel
+    function postToKernel(type, payload = {}) {
+      return new Promise((resolve, reject) => {
+        const channel = new MessageChannel();
+
+        channel.port1.onmessage = (event) => {
+          resolve(event.data);
+        };
+
+        channel.port1.onerror = (err) => {
+          reject(err);
+        };
+
+        if (navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage(
+            { type, ...payload },
+            [channel.port2]
+          );
+        } else {
+          reject(new Error('No active service worker'));
+        }
+
+        // Timeout after 10s
+        setTimeout(() => reject(new Error('Kernel timeout')), 10000);
+      });
+    }
+
+    // Initialize Kernel
+    async function initKernel() {
+      try {
+        const response = await postToKernel('omega_INIT');
+
+        if (response.type === 'omega_SVG_READY') {
+          UI.kernelReady = true;
+          document.getElementById('kernel-status').classList.add('online');
+          document.getElementById('kernel-status').classList.remove('offline');
+
+          updateMetrics(response.meta);
+          updateQuantumState(response.meta.api_manifesto || 'Kernel initialized');
+
+          log('success', `Kernel ${response.meta.kernel} ready`);
+
+          // Request API token
+          const tokenResp = await postToKernel('api.generate_token');
+          if (tokenResp.token) {
+            UI.authToken = tokenResp.token;
+            log('success', 'Auth token acquired');
+          }
+
+          return true;
+        } else if (response.type === 'omega_ERROR') {
+          throw new Error(response.err);
+        }
+      } catch (err) {
+        log('error', `Kernel init failed: ${err.message}`);
+        return false;
+      }
+    }
+
+    // Test API Endpoint
+    async function testEndpoint(path, method, body = null) {
+      const responseEl = document.getElementById('api-response');
+      responseEl.innerHTML = '<pre>Loading...</pre>';
+
+      try {
+        const options = {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${UI.authToken || ''}`
+          }
+        };
+
+        if (body && method !== 'GET') {
+          options.body = JSON.stringify(body);
+        }
+
+        const resp = await fetch(path, options);
+        const data = await resp.json();
+
+        responseEl.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+
+        UI.apiReady = true;
+        document.getElementById('api-status').classList.add('online');
+        document.getElementById('api-status').classList.remove('offline');
+
+        // Update metrics from health response
+        if (path === '/health' && data) {
+          updateMetricsFromHealth(data);
+        }
+
+        // Load brains from brain/list
+        if (path === '/brain/list' && data.brains) {
+          loadBrainList(data.brains);
+        }
+
+        log('success', `${method} ${path} - ${resp.status}`);
+      } catch (err) {
+        responseEl.innerHTML = `<pre style="color: var(--accent-red);">Error: ${err.message}</pre>`;
+        log('error', `${method} ${path} failed: ${err.message}`);
+      }
+    }
+
+    // Run Inference
+    async function runInference() {
+      const input = document.getElementById('inference-input').value;
+      const responseEl = document.getElementById('inference-response');
+
+      if (!input.trim()) {
+        responseEl.innerHTML = '<pre style="color: var(--accent-orange);">Please enter a prompt</pre>';
+        return;
+      }
+
+      responseEl.innerHTML = '<pre>Processing...</pre>';
+
+      try {
+        const resp = await fetch('/infer', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${UI.authToken || ''}`
+          },
+          body: JSON.stringify({
+            prompt: input,
+            temperature: 0.7,
+            max_tokens: 100,
+            use_memory: true
+          })
+        });
+
+        const data = await resp.json();
+        responseEl.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+
+        if (data.quantum_state) {
+          updateQuantumState(data.quantum_state);
+        }
+
+        log('success', `Inference complete - ${data.tokens_used || 0} tokens`);
+      } catch (err) {
+        responseEl.innerHTML = `<pre style="color: var(--accent-red);">Error: ${err.message}</pre>`;
+        log('error', `Inference failed: ${err.message}`);
+      }
+    }
+
+    // Activate Brain
+    async function activateBrain() {
+      if (!UI.selectedBrain) {
+        log('error', 'No brain selected');
+        return;
+      }
+
+      const input = document.getElementById('inference-input').value;
+
+      try {
+        const resp = await fetch('/brain/activate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${UI.authToken || ''}`
+          },
+          body: JSON.stringify({
+            brain_id: UI.selectedBrain,
+            input_state: { prompt: input, tokens: input.split(/\s+/) }
+          })
+        });
+
+        const data = await resp.json();
+        document.getElementById('inference-response').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+
+        log('success', `Brain ${UI.selectedBrain} activated`);
+      } catch (err) {
+        log('error', `Brain activation failed: ${err.message}`);
+      }
+    }
+
+    // Load Brain List
+    function loadBrainList(brains) {
+      UI.brains = brains;
+      const container = document.getElementById('brain-list');
+
+      container.innerHTML = brains.map(brain => `
+        <div class="brain-item" data-id="${brain.id}" onclick="selectBrain('${brain.id}')">
+          <div class="brain-id">${brain.id}</div>
+          <div class="brain-domain">${brain.domain}</div>
+          <div class="brain-metrics">
+            ${(brain.metrics || []).map(m =>
+              `<span class="brain-metric-tag">${m.key}: ${m.value}</span>`
+            ).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Select Brain
+    function selectBrain(id) {
+      UI.selectedBrain = id;
+
+      // Update UI
+      document.querySelectorAll('.brain-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.id === id);
+      });
+
+      // Render brain visualization
+      renderBrainVisualization(id);
+
+      log('info', `Brain selected: ${id}`);
+    }
+
+    // Render Brain Visualization
+    function renderBrainVisualization(brainId) {
+      const brain = UI.brains.find(b => b.id === brainId);
+      if (!brain) return;
+
+      const viewer = document.getElementById('brain-viewer');
+      const metrics = brain.metrics || [];
+      const bindings = brain.bindings || {};
+
+      // Create SVG visualization
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="500" height="350" viewBox="0 0 500 350">
+          <defs>
+            <radialGradient id="glow-${brainId}" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.3"/>
+              <stop offset="100%" stop-color="#00d4ff" stop-opacity="0"/>
+            </radialGradient>
+            <filter id="blur-${brainId}">
+              <feGaussianBlur stdDeviation="3"/>
+            </filter>
+          </defs>
+
+          <!-- Background glow -->
+          <circle cx="250" cy="150" r="120" fill="url(#glow-${brainId})"/>
+
+          <!-- Central node -->
+          <circle cx="250" cy="150" r="60" fill="#0b1322" stroke="#00d4ff" stroke-width="2"/>
+          <text x="250" y="145" text-anchor="middle" fill="#00d4ff" font-size="11" font-family="monospace">${brain.id}</text>
+          <text x="250" y="162" text-anchor="middle" fill="#8ba4c0" font-size="9" font-family="monospace">${brain.domain}</text>
+
+          <!-- Metric nodes -->
+          ${metrics.map((m, i) => {
+            const angle = (i / metrics.length) * Math.PI * 2 - Math.PI / 2;
+            const x = 250 + Math.cos(angle) * 100;
+            const y = 150 + Math.sin(angle) * 100;
+            return `
+              <line x1="250" y1="150" x2="${x}" y2="${y}" stroke="#1a2b44" stroke-width="1"/>
+              <circle cx="${x}" cy="${y}" r="25" fill="#101828" stroke="#a855f7" stroke-width="1"/>
+              <text x="${x}" y="${y - 5}" text-anchor="middle" fill="#a855f7" font-size="8" font-family="monospace">${m.key}</text>
+              <text x="${x}" y="${y + 8}" text-anchor="middle" fill="#e8f5ff" font-size="10" font-family="monospace">${m.value}</text>
+            `;
+          }).join('')}
+
+          <!-- Bindings info -->
+          <text x="20" y="300" fill="#8ba4c0" font-size="9" font-family="monospace">
+            PI Inputs: ${(bindings.pi_inputs || []).join(', ') || 'none'}
+          </text>
+          <text x="20" y="315" fill="#8ba4c0" font-size="9" font-family="monospace">
+            Cluster: ${(bindings.cluster_inputs || []).join(', ') || 'none'}
+          </text>
+          <text x="20" y="330" fill="#8ba4c0" font-size="9" font-family="monospace">
+            Outputs: ${(bindings.runtime_outputs || []).join(', ') || 'none'}
+          </text>
+        </svg>
+      `;
+
+      viewer.innerHTML = svg;
+    }
+
+    // Update Metrics
+    function updateMetrics(meta) {
+      document.getElementById('metric-ticks').textContent = meta.ticks || 0;
+      document.getElementById('metric-entropy').textContent = (meta.entropy || 0).toFixed(4);
+      document.getElementById('tick-display').textContent = `Tick: ${meta.ticks || 0}`;
+      document.getElementById('entropy-display').textContent = `Entropy: ${(meta.entropy || 0).toFixed(4)}`;
+    }
+
+    function updateMetricsFromHealth(data) {
+      document.getElementById('metric-ticks').textContent = data.ticks || data.uptime_ticks || 0;
+      document.getElementById('metric-entropy').textContent = (data.entropy || 0).toFixed(4);
+      document.getElementById('metric-tokens').textContent = data.tokens_seen || 0;
+      document.getElementById('metric-activations').textContent = data.total_activations || 0;
+      document.getElementById('metric-requests').textContent = data.api_metrics?.total_requests || 0;
+      document.getElementById('metric-coherence').textContent = (data.quantum_coherence || 0).toFixed(2);
+      document.getElementById('tick-display').textContent = `Tick: ${data.tick || 0}`;
+      document.getElementById('entropy-display').textContent = `Entropy: ${(data.entropy || 0).toFixed(4)}`;
+
+      if (data.quantum_state) {
+        updateQuantumState(data.quantum_state);
+      }
+    }
+
+    function updateQuantumState(state) {
+      document.getElementById('quantum-state').textContent = state;
+    }
+
+    // Activity Log
+    function log(type, message) {
+      const logEl = document.getElementById('activity-log');
+      const time = new Date().toLocaleTimeString();
+
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `
+        <span class="log-time">${time}</span>
+        <span class="log-type ${type}">${type.toUpperCase()}</span>
+        <span>${message}</span>
+      `;
+
+      logEl.insertBefore(entry, logEl.firstChild);
+
+      // Keep log bounded
+      while (logEl.children.length > 50) {
+        logEl.removeChild(logEl.lastChild);
+      }
+    }
+
+    // Initialize
+    async function init() {
+      log('info', 'Initializing MX2LM UI...');
+
+      const swReady = await registerServiceWorker();
+      if (!swReady) {
+        document.getElementById('loading').innerHTML = `
+          <div style="color: var(--accent-red);">Service Worker failed to initialize</div>
+          <div style="color: var(--fg-secondary); font-size: 12px;">Check console for details</div>
+        `;
+        return;
+      }
+
+      // Small delay for SW activation
+      await new Promise(r => setTimeout(r, 500));
+
+      const kernelReady = await initKernel();
+
+      // Show main app
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+
+      if (kernelReady) {
+        // Auto-load health and brains
+        await testEndpoint('/health', 'GET');
+        await testEndpoint('/brain/list', 'GET');
+      }
+
+      log('info', 'UI initialization complete');
+    }
+
+    // Start when DOM ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
     class InferenceBridge {
       constructor() {
         this.glyphRegistry = new Map();
