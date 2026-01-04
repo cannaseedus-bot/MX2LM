@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="MX2LM logo">
+  <defs>
+    <!-- Spectrum gradient (atomic neon) -->
+    <linearGradient id="mxg" x1="80" y1="60" x2="440" y2="460" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#43F5FF"/>
+      <stop offset="0.38" stop-color="#6B74FF"/>
+      <stop offset="0.72" stop-color="#B65CFF"/>
+      <stop offset="1" stop-color="#FF4FD8"/>
+    </linearGradient>
+
+    <!-- Subtle internal grid -->
+    <pattern id="mxgrid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="1"/>
+    </pattern>
+
+    <!-- Glow -->
+    <filter id="mxglow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feColorMatrix in="b" type="matrix"
+        values="1 0 0 0 0
+                0 1 0 0 0
+                0 0 1 0 0
+                0 0 0 0.85 0" result="c"/>
+      <feMerge>
+        <feMergeNode in="c"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Inner shadow for plate -->
+    <filter id="mxinner" x="-30%" y="-30%" width="160%" height="160%">
+      <feOffset dx="0" dy="2"/>
+      <feGaussianBlur stdDeviation="4" result="o"/>
+      <feComposite in="o" in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="insh"/>
+      <feColorMatrix in="insh" type="matrix"
+        values="0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0.55 0"/>
+      <feComposite in2="SourceGraphic" operator="over"/>
+    </filter>
+
+    <!-- Soft vignette -->
+    <radialGradient id="mxv" cx="50%" cy="42%" r="70%">
+      <stop offset="0" stop-color="#0C1020" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.35"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Plate -->
+  <rect x="44" y="44" width="424" height="424" rx="64" fill="#070A12"/>
+  <rect x="44" y="44" width="424" height="424" rx="64" fill="url(#mxgrid)"/>
+  <rect x="44" y="44" width="424" height="424" rx="64" fill="url(#mxv)"/>
+
+  <!-- Frames -->
+  <rect x="56" y="56" width="400" height="400" rx="56" fill="none" stroke="url(#mxg)" stroke-width="10" filter="url(#mxglow)"/>
+  <rect x="76" y="76" width="360" height="360" rx="44" fill="none" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="2" filter="url(#mxinner)"/>
+
+  <!-- Central “cognitive atom”: M X 2 + lane ring -->
+  <!-- Lane ring (routing / clustering surface) -->
+  <g filter="url(#mxglow)">
+    <circle cx="256" cy="240" r="118" fill="none" stroke="url(#mxg)" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="256" cy="240" r="92" fill="none" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="2"/>
+  </g>
+
+  <!-- Four lane ticks (phase gates) -->
+  <g stroke="url(#mxg)" stroke-width="6" stroke-linecap="round" filter="url(#mxglow)">
+    <path d="M256 108 V132"/>
+    <path d="M256 348 V372"/>
+    <path d="M124 240 H148"/>
+    <path d="M364 240 H388"/>
+  </g>
+
+  <!-- Stylized “M” + “X” mark -->
+  <g fill="none" stroke="url(#mxg)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" filter="url(#mxglow)">
+    <!-- M -->
+    <path d="M178 282 V196 L214 234 L250 196 V282"/>
+    <!-- X -->
+    <path d="M282 204 L334 276"/>
+    <path d="M334 204 L282 276"/>
+  </g>
+
+  <!-- “2” mark as doubled node (two-brain / dual-lane) -->
+  <g filter="url(#mxglow)">
+    <circle cx="236" cy="156" r="7" fill="#FFFFFF" fill-opacity="0.75"/>
+    <circle cx="276" cy="156" r="7" fill="#FFFFFF" fill-opacity="0.75"/>
+  </g>
+
+  <!-- Wordmark -->
+  <g font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif"
+     text-anchor="middle" fill="#EAF0FF">
+    <text x="256" y="410" font-size="42" font-weight="900" letter-spacing="2" opacity="0.92">MX2LM</text>
+    <text x="256" y="440" font-size="13" font-weight="700" letter-spacing="3" opacity="0.55">COGNITIVE RUNTIME</text>
+  </g>
+
+  <!-- Monotonic tick corner marker -->
+  <path d="M392 120 L420 120 L420 148" fill="none" stroke="url(#mxg)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+</svg>
