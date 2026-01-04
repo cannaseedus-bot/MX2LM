@@ -1,6 +1,6 @@
 # MX2LM
 
-![MX2LM Brain](dashboard.svg)
+<img src="https://github.com/cannaseedus-bot/MX2LM/blob/main/mx2lm-logo.svg" style="width:400px;">
 
 
 Here’s a **clean, compact MX2LM specification** that reflects *exactly* what we just aligned on — no hype, no mysticism, no ego inflation.
