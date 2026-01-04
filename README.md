@@ -6,6 +6,78 @@
 Here’s a **clean, compact MX2LM specification** that reflects *exactly* what we just aligned on — no hype, no mysticism, no ego inflation.
 
 ---
+Yes — **adding a section that anchors MX2LM to ASX is correct**, *as long as it’s framed as dependency and scope*, not glue or instructions.
+
+Below is a **clean, spec-safe section** you can paste into **`MX2LM/README.md`**.
+It **references ASX without importing its README verbatim**, preserves authority boundaries, and explains *why MX2LM exists as a distinct runtime*.
+
+---
+
+## Relationship to ASX
+
+MX2LM is **not a standalone ecosystem**.
+It is a **cognitive runtime specification** that operates **within the ASX language family**.
+
+ASX defines the **foundational runtime law**:
+
+* JSON-defined state
+* Deterministic transitions
+* Schema-as-law
+* Replayability and verification
+* Compression-first execution
+
+MX2LM builds on these foundations to specify a **cognitive execution layer** whose purpose is:
+
+> **Deterministic symbolic cognition via structure, compression, and routing.**
+
+In concrete terms:
+
+| Layer                  | Responsibility                                           |
+| ---------------------- | -------------------------------------------------------- |
+| **ASX / ASX-R**        | Runtime law, phases, invariants, conformance             |
+| **MX2LM**              | Cognitive primitives, atomic runtimes, symbolic routing  |
+| **Projection systems** | UI, SVG, agents, chat, visualization (non-authoritative) |
+
+MX2LM **does not redefine** ASX runtime law.
+It **specializes** it.
+
+All MX2LM execution:
+
+* obeys ASX-R phase and invariant rules
+* uses ASX-defined schema discipline
+* produces replay-verifiable artifacts
+* treats interpreters and UIs as projections only
+
+For the canonical ASX specification and language family overview, see:
+**[https://github.com/cannaseedus-bot/ASX](https://github.com/cannaseedus-bot/ASX)**
+
+---
+
+### Scope Clarification
+
+MX2LM is intentionally **narrower** than ASX.
+
+* ASX answers: *“What is allowed to exist and change?”*
+* MX2LM answers: *“How cognition emerges under those laws.”*
+
+MX2LM is therefore:
+
+* **not** a chat system
+* **not** an LLM wrapper
+* **not** a UI framework
+* **not** an implementation repo
+
+It is a **runtime language specification** for cognition.
+
+---
+
+### Canonical Statement
+
+> **ASX defines reality.
+> MX2LM defines thought within that reality.**
+
+---
+
 
 # MX2LM — Core Specification (Deterministic, Compressed Intelligence)
 
