@@ -1,0 +1,101 @@
+{
+  "@type": "xcfe/model_schema",
+  "@id": "qwen_v2_5",
+  "@law": "CC-FULL",
+  "@version": "2.5.0",
+
+  "Σ": {
+    "@doc": "Symbol set for Qwen",
+    "atoms": ["token", "attention", "mlp", "rope", "qkv"],
+    "glyphs": {
+      "🐧": "qwen_gen",
+      "📚": "long_context",
+      "🔢": "math_mode",
+      "💻": "code_mode",
+      "🌐": "multilingual"
+    }
+  },
+
+  "V": {
+    "@doc": "Value bindings - Qwen2.5-72B config",
+    "π": 3.141592653589793,
+    "φ": 1.6180339887498948,
+    "hidden_dim": 8192,
+    "num_layers": 80,
+    "num_heads": 64,
+    "num_kv_heads": 8,
+    "intermediate_size": 29568,
+    "vocab_size": 152064,
+    "max_seq_len": 131072,
+    "rope_theta": 1000000
+  },
+
+  "Φ": {
+    "@doc": "Control structure - Long Context Transformer",
+    "entry": "tokenizer",
+    "nodes": {
+      "tokenizer": {
+        "@type": "data/transform",
+        "operation": "tiktoken_encode",
+        "next": "embed"
+      },
+      "embed": {
+        "@type": "π/transform",
+        "operation": "lookup",
+        "dim": 8192,
+        "next": "transformer_layers"
+      },
+      "transformer_layers": {
+        "@type": "control/loop",
+        "iterations": 80,
+        "body": "transformer_block",
+        "next": "output_head"
+      },
+      "transformer_block": {
+        "@type": "π/transform",
+        "components": ["rmsnorm", "rope_attention", "silu_mlp"],
+        "residual": true,
+        "grouped_query": true
+      },
+      "output_head": {
+        "@type": "π/transform",
+        "operation": "lm_head",
+        "tie_embeddings": false,
+        "next": "sample"
+      },
+      "sample": {
+        "@type": "control/branch",
+        "conditions": {
+          "temperature_0": "argmax",
+          "temperature_gt_0": "top_p_sampling"
+        }
+      }
+    }
+  },
+
+  "compression": {
+    "@law": "CC-v1",
+    "operators": ["⊕", "π̂", "⊗", "≈", "τ"],
+    "long_context_compression": {
+      "yarn_scaling": true,
+      "attention_sink": true
+    }
+  },
+
+  "capabilities": {
+    "instruction_following": true,
+    "code_generation": true,
+    "math_reasoning": true,
+    "long_context": true,
+    "multilingual": true,
+    "function_calling": true
+  },
+
+  "adapters": {
+    "kuhul_pi": {
+      "wave_transform": true,
+      "golden_compression": true,
+      "long_context_glyph": true
+    }
+  }
+}

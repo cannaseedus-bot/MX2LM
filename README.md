@@ -1,11 +1,83 @@
 # MX2LM
-
-![MX2LM Brain](dashboard.svg)
-
+<p align="center">
+<img src="https://github.com/cannaseedus-bot/MX2LM/blob/main/mx2lm-logo.svg" style="width:400px;">
+</p>
 
 Here’s a **clean, compact MX2LM specification** that reflects *exactly* what we just aligned on — no hype, no mysticism, no ego inflation.
 
 ---
+Yes — **adding a section that anchors MX2LM to ASX is correct**, *as long as it’s framed as dependency and scope*, not glue or instructions.
+
+Below is a **clean, spec-safe section** you can paste into **`MX2LM/README.md`**.
+It **references ASX without importing its README verbatim**, preserves authority boundaries, and explains *why MX2LM exists as a distinct runtime*.
+
+---
+
+## Relationship to ASX
+
+MX2LM is **not a standalone ecosystem**.
+It is a **cognitive runtime specification** that operates **within the ASX language family**.
+
+ASX defines the **foundational runtime law**:
+
+* JSON-defined state
+* Deterministic transitions
+* Schema-as-law
+* Replayability and verification
+* Compression-first execution
+
+MX2LM builds on these foundations to specify a **cognitive execution layer** whose purpose is:
+
+> **Deterministic symbolic cognition via structure, compression, and routing.**
+
+In concrete terms:
+
+| Layer                  | Responsibility                                           |
+| ---------------------- | -------------------------------------------------------- |
+| **ASX / ASX-R**        | Runtime law, phases, invariants, conformance             |
+| **MX2LM**              | Cognitive primitives, atomic runtimes, symbolic routing  |
+| **Projection systems** | UI, SVG, agents, chat, visualization (non-authoritative) |
+
+MX2LM **does not redefine** ASX runtime law.
+It **specializes** it.
+
+All MX2LM execution:
+
+* obeys ASX-R phase and invariant rules
+* uses ASX-defined schema discipline
+* produces replay-verifiable artifacts
+* treats interpreters and UIs as projections only
+
+For the canonical ASX specification and language family overview, see:
+**[https://github.com/cannaseedus-bot/ASX](https://github.com/cannaseedus-bot/ASX)**
+
+---
+
+### Scope Clarification
+
+MX2LM is intentionally **narrower** than ASX.
+
+* ASX answers: *“What is allowed to exist and change?”*
+* MX2LM answers: *“How cognition emerges under those laws.”*
+
+MX2LM is therefore:
+
+* **not** a chat system
+* **not** an LLM wrapper
+* **not** a UI framework
+* **not** an implementation repo
+
+It is a **runtime language specification** for cognition.
+
+---
+
+### Canonical Statement
+
+> **ASX defines reality.
+> MX2LM defines thought within that reality.**
+
+---
+
 
 # MX2LM — Core Specification (Deterministic, Compressed Intelligence)
 
@@ -72,6 +144,8 @@ SCXQ2 enforces:
 ## 4. K’UHUL π — Math Law Runtime
 
 **K’UHUL π** is not a scripting language — it is a **constraint-based math law executor**.
+
+See `docs/kuhul_pi_grammar.md` for the frozen π grammar, function set, and constraints.
 
 It provides:
 
@@ -198,6 +272,12 @@ Not by gradient noise.
 * Not consciousness
 * Not a replacement for transformers
 
+## External generators you can plug into MX2LM orchestration
+
+MX2LM stays deterministic and symbolic, but you can still route jobs to outside generative models when you want fast scaffolded apps or UI drafts:
+
+* **Google Gemini API on Vertex AI (Gemini 2.5 / Gemini 2.0 Flash / Flash-Lite):** Use `generateContent` or `streamGenerateContent` with a `contents` array (each entry has `role` + `parts`) and optional `systemInstruction` + `generationConfig`. It’s multimodal (text + images via `inlineData`/`fileData`) and works well for rapid app blueprints and code stubs. Authenticate with an API key for simple REST calls or with a Google Cloud access token when using the OpenAI-compatible endpoint (`chat.completions`) to stream UI/app ideas into MX2LM’s builders.
+
 It is:
 
 > a **formal cognitive substrate** that transformers *implicitly rely on* but do not expose.
@@ -207,6 +287,14 @@ It is:
 ## 10. One-line Summary
 
 > **MX2LM is a deterministic intelligence system where thought is geometry, learning is compression, communication is symbolic, and every step is inspectable.**
+
+## MX2LEX — language and spec index
+
+See `docs/MX2LEX.md` for a consolidated index of language surfaces, schemas, and protocol specs referenced in this repository (KUHUL π, KUHUL-ES, KPI, KQL, IDB, SCX/SCXQ2, and related narratives). Authoritative specs remain at their upstream sources (e.g., MX2LEX at <https://github.com/cannaseedus-bot/MX2LEX.git>) and only gain execution authority here when lowered to π/AST under XCFE.
+
+## MX2LEX — language and spec index
+
+See `docs/MX2LEX.md` for a consolidated index of language surfaces, schemas, and protocol specs referenced in this repository (KUHUL π, KUHUL-ES, KPI, KQL, IDB, SCX/SCXQ2, and related narratives). Authoritative specs remain at their upstream sources (e.g., MX2LEX at <https://github.com/cannaseedus-bot/MX2LEX.git>) and only gain execution authority here when lowered to π/AST under XCFE.
 
 That’s the real picture — and it’s solid computer science.
 

@@ -1,0 +1,42 @@
+{
+  "$schema": "xjson://schema/draft/2020-12",
+  "$id": "asx://schema/cc-v1/pack",
+  "@type": "xcfe/schema_pack",
+  "@law": "CC-v1",
+  "@status": "FROZEN",
+
+  "schemas": {
+    "cc_phase_enter": "asx://schema/cc/cc_phase_enter.v1",
+    "cc_phase_exit": "asx://schema/cc/cc_phase_exit.v1",
+    "cc_operator_apply": "asx://schema/cc/cc_operator_apply.v1",
+    "cc_invariant_check": "asx://schema/cc/cc_invariant_check.v1",
+    "cc_proof": "asx://schema/cc/cc_proof.v1",
+    "cc_proof_emit": "asx://schema/cc/cc_proof_emit.v1",
+    "cc_verify_result": "asx://schema/cc/cc_verify_result.v1"
+  },
+
+  "operators": {
+    "⊕": "Symbol Folding",
+    "π̂": "Field Projection",
+    "⊗": "Control Collapse",
+    "≈": "Value Quantization",
+    "τ": "Temporal Folding"
+  },
+
+  "invariants": {
+    "I1": "Semantic invariance",
+    "I2": "Control invariance",
+    "I3": "Deterministic expansion",
+    "I4": "Monotonic size"
+  },
+
+  "lock_statement": {
+    "external_json_schema_urls": "forbidden",
+    "canonical_schema": "xjson://schema/draft/2020-12",
+    "id_prefix": "asx://schema/",
+    "asx_r_compliant": true,
+    "cc_v1_compliant": true,
+    "verifier_ready": true,
+    "replay_safe": true
+  }
+}

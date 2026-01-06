@@ -1,0 +1,116 @@
+{
+  "@type": "xcfe/brain",
+  "@id": "deepseek_v3_brain",
+  "@law": "Ω-BLACK-PANEL",
+  "@schema": "../schema/deepseek.xjson",
+
+  "identity": {
+    "name": "DeepSeek V3",
+    "version": "3.0.0",
+    "family": "moe_transformer",
+    "architecture": "mixture_of_experts",
+    "source": "deepseek-ai/DeepSeek-V3"
+  },
+
+  "π_kuhul": {
+    "@doc": "π-KUHUL integration layer for MoE routing",
+    "constants": {
+      "π": 3.141592653589793,
+      "φ": 1.6180339887498948,
+      "τ": 6.283185307179586,
+      "e": 2.718281828459045
+    },
+    "wave_functions": {
+      "expert_activate": "σ(πx) × φ^(-expert_id)",
+      "route_score": "softmax(x × cos(πθ))",
+      "compress": "⌊x × π × φ⌋ / (π × φ)"
+    },
+    "moe_physics": {
+      "top_k": 8,
+      "num_experts": 256,
+      "load_balance": "aux_loss",
+      "routing_type": "top_k_softmax"
+    }
+  },
+
+  "glyph_codex": {
+    "@doc": "Glyph encoding for DeepSeek operations",
+    "primitives": {
+      "🧠→🔀": "input_to_router",
+      "🔀→⚡": "router_to_experts",
+      "⚡→💭": "experts_to_reasoning",
+      "💭→🔧": "reasoning_to_code"
+    },
+    "opcodes": {
+      "DSK_TOK": "⟁D0",
+      "DSK_EMB": "⟁D1",
+      "DSK_RTE": "⟁D2",
+      "DSK_EXP": "⟁D3",
+      "DSK_MRG": "⟁D4",
+      "DSK_OUT": "⟁D5"
+    }
+  },
+
+  "xcfe_paths": {
+    "@doc": "Control flow paths",
+    "reasoning": ["tokenizer", "embed", "moe_layers", "output_head", "sample"],
+    "code_gen": ["tokenizer", "embed", "moe_layers", "output_head", "code_format"],
+    "math": ["tokenizer", "embed", "moe_layers", "math_verifier", "output_head"]
+  },
+
+  "compression_calculus": {
+    "@law": "CC-FULL",
+    "symbol_folding": {
+      "enabled": true,
+      "max_depth": 4,
+      "glyph_cache": true
+    },
+    "field_projection": {
+      "enabled": true,
+      "observers": ["api", "internal", "debug"]
+    },
+    "moe_compression": {
+      "enabled": true,
+      "expert_pruning": false,
+      "activation_sparsity": 0.9375
+    }
+  },
+
+  "memory_binding": {
+    "ngram_table": "deepseek_patterns",
+    "glyph_weights": "deepseek_effectiveness",
+    "expert_embeddings": "deepseek_experts"
+  },
+
+  "inference": {
+    "modes": {
+      "reasoning": {
+        "temperature": 0.7,
+        "max_tokens": 8192,
+        "top_p": 0.9
+      },
+      "code": {
+        "temperature": 0.2,
+        "max_tokens": 16384,
+        "stop_tokens": ["```", "</code>"]
+      },
+      "math": {
+        "temperature": 0.1,
+        "max_tokens": 4096,
+        "verify": true
+      }
+    }
+  },
+
+  "api_binding": {
+    "local": {
+      "enabled": false,
+      "device": "cuda",
+      "dtype": "bfloat16"
+    },
+    "remote": {
+      "enabled": true,
+      "endpoint": "https://api.deepseek.com/v1"
+    }
+  }
+}
