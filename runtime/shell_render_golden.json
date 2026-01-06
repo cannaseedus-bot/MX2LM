@@ -1,0 +1,394 @@
+{
+  "orbital_halo": {
+    "input": {
+      "inner": {
+        "radius": 10,
+        "weights": [
+          {
+            "angle": 0.0,
+            "magnitude": 0.5,
+            "label": "a"
+          }
+        ]
+      },
+      "mid": {
+        "radius": 12,
+        "weights": [
+          {
+            "angle": 1.0471975511965976,
+            "magnitude": 1.0,
+            "label": "b"
+          }
+        ]
+      },
+      "outer": {
+        "radius": 14,
+        "weights": [
+          {
+            "angle": 2.0943951023931953,
+            "magnitude": 0.25,
+            "label": "c"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "tag": "svg",
+      "attrs": {
+        "data-shell": "orbital_halo",
+        "viewBox": "-128 -128 256 256"
+      },
+      "children": [
+        {
+          "tag": "g",
+          "attrs": {
+            "data-ring": "inner",
+            "data-radius": 10
+          },
+          "children": [
+            {
+              "tag": "circle",
+              "attrs": {
+                "cx": 0,
+                "cy": 0,
+                "r": 10,
+                "data-ring": "inner"
+              },
+              "children": []
+            },
+            {
+              "tag": "circle",
+              "attrs": {
+                "cx": 10.0,
+                "cy": 0.0,
+                "r": 2.7,
+                "data-weight": 0.5,
+                "data-label": "a"
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "tag": "g",
+          "attrs": {
+            "data-ring": "mid",
+            "data-radius": 12
+          },
+          "children": [
+            {
+              "tag": "circle",
+              "attrs": {
+                "cx": 0,
+                "cy": 0,
+                "r": 12,
+                "data-ring": "mid"
+              },
+              "children": []
+            },
+            {
+              "tag": "circle",
+              "attrs": {
+                "cx": 6.000000000000002,
+                "cy": 10.392304845413264,
+                "r": 4.2,
+                "data-weight": 1.0,
+                "data-label": "b"
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "tag": "g",
+          "attrs": {
+            "data-ring": "outer",
+            "data-radius": 14
+          },
+          "children": [
+            {
+              "tag": "circle",
+              "attrs": {
+                "cx": 0,
+                "cy": 0,
+                "r": 14,
+                "data-ring": "outer"
+              },
+              "children": []
+            },
+            {
+              "tag": "circle",
+              "attrs": {
+                "cx": -6.9999999999999964,
+                "cy": 12.124355652982143,
+                "r": 1.95,
+                "data-weight": 0.25,
+                "data-label": "c"
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "stack_grid": {
+    "input": {
+      "rows": 2,
+      "cols": 2,
+      "weights": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          3
+        ]
+      ]
+    },
+    "expected": {
+      "tag": "svg",
+      "attrs": {
+        "data-shell": "stack_grid",
+        "viewBox": "-128 -128 256 256"
+      },
+      "children": [
+        {
+          "tag": "g",
+          "attrs": {
+            "data-grid": "stack",
+            "data-rows": 2,
+            "data-cols": 2
+          },
+          "children": [
+            {
+              "tag": "rect",
+              "attrs": {
+                "x": 0,
+                "y": 0,
+                "width": 16,
+                "height": 16,
+                "data-weight": 0
+              },
+              "children": []
+            },
+            {
+              "tag": "rect",
+              "attrs": {
+                "x": 18,
+                "y": 0,
+                "width": 16,
+                "height": 16,
+                "data-weight": 1
+              },
+              "children": []
+            },
+            {
+              "tag": "rect",
+              "attrs": {
+                "x": 0,
+                "y": 18,
+                "width": 16,
+                "height": 16,
+                "data-weight": 2
+              },
+              "children": []
+            },
+            {
+              "tag": "rect",
+              "attrs": {
+                "x": 18,
+                "y": 18,
+                "width": 16,
+                "height": 16,
+                "data-weight": 3
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "tunnel_rail": {
+    "input": {
+      "packets": [
+        {
+          "lane": -1,
+          "depth": 0,
+          "energy": 1.0,
+          "label": "p1",
+          "attrs": {
+            "onload": "bad",
+            "fill": "#111"
+          }
+        },
+        {
+          "lane": 1,
+          "depth": 50,
+          "energy": 0.5,
+          "label": "p2",
+          "attrs": {
+            "data-custom": "safe",
+            "onclick": "evil()"
+          }
+        }
+      ]
+    },
+    "expected": {
+      "tag": "svg",
+      "attrs": {
+        "data-shell": "tunnel_rail",
+        "viewBox": "-128 -128 256 256"
+      },
+      "children": [
+        {
+          "tag": "g",
+          "attrs": {
+            "data-rail": "stream"
+          },
+          "children": [
+            {
+              "tag": "rect",
+              "attrs": {
+                "x": -22,
+                "y": 0.0,
+                "width": 12,
+                "height": 6,
+                "data-energy": 1.0,
+                "data-label": "p1",
+                "fill": "#111"
+              },
+              "children": []
+            },
+            {
+              "tag": "rect",
+              "attrs": {
+                "x": 22,
+                "y": 20.0,
+                "width": 12,
+                "height": 6,
+                "data-energy": 0.5,
+                "data-label": "p2",
+                "data-custom": "safe"
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "hud_ring": {
+    "input": {
+      "arcs": [
+        {
+          "start": 0,
+          "end": 0,
+          "label": "static"
+        }
+      ]
+    },
+    "expected": {
+      "tag": "svg",
+      "attrs": {
+        "data-shell": "hud_ring",
+        "viewBox": "-128 -128 256 256"
+      },
+      "children": [
+        {
+          "tag": "g",
+          "attrs": {
+            "data-ring": "hud"
+          },
+          "children": [
+            {
+              "tag": "path",
+              "attrs": {
+                "d": "M 80.0 0.0 A 80 80 0 0 1 80.0 0.0",
+                "data-label": "static"
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "fractal_lattice": {
+    "input": {
+      "levels": 2,
+      "branch_factor": 2
+    },
+    "expected": {
+      "tag": "svg",
+      "attrs": {
+        "data-shell": "fractal_lattice",
+        "viewBox": "-128 -128 256 256"
+      },
+      "children": [
+        {
+          "tag": "g",
+          "attrs": {
+            "data-root": "fractal"
+          },
+          "children": [
+            {
+              "tag": "circle",
+              "attrs": {
+                "cx": 0,
+                "cy": -48,
+                "r": 4,
+                "data-level": 0
+              },
+              "children": []
+            },
+            {
+              "tag": "line",
+              "attrs": {
+                "x1": 0,
+                "y1": -48,
+                "x2": -19.0,
+                "y2": -20,
+                "data-level": 0
+              },
+              "children": []
+            },
+            {
+              "tag": "circle",
+              "attrs": {
+                "cx": -19.0,
+                "cy": -20,
+                "r": 4,
+                "data-level": 1
+              },
+              "children": []
+            },
+            {
+              "tag": "line",
+              "attrs": {
+                "x1": 0,
+                "y1": -48,
+                "x2": 19.0,
+                "y2": -20,
+                "data-level": 0
+              },
+              "children": []
+            },
+            {
+              "tag": "circle",
+              "attrs": {
+                "cx": 19.0,
+                "cy": -20,
+                "r": 4,
+                "data-level": 1
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
