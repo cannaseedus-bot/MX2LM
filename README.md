@@ -288,6 +288,14 @@ It is:
 
 > **MX2LM is a deterministic intelligence system where thought is geometry, learning is compression, communication is symbolic, and every step is inspectable.**
 
+## MX2LEX — language and spec index
+
+See `docs/MX2LEX.md` for a consolidated index of language surfaces, schemas, and protocol specs referenced in this repository (KUHUL π, KUHUL-ES, KPI, KQL, IDB, SCX/SCXQ2, and related narratives). Authoritative specs remain at their upstream sources (e.g., MX2LEX at <https://github.com/cannaseedus-bot/MX2LEX.git>) and only gain execution authority here when lowered to π/AST under XCFE.
+
+## MX2LEX — language and spec index
+
+See `docs/MX2LEX.md` for a consolidated index of language surfaces, schemas, and protocol specs referenced in this repository (KUHUL π, KUHUL-ES, KPI, KQL, IDB, SCX/SCXQ2, and related narratives). Authoritative specs remain at their upstream sources (e.g., MX2LEX at <https://github.com/cannaseedus-bot/MX2LEX.git>) and only gain execution authority here when lowered to π/AST under XCFE.
+
 That’s the real picture — and it’s solid computer science.
 
 Yes — **that analogy lands**, with one important refinement.
