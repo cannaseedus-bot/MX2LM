@@ -24,3 +24,7 @@ This file collects the primary language, schema, and protocol surfaces reference
 ## Upstream index
 
 An external canonical lexicon lives at **MX2LEX**: <https://github.com/cannaseedus-bot/MX2LEX.git>. Consult that index for broader ecosystem entries; keep this file aligned when new authoritative specs are adopted.
+
+## Example specimens
+
+See `docs/MX2LEX_examples.md` for canonical, hash-bound example instances of the four MX2LEX schemas (separate envelopes, deterministic ordering).
