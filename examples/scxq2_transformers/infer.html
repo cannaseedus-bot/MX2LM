@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SCXQ2 → Verify → Decode → WebGPU Inference → Encode</title>
+</head>
+<body>
+  <button id="run">Run Inference</button>
+  <pre id="log"></pre>
+
+  <script type="module">
+    import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/dist/transformers.min.js";
+    import {
+      scxq2PackVerify,
+      SCXQ2_DEFAULT_POLICY,
+      scxq2DecodeUtf16
+    } from "./dist/verify.js";
+
+    const $ = (id) => document.getElementById(id);
+    const log = (...a) => { $("log").textContent += a.join(" ") + "\n"; };
+
+    function pickBlock(pack, laneId = null) {
+      if (!Array.isArray(pack.blocks) || pack.blocks.length === 0) throw new Error("no blocks");
+      if (laneId == null) return pack.blocks[0];
+      const hit = pack.blocks.find((b) => String(b.lane_id) === String(laneId));
+      if (!hit) throw new Error("lane not found: " + laneId);
+      return hit;
+    }
+
+    function decodePromptFromPack(pack, { laneId = null, maxOutputUnits = 1 << 20 } = {}) {
+      const verify = scxq2PackVerify(pack, { ...SCXQ2_DEFAULT_POLICY, maxOutputUnits });
+      if (!verify.ok) throw new Error("[SCXQ2 VERIFY FAIL] " + verify.error.code);
+
+      const block = pickBlock(pack, laneId);
+      const bytes = Uint8Array.from(atob(block.b64), (c) => c.charCodeAt(0));
+
+      const dec = scxq2DecodeUtf16(pack.dict.dict, bytes, { maxOutputUnits });
+      if (!dec.ok) throw new Error("[SCXQ2 DECODE FAIL] " + dec.kind);
+
+      return dec.value;
+    }
+
+    async function run() {
+      log("loading scxq2 prompt pack…");
+      const pack = await (await fetch("./prompt.pack.json")).json();
+
+      log("verify+decode…");
+      const prompt = decodePromptFromPack(pack, { maxOutputUnits: 1 << 20 });
+      log("prompt length:", String(prompt.length));
+
+      log("loading model on WebGPU…");
+      const generator = await pipeline(
+        "text-generation",
+        "Xenova/distilgpt2",
+        { device: "webgpu" }
+      );
+
+      log("infer…");
+      const out = await generator(prompt, { max_new_tokens: 128, temperature: 0.8 });
+      const generated = out?.[0]?.generated_text ?? "";
+
+      log("generated:\n" + generated);
+
+      // Encode output into SCXQ2 pack (hook your engine)
+      // const outPack = ccCompress(generated, { ... });
+      // await fetch("/store", { method: "POST", body: JSON.stringify(outPack) });
+    }
+
+    $("run").addEventListener("click", () => run().catch((e) => log("ERROR:", e.message)));
+  </script>
+</body>
+</html>
