@@ -134,6 +134,20 @@
       max-width: 100%;
       max-height: 100%;
     }
+    .bridge-embed {
+      width: 100%;
+      height: 480px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .bridge-embed object {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: var(--bg-tertiary);
+    }
     .api-tester {
       display: flex;
       flex-direction: column;
@@ -437,6 +451,20 @@
         </div>
         <div class="response-panel" id="inference-response" style="margin-top: 16px;">
           <pre>// Inference result will appear here</pre>
+        </div>
+      </div>
+
+      <!-- SVG-3D ↔ GGL Neural Bridge -->
+      <div class="panel" style="grid-column: span 2;">
+        <div class="panel-header">
+          <span class="panel-title">SVG-3D ↔ GGL Neural Bridge</span>
+          <span style="color: var(--fg-secondary); font-size: 11px;">SCXQ2 envelope → NeuralBridgeAPI</span>
+        </div>
+        <div class="bridge-embed">
+          <object data="./svg3d_ggl_neural_bridge.svg" type="image/svg+xml" aria-label="SVG-3D to GGL Neural Bridge"></object>
+        </div>
+        <div class="quantum-state" style="margin-top: 12px;">
+          SCXQ2 lanes feed projection-only ASXInferenceBridge; inference stays math-only.
         </div>
       </div>
 
