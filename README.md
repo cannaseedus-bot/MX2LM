@@ -78,6 +78,12 @@ It is a **runtime language specification** for cognition.
 
 ---
 
+### Practical SCXQ2 Inference Reference
+
+See `examples/scxq2_transformers/` for a concrete verify → decode → inference → encode loop that keeps SCXQ2 as the input/output gate while running Transformers.js v3 (Node CLI and browser/WebGPU samples).
+
+---
+
 
 # MX2LM — Core Specification (Deterministic, Compressed Intelligence)
 
