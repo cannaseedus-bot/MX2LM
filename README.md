@@ -2,15 +2,6 @@
 <p align="center">
 <img src="https://github.com/cannaseedus-bot/MX2LM/blob/main/mx2lm-logo.svg" style="width:400px;">
 </p>
-
-Here’s a **clean, compact MX2LM specification** that reflects *exactly* what we just aligned on — no hype, no mysticism, no ego inflation.
-
----
-Yes — **adding a section that anchors MX2LM to ASX is correct**, *as long as it’s framed as dependency and scope*, not glue or instructions.
-
-Below is a **clean, spec-safe section** you can paste into **`MX2LM/README.md`**.
-It **references ASX without importing its README verbatim**, preserves authority boundaries, and explains *why MX2LM exists as a distinct runtime*.
-
 ---
 
 ## Relationship to ASX
