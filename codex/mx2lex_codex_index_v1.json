@@ -1,0 +1,277 @@
+{
+  "@id": "asx://codex/mx2lex.v1",
+  "@type": "asx.codex.index.v1",
+  "@schema": "xjson://schema/core/v1",
+  "@status": "CANONICAL",
+  "@version": "1.0.0",
+  "@family": "ASX",
+  "@domain": "MX2LEX",
+  "@summary": "MX2LEX Codex Index: the authoritative map of MX2LEX schemas, packs, conformance vectors, legality oracle contracts, and runtime bindings (JS/Python/Java) for deterministic grammar legality + weight-bias binding.",
+  "@authority": {
+    "@language": "ASX-R",
+    "@law_stack": [
+      "ASX",
+      "ASX-R",
+      "XCFE",
+      "XJSON",
+      "CC-v1",
+      "SCXQ2"
+    ],
+    "@frozen_axioms": [
+      "Deterministic: same input => same output",
+      "Offline & replayable: no hidden state required to verify",
+      "Closed legality: grammar legality is decidable under the exported automaton",
+      "No-eval: interpreters do not execute arbitrary strings",
+      "Index is non-authoritative: schemas + conformance vectors define truth"
+    ],
+    "@versioning": {
+      "MAJOR": "semantic/law change (breaking)",
+      "MINOR": "backward-compatible extension (new optional fields, new vectors)",
+      "PATCH": "clarification, metadata, docs (no semantic change)"
+    }
+  },
+  "@canonical_split": {
+    "@rule": "VOCAB.XJSON and execution bridges MUST NOT co-reside in the same folder.",
+    "@minimal_pair": [
+      {
+        "path": "MODELS_PATH/VOCAB.XJSON",
+        "@id": "asx://asset/vocab.xjson",
+        "@role": "immutable semantic/linguistic core",
+        "@constraints": [
+          "immutable",
+          "hash-anchored",
+          "offline-valid"
+        ]
+      },
+      {
+        "path": "RUNTIME_PATH/lex.xjson",
+        "@id": "asx://asset/mx2lex.lex.xjson",
+        "@role": "MX2LEX legality + bindings layer",
+        "@constraints": [
+          "append-only for MINOR/PATCH",
+          "no external schema urls"
+        ]
+      }
+    ]
+  },
+  "@index": {
+    "@schemas": {
+      "@primary": [
+        {
+          "@id": "asx://schema/lex.grammar.v1",
+          "@type": "schema",
+          "@role": "Grammar definition surface (tokens, productions, start symbol, constraints)",
+          "@notes": "Frozen as its own file; NOT embedded inside the oracle container."
+        },
+        {
+          "@id": "asx://schema/mx2lex.pack.v1",
+          "@type": "schema",
+          "@role": "MX2LEX Pack: normalized grammar + automaton + symbol table + bindings"
+        },
+        {
+          "@id": "asx://schema/mx2lex.oracle.v1",
+          "@type": "schema",
+          "@role": "Legality Oracle: verify(prompt/output) => PASS/FAIL + trace (bounded)"
+        },
+        {
+          "@id": "asx://schema/mx2lex.weights.bind.v1",
+          "@type": "schema",
+          "@role": "LEX → weight bias binding (symbol/path → bias channel mapping)",
+          "@notes": "This is where legality intersects preference/weights without violating no-exec."
+        }
+      ],
+      "@exports": [
+        {
+          "@id": "asx://schema/mx2lex.fa.export.v1",
+          "@type": "schema",
+          "@role": "Finite Automaton export (DFA/NFA), deterministically ordered"
+        },
+        {
+          "@id": "asx://schema/mx2lex.symbol.table.v1",
+          "@type": "schema",
+          "@role": "Symbol dictionary (token ids, glyph ids, normalization rules)"
+        }
+      ],
+      "@interop": [
+        {
+          "@id": "asx://schema/scxq2.pack.v1",
+          "@type": "schema",
+          "@role": "Optional SCXQ2 packaging for MX2LEX artifacts"
+        },
+        {
+          "@id": "asx://schema/asx.envelope.v1",
+          "@type": "schema",
+          "@role": "Optional ASX-R envelope for execution slices using MX2LEX"
+        }
+      ]
+    },
+    "@conformance": {
+      "@vectors": [
+        {
+          "@id": "asx://conformance/mx2lex.golden.v1",
+          "@role": "Golden MX2LEX vectors: grammar normalization, FA equivalence, oracle PASS/FAIL",
+          "@must_include": [
+            "canonical-ordering checks",
+            "bounded trace checks",
+            "equivalence: (grammar → FA) stable",
+            "oracle determinism: same input => same decision"
+          ]
+        },
+        {
+          "@id": "asx://conformance/mx2lex.grammar.legality.v1",
+          "@role": "Grammar legality vectors (valid/invalid grammars) for lex.grammar.v1"
+        },
+        {
+          "@id": "asx://conformance/mx2lex.weights.bind.v1",
+          "@role": "Binding vectors ensuring bias maps cannot drift (hash-anchored lanes/paths)"
+        }
+      ],
+      "@runner_contract": {
+        "@id": "asx://tool/mx2lex.runner.v1",
+        "@role": "Tiny runner that executes all vectors and prints PASS/FAIL deterministically",
+        "@io": "stdin->json, stdout->lines",
+        "@output": "stable ordering; exit code 0 only if all PASS"
+      }
+    },
+    "@packs": {
+      "@build_artifacts": [
+        {
+          "@id": "asx://pack/mx2lex.core.v1",
+          "@role": "Core pack: normalized grammar + FA export + symbol table",
+          "@inputs": [
+            "asx://schema/lex.grammar.v1"
+          ],
+          "@outputs": [
+            "asx://schema/mx2lex.fa.export.v1",
+            "asx://schema/mx2lex.symbol.table.v1",
+            "asx://schema/mx2lex.pack.v1"
+          ],
+          "@invariants": [
+            "stable sort",
+            "hash-anchored ids",
+            "no randomness"
+          ]
+        },
+        {
+          "@id": "asx://pack/mx2lex.oracle.bundle.v1",
+          "@role": "Oracle pack: legality oracle + bounded trace policy + FA snapshot hash",
+          "@inputs": [
+            "asx://pack/mx2lex.core.v1"
+          ],
+          "@outputs": [
+            "asx://schema/mx2lex.oracle.v1"
+          ],
+          "@invariants": [
+            "bounded",
+            "no external lookups",
+            "no hidden state"
+          ]
+        }
+      ],
+      "@transport": [
+        {
+          "@id": "asx://pack/mx2lex.scxq2.v1",
+          "@role": "Optional SCXQ2 transport form (DICT/FIELD/LANE/EDGE)",
+          "@depends_on": [
+            "asx://schema/scxq2.pack.v1"
+          ]
+        }
+      ]
+    },
+    "@runtime_reference": {
+      "@implementations": [
+        {
+          "@id": "asx://impl/mx2lex.js.v1",
+          "@role": "JS reference (browser/kernel friendly) legality + FA walk + pack loader",
+          "@must": [
+            "deterministic ordering",
+            "bounded oracle",
+            "no eval"
+          ]
+        },
+        {
+          "@id": "asx://impl/mx2lex.py.v1",
+          "@role": "Python reference (trainer integration) legality oracle + loss hooks"
+        },
+        {
+          "@id": "asx://impl/mx2lex.java.v1",
+          "@role": "Java reference (CLI/tooling) legality + vectors runner"
+        }
+      ],
+      "@abi": {
+        "@id": "asx://abi/mx2lex.oracle.abi.v1",
+        "@rule": "ABI is hash-bound: oracle inputs/outputs must match ABI schema + SELF hash list",
+        "@binds": [
+          "lex.grammar hash",
+          "fa.export hash",
+          "oracle.policy hash",
+          "vectors hash"
+        ]
+      }
+    },
+    "@training_hooks": {
+      "@loss_points": [
+        {
+          "@id": "asx://hook/loss.legality.mask.v1",
+          "@role": "Mask/penalty on illegal token transitions using FA legality",
+          "@notes": "Uses oracle/FA only; does not execute generated code."
+        },
+        {
+          "@id": "asx://hook/loss.structure.bias.v1",
+          "@role": "Weight-bias binding from MX2LEX symbol classes into model logits"
+        }
+      ],
+      "@outputs": [
+        {
+          "@id": "asx://artifact/mx2lex.legality.report.v1",
+          "@role": "Deterministic legality audit report (counts, failing traces, hashes)"
+        }
+      ]
+    },
+    "@registry": {
+      "@names": [
+        "MX2LEX",
+        "lex.grammar.v1",
+        "mx2lex.pack.v1",
+        "mx2lex.oracle.v1",
+        "mx2lex.fa.export.v1",
+        "mx2lex.weights.bind.v1"
+      ],
+      "@discoverability": {
+        "@id": "asx://registry/mx2lex.v1",
+        "@role": "Machine-readable listing for tools (CLI/WASM/kernel) to locate schemas/vectors"
+      }
+    }
+  },
+  "@must_have_files": [
+    {
+      "name": "README.md",
+      "@role": "Human map: what MX2LEX is, what it guarantees, how to run vectors"
+    },
+    {
+      "name": "PLAN.md",
+      "@role": "Roadmap: CLI, WASM build, trainer integration, FA export evolution (MINOR only)"
+    },
+    {
+      "name": "lex.grammar.v1.xjson",
+      "@id": "asx://schema/lex.grammar.v1"
+    },
+    {
+      "name": "mx2lex.pack.v1.xjson",
+      "@id": "asx://schema/mx2lex.pack.v1"
+    },
+    {
+      "name": "mx2lex.oracle.v1.xjson",
+      "@id": "asx://schema/mx2lex.oracle.v1"
+    },
+    {
+      "name": "mx2lex.golden.vectors.v1.json",
+      "@id": "asx://conformance/mx2lex.golden.v1"
+    },
+    {
+      "name": "runner.(js|py|java)",
+      "@id": "asx://tool/mx2lex.runner.v1",
+      "@role": "Deterministic PASS/FAIL harness"
+    }
+  ]
+}
