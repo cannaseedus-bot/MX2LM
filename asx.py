@@ -13,6 +13,9 @@ What it does (today):
 - asx mysql setup                : create db + user + grant (via cPanel Mysql UAPI)
 - asx mysql exec                 : run SQL (via a PHP bridge you deploy)
 - asx mysql migrate              : run migrations from a folder (ordered)
+- asx route addon-domain         : attach addon domain + document root (cPanel)
+- asx route cloudflare-attach    : add Cloudflare DNS record (optional)
+- asx mesh connect               : connect to mesh WebSocket bootstrap
 - asx token issue/verify         : mint/verify local capability envelopes (HMAC, deterministic)
 - asx test                       : basic self-tests + optional golden vectors stub harness
 - global flags: --json / --quiet / --config / --insecure
@@ -40,6 +43,9 @@ import os
 import posixpath
 import re
 import sys
+import socket
+import ssl
+import select
 import time
 import urllib.parse
 import urllib.request
@@ -239,6 +245,81 @@ def multipart_form_data(fields: Dict[str, str], files: List[Tuple[str, str, byte
     w(f"--{boundary}--\r\n")
     body = bio.getvalue()
     return body, f"multipart/form-data; boundary={boundary}"
+
+
+def _recv_exact(sock: socket.socket, n: int) -> bytes:
+    buf = b""
+    while len(buf) < n:
+        chunk = sock.recv(n - len(buf))
+        if not chunk:
+            raise RuntimeError("socket_closed")
+        buf += chunk
+    return buf
+
+
+def ws_handshake(sock: socket.socket, host: str, path: str, headers: Optional[Dict[str, str]] = None) -> None:
+    key = base64.b64encode(os.urandom(16)).decode("ascii")
+    hdrs = {
+        "Host": host,
+        "Upgrade": "websocket",
+        "Connection": "Upgrade",
+        "Sec-WebSocket-Key": key,
+        "Sec-WebSocket-Version": "13",
+    }
+    if headers:
+        hdrs.update(headers)
+    req = f"GET {path} HTTP/1.1\r\n" + "\r\n".join(f"{k}: {v}" for k, v in hdrs.items()) + "\r\n\r\n"
+    sock.sendall(req.encode("utf-8"))
+    resp = b""
+    while b"\r\n\r\n" not in resp:
+        resp += sock.recv(4096)
+        if not resp:
+            raise RuntimeError("handshake_failed")
+    status_line = resp.split(b"\r\n", 1)[0].decode("utf-8", errors="replace")
+    if "101" not in status_line:
+        raise RuntimeError(f"handshake_failed: {status_line}")
+
+
+def ws_send_text(sock: socket.socket, text: str) -> None:
+    payload = text.encode("utf-8")
+    fin_opcode = 0x81
+    mask_bit = 0x80
+    length = len(payload)
+    header = bytearray()
+    header.append(fin_opcode)
+    if length < 126:
+        header.append(mask_bit | length)
+    elif length < (1 << 16):
+        header.append(mask_bit | 126)
+        header.extend(length.to_bytes(2, "big"))
+    else:
+        header.append(mask_bit | 127)
+        header.extend(length.to_bytes(8, "big"))
+    mask = os.urandom(4)
+    header.extend(mask)
+    masked = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+    sock.sendall(header + masked)
+
+
+def ws_recv_text(sock: socket.socket) -> Optional[str]:
+    first2 = _recv_exact(sock, 2)
+    b1, b2 = first2[0], first2[1]
+    opcode = b1 & 0x0F
+    masked = bool(b2 & 0x80)
+    length = b2 & 0x7F
+    if length == 126:
+        length = int.from_bytes(_recv_exact(sock, 2), "big")
+    elif length == 127:
+        length = int.from_bytes(_recv_exact(sock, 8), "big")
+    mask = _recv_exact(sock, 4) if masked else b""
+    payload = _recv_exact(sock, length) if length else b""
+    if masked:
+        payload = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+    if opcode == 0x8:
+        return None
+    if opcode != 0x1:
+        return None
+    return payload.decode("utf-8", errors="replace")
 
 
 class CPanelClient:
@@ -495,6 +576,47 @@ self.addEventListener("fetch",(e)=>{
 });
 """
 
+DEFAULT_HTACCESS = """# ASX .htaccess — routing + cache + compression
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# ================================
+# Cache headers
+# ================================
+<IfModule mod_headers.c>
+  <FilesMatch "\\.(html|css|js|json|svg|png|jpg|jpeg|gif|ico|webp)$">
+    Header set Cache-Control "public, max-age=31536000"
+  </FilesMatch>
+</IfModule>
+
+# ================================
+# Compression
+# ================================
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE \
+    text/plain \
+    text/css \
+    application/javascript \
+    application/json \
+    image/svg+xml
+</IfModule>
+
+<IfModule mod_brotli.c>
+  AddOutputFilterByType BROTLI_COMPRESS \
+    text/plain \
+    text/css \
+    application/javascript \
+    application/json \
+    image/svg+xml
+</IfModule>
+"""
+
 DEFAULT_TAPE = {
     "@context": "xjson://tape/app/v1",
     "n": "app.tape",
@@ -695,6 +817,7 @@ def cmd_init(args, out: Out) -> None:
         jdump({**DEFAULT_MANIFEST, "name": name, "short_name": name[:12]}, pretty=True) + "\n",
     )
     write_text(os.path.join(app_dir, "sw.js"), DEFAULT_SW_JS)
+    write_text(os.path.join(app_dir, ".htaccess"), DEFAULT_HTACCESS)
     write_text(
         os.path.join(app_dir, "tapes", "app.tape.json"), jdump(DEFAULT_TAPE, pretty=True) + "\n"
     )
@@ -709,6 +832,7 @@ def cmd_init(args, out: Out) -> None:
                 "index.html",
                 "manifest.json",
                 "sw.js",
+                ".htaccess",
                 "tapes/app.tape.json",
                 "api/ping.json",
             ]
@@ -958,6 +1082,106 @@ def cmd_mysql(args, out: Out, cfg_path: str) -> None:
     die("unknown mysql action")
 
 
+def cloudflare_request(
+    method: str,
+    path: str,
+    token: str,
+    payload: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    url = f"https://api.cloudflare.com/client/v4{path}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "User-Agent": "asx.py/1.0 (stdlib)",
+    }
+    body = jdump(payload or {}, pretty=False).encode("utf-8") if payload is not None else None
+    status, _, data = http_request(url, method=method, headers=headers, body=body, timeout=120, verify_tls=True)
+    if status < 200 or status >= 300:
+        raise RuntimeError(f"Cloudflare API error HTTP {status}: {data.decode('utf-8', errors='replace')}")
+    return json.loads(data.decode("utf-8", errors="replace"))
+
+
+def cmd_route(args, out: Out, cfg_path: str) -> None:
+    cfg = load_config(cfg_path)
+    cp = build_cpanel_from_cfg(cfg, insecure=args.insecure)
+
+    if args.action == "addon-domain":
+        domain = args.domain
+        root = args.root
+        subdomain = args.subdomain or domain.split(".")[0]
+        res = cp.uapi(
+            "AddonDomain",
+            "addaddondomain",
+            {"newdomain": domain, "subdomain": subdomain, "dir": root},
+            method="POST",
+        )
+        out.emit({"ok": True, "result": res, "domain": domain, "root": root})
+        return
+
+    if args.action == "cloudflare-attach":
+        token = args.token
+        zone_id = args.zone_id
+        record_type = args.record_type
+        content = args.content
+        name = args.domain
+        payload = {
+            "type": record_type,
+            "name": name,
+            "content": content,
+            "ttl": args.ttl,
+            "proxied": bool(args.proxied),
+        }
+        res = cloudflare_request("POST", f"/zones/{zone_id}/dns_records", token, payload)
+        out.emit({"ok": True, "result": res, "record": payload})
+        return
+
+    die("unknown route action")
+
+
+def cmd_mesh_connect(args, out: Out) -> None:
+    url = urllib.parse.urlparse(args.url)
+    if url.scheme not in ("ws", "wss"):
+        die("mesh connect requires ws:// or wss:// URL")
+    host = url.hostname or ""
+    port = url.port or (443 if url.scheme == "wss" else 80)
+    path = url.path or "/"
+    if url.query:
+        path += "?" + url.query
+
+    sock = socket.create_connection((host, port), timeout=10)
+    if url.scheme == "wss":
+        ctx = ssl.create_default_context()
+        sock = ctx.wrap_socket(sock, server_hostname=host)
+
+    ws_handshake(sock, host, path, headers={"Origin": args.origin} if args.origin else None)
+
+    payload = args.payload
+    if payload:
+        ws_send_text(sock, payload)
+    elif args.token:
+        bootstrap = {
+            "@type": "mesh.bootstrap.v1",
+            "token": args.token,
+            "ts_ms": now_ms(),
+        }
+        ws_send_text(sock, jdump(bootstrap, pretty=False))
+
+    deadline = time.time() + float(args.listen_seconds)
+    messages: List[str] = []
+    while time.time() < deadline:
+        r, _, _ = select.select([sock], [], [], 0.5)
+        if not r:
+            continue
+        msg = ws_recv_text(sock)
+        if msg is None:
+            break
+        messages.append(msg)
+        if args.once:
+            break
+
+    sock.close()
+    out.emit({"ok": True, "received": messages})
+
 def cmd_token(args, out: Out, cfg_path: str) -> None:
     cfg = load_config(cfg_path)
     secret_hex = args.secret_hex or cfg.get("asx_secret_hex")
@@ -1144,6 +1368,32 @@ def build_parser() -> argparse.ArgumentParser:
     pm_mig.add_argument("--secret-hex", help="HMAC secret hex for token signing")
     pm_mig.add_argument("--ttl", default=600, type=int, help="Token TTL seconds")
 
+    pr = sub.add_parser("route", help="Domain + DNS routing helpers")
+    pr_sub = pr.add_subparsers(dest="action", required=True)
+    pr_addon = pr_sub.add_parser("addon-domain", help="Attach an addon domain (cPanel)")
+    pr_addon.add_argument("--domain", required=True, help="Addon domain name")
+    pr_addon.add_argument("--root", required=True, help="Document root (e.g. public_html/myapp)")
+    pr_addon.add_argument("--subdomain", help="Subdomain prefix (default: first label)")
+
+    pr_cf = pr_sub.add_parser("cloudflare-attach", help="Attach Cloudflare DNS record")
+    pr_cf.add_argument("--domain", required=True, help="DNS record name (e.g. app.example.com)")
+    pr_cf.add_argument("--zone-id", required=True, help="Cloudflare zone id")
+    pr_cf.add_argument("--token", required=True, help="Cloudflare API token")
+    pr_cf.add_argument("--record-type", default="A", help="DNS record type (A, AAAA, CNAME)")
+    pr_cf.add_argument("--content", required=True, help="Record content (IP or target)")
+    pr_cf.add_argument("--ttl", type=int, default=1, help="TTL seconds (1 for auto)")
+    pr_cf.add_argument("--proxied", action="store_true", help="Enable Cloudflare proxying")
+
+    pmc = sub.add_parser("mesh", help="Mesh bootstrap helpers")
+    pmc_sub = pmc.add_subparsers(dest="action", required=True)
+    pmc_connect = pmc_sub.add_parser("connect", help="Connect to mesh WebSocket")
+    pmc_connect.add_argument("--url", required=True, help="ws:// or wss:// endpoint")
+    pmc_connect.add_argument("--token", help="Auth token for mesh bootstrap")
+    pmc_connect.add_argument("--payload", help="Raw payload to send instead of bootstrap JSON")
+    pmc_connect.add_argument("--origin", help="Origin header for WebSocket handshake")
+    pmc_connect.add_argument("--listen-seconds", default=5, help="Seconds to listen for messages")
+    pmc_connect.add_argument("--once", action="store_true", help="Exit after first message")
+
     pt = sub.add_parser("token", help="Issue/verify ASX-JWT-LITE envelopes")
     pt_sub = pt.add_subparsers(dest="action", required=True)
     pt_i = pt_sub.add_parser("issue")
@@ -1183,6 +1433,13 @@ def main(argv: Optional[List[str]] = None) -> int:
             cmd_fs(args, out, cfg_path)
         elif args.cmd == "mysql":
             cmd_mysql(args, out, cfg_path)
+        elif args.cmd == "route":
+            cmd_route(args, out, cfg_path)
+        elif args.cmd == "mesh":
+            if args.action == "connect":
+                cmd_mesh_connect(args, out)
+            else:
+                die("Unknown mesh action")
         elif args.cmd == "token":
             cmd_token(args, out, cfg_path)
         elif args.cmd == "test":
