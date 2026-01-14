@@ -11,7 +11,7 @@ This file collects the primary language, schema, and protocol surfaces reference
 | KPI | Binary protocol for execution/query/artifact transport | `kpi://spec/v1` | External spec (see KPI v1); not authoritative unless lowered to π/AST under XCFE |
 | KQL | Deterministic query language | `kql.query.v1` | Defined in upstream KQL spec; results/requests wrapped by KPI; external authority |
 | IDB | Authoritative local state/events | `idb.event.v1` / `idb.query.result.v1` | External IDB spec; KPI wraps envelopes only |
-| SCX/SCXQ2 / Compression Calculus | Compression law for payloads | MX2LM | See `ASX-R_SPEC.md` and references in `docs/kuhul_pi_grammar.md` |
+| SCX/SCXQ2 / Compression Calculus | Compression law for payloads | MX2LM | See `docs/specs/ASX-R_SPEC.md` and references in `docs/kuhul_pi_grammar.md` |
 | GGL (Geometric Glyph Language) | Geometric/glyph narrative DSL | External (no authority here) | Only informational; non-authoritative unless lowered into π/AST |
 | Sandbox contracts | Execution boundary descriptions | External (e.g., `kuhul-sandbox.v1.json`) | Informational only; authority requires schema validation + π/AST lowering |
 
