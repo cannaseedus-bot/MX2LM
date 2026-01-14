@@ -63,7 +63,7 @@ All foundation components are implemented and working:
 ### 1.1 Glyph VM Implementation [100% - COMPLETE]
 
 **Done:**
-- [x] `GlyphVM` class exists in `glyph_vm.js`
+- [x] `GlyphVM` class exists in `src/glyph_vm.js`
 - [x] Stack structure defined
 - [x] Memory/register framework
 - [x] Basic opcode constants defined
@@ -114,7 +114,7 @@ All foundation components are implemented and working:
 - [x] Add `/xcfe/pipeline` API endpoint
 - [x] High-level `xcfePipeline()` API function
 
-**File:** `xcfe_transform.js` (900+ lines)
+**File:** `src/xcfe_transform.js` (900+ lines)
 
 ### 1.3 SCXQ2 Compression Engine [85% - COMPLETE]
 
@@ -136,7 +136,7 @@ All foundation components are implemented and working:
 - [ ] Implement `svgNormalize(svgTree)` → NormalizedSVG
 - [ ] Implement `sealHash(binary)` → DeterministicHash
 
-**File:** `scxq2_engine.js` (600+ lines)
+**File:** `src/scxq2_engine.js` (600+ lines)
 
 ### 1.4 SQL API Query Engine [100% - COMPLETE]
 
@@ -158,7 +158,7 @@ All foundation components are implemented and working:
 - [x] Add `/sql/tables` API endpoint
 - [x] Add `/sql/schema` API endpoint
 
-**File:** `sql_api.js` (1100+ lines)
+**File:** `src/sql_api.js` (1100+ lines)
 
 ### 1.5 IDB Storage API [100% - COMPLETE]
 
@@ -186,7 +186,7 @@ All foundation components are implemented and working:
 - [x] Add `/idb/stats` and `/idb/clear` endpoints
 - [x] Add `/idb/compress` and `/idb/decompress` endpoints
 
-**File:** `idb_storage.js` (1200+ lines)
+**File:** `src/idb_storage.js` (1200+ lines)
 
 ### 1.6 KQL Query Language Engine [100% - COMPLETE]
 
@@ -230,7 +230,7 @@ All foundation components are implemented and working:
 - ASX-R Language Header v1.0 locked
 - ASX-R/REF Reference Interpreter Profile specified
 
-**File:** `kql_engine.js` (1500+ lines)
+**File:** `src/kql_engine.js` (1500+ lines)
 
 ---
 
@@ -326,7 +326,7 @@ All foundation components are implemented and working:
 ### 4.1 N-gram Memory System [80% DONE]
 
 **Done:**
-- [x] `NgramBuilder` class implemented (`rlhf_ngram_engine.js`)
+- [x] `NgramBuilder` class implemented (`src/rlhf_ngram_engine.js`)
 - [x] Tokenization working
 - [x] N-gram building working
 - [x] π-KUHUL weighting with φ⁻¹ decay
@@ -538,7 +538,7 @@ Phase 1.1 (GlyphVM)
 
 ### Priority 1: CRITICAL PATH ✅ DONE
 1. [x] **Complete GlyphVM opcodes** - 8 K'UHUL core opcodes implemented
-2. [x] **Wire GlyphVM to K'UHUL kernel** - Connected `sw.khl` to `glyph_vm.js`
+2. [x] **Wire GlyphVM to K'UHUL kernel** - Connected `sw.khl` to `src/glyph_vm.js`
 3. [x] **Add `/glyph/execute` endpoint** - Bytecode execution via API working
 4. [x] **Complete PI_METRIC_TABLE** - 30+ metric types implemented
 5. [x] **Implement `executeBrainPipeline()`** - Core brain execution working
@@ -575,16 +575,16 @@ Phase 1.1 (GlyphVM)
 
 | File | Lines | Focus Area | Status |
 |------|-------|------------|--------|
-| `glyph_vm.js` | 1,458 | Implement missing opcodes | ✅ Core done |
+| `src/glyph_vm.js` | 1,458 | Implement missing opcodes | ✅ Core done |
 | `sw.js` | 4,800+ | Wire brain execution to `/infer` | ✅ Wired |
 | `sw.khl` | 500 | Connect to GlyphVM | ✅ Connected |
-| `xcfe_transform.js` | 900+ | XJSON → AST → Transform | ✅ COMPLETE |
-| `scxq2_engine.js` | 600+ | SVG parsing + compression | ✅ COMPLETE |
-| `sql_api.js` | 1,100+ | SQL query over IndexedDB | ✅ COMPLETE |
-| `idb_storage.js` | 1,200+ | K'UHUL-integrated IDB storage | ✅ COMPLETE |
-| `kql_engine.js` | 1,500+ | K'UHUL Query Language engine | ✅ COMPLETE |
-| `block_runtime.js` | 1,508 | Complete atomic block execution | Pending |
-| `rlhf_ngram_engine.js` | 600 | Connect to IDB adapter | Partial |
+| `src/xcfe_transform.js` | 900+ | XJSON → AST → Transform | ✅ COMPLETE |
+| `src/scxq2_engine.js` | 600+ | SVG parsing + compression | ✅ COMPLETE |
+| `src/sql_api.js` | 1,100+ | SQL query over IndexedDB | ✅ COMPLETE |
+| `src/idb_storage.js` | 1,200+ | K'UHUL-integrated IDB storage | ✅ COMPLETE |
+| `src/kql_engine.js` | 1,500+ | K'UHUL Query Language engine | ✅ COMPLETE |
+| `src/block_runtime.js` | 1,508 | Complete atomic block execution | Pending |
+| `src/rlhf_ngram_engine.js` | 600 | Connect to IDB adapter | Partial |
 
 ---
 
