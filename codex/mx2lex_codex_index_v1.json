@@ -249,7 +249,7 @@
       "@role": "Human map: what MX2LEX is, what it guarantees, how to run vectors"
     },
     {
-      "name": "PLAN.md",
+      "name": "docs/plans/PLAN.md",
       "@role": "Roadmap: CLI, WASM build, trainer integration, FA export evolution (MINOR only)"
     },
     {
