@@ -1,0 +1,163 @@
+{
+  "$schema": "xjson://schema/draft/2020-12",
+  "$id": "asx://schema/cc/golden_failure_vectors.v1",
+  "@type": "xcfe/test_fixtures",
+  "@law": "CC-v1",
+  "@doc": "Authoritative failure test vectors for CC-v1 verification",
+
+  "vectors": {
+    "VEC-FAIL-01": {
+      "@doc": "Hash binding mismatch (fails V0)",
+      "expected_stage": "V0",
+      "expected_reason": "hash_mismatch",
+      "payload": {
+        "@cc_proof_emit": {
+          "@proof": {
+            "@cc_proof": {
+              "@cc": "CC-v1",
+              "@input_hash": "deadbeef",
+              "@output_hash": "cafebabe",
+              "@proof_hash": "00",
+              "@operators_used": ["⊕"],
+              "@invariants_verified": ["I1", "I2", "I3", "I4"],
+              "@xcfe_signature": {
+                "@graph_hash_in": "a",
+                "@graph_hash_out": "a",
+                "@isomorphism": null
+              },
+              "@projection": null,
+              "@quant": null,
+              "@temporal": null
+            }
+          }
+        }
+      }
+    },
+
+    "VEC-FAIL-02": {
+      "@doc": "Illegal operator (fails V1)",
+      "expected_stage": "V1",
+      "expected_reason": "operator_illegal",
+      "payload": {
+        "@cc_operator_apply": {
+          "@op": "⊕",
+          "@evidence_ref": null,
+          "@before_hash": "a",
+          "@after_hash": "b"
+        },
+        "@cc_proof_emit": {
+          "@proof": {
+            "@cc_proof": {
+              "@cc": "CC-v1",
+              "@input_hash": "a",
+              "@output_hash": "b",
+              "@proof_hash": "p",
+              "@operators_used": ["⊕", "Ω"],
+              "@invariants_verified": ["I1", "I2", "I3", "I4"],
+              "@xcfe_signature": {
+                "@graph_hash_in": "g",
+                "@graph_hash_out": "g",
+                "@isomorphism": null
+              },
+              "@projection": null,
+              "@quant": null,
+              "@temporal": null
+            }
+          }
+        }
+      }
+    },
+
+    "VEC-FAIL-03": {
+      "@doc": "Control change (fails V2)",
+      "expected_stage": "V2",
+      "expected_reason": "control_invariance_failed",
+      "payload": {
+        "@cc_proof_emit": {
+          "@proof": {
+            "@cc_proof": {
+              "@cc": "CC-v1",
+              "@input_hash": "a",
+              "@output_hash": "b",
+              "@proof_hash": "p",
+              "@operators_used": ["⊗"],
+              "@invariants_verified": ["I2"],
+              "@xcfe_signature": {
+                "@graph_hash_in": "graph_in",
+                "@graph_hash_out": "graph_out",
+                "@isomorphism": null
+              },
+              "@projection": null,
+              "@quant": null,
+              "@temporal": null
+            }
+          }
+        },
+        "@cc_invariant_check": {
+          "@invariant": "I2",
+          "@result": "fail",
+          "@detail": {
+            "@reason": "graph_hash_changed_without_isomorphism"
+          }
+        }
+      }
+    },
+
+    "VEC-FAIL-04": {
+      "@doc": "Semantic mismatch (fails V3)",
+      "expected_stage": "V3",
+      "expected_reason": "semantic_mismatch",
+      "payload": {
+        "@cc_invariant_check": {
+          "@invariant": "I1",
+          "@result": "fail",
+          "@detail": {
+            "@q": "asx://query/schema/observable/17",
+            "@expected": "X",
+            "@got": "Y"
+          }
+        }
+      }
+    },
+
+    "VEC-FAIL-05": {
+      "@doc": "Expansion not exact (fails V4)",
+      "expected_stage": "V4",
+      "expected_reason": "expansion_failed",
+      "payload": {
+        "@cc_invariant_check": {
+          "@invariant": "I3",
+          "@result": "fail",
+          "@detail": {
+            "@reason": "expand_not_bit_exact"
+          }
+        }
+      }
+    },
+
+    "VEC-FAIL-06": {
+      "@doc": "Size increased (fails V5)",
+      "expected_stage": "V5",
+      "expected_reason": "size_monotonicity_failed",
+      "payload": {
+        "@cc_invariant_check": {
+          "@invariant": "I4",
+          "@result": "fail",
+          "@detail": {
+            "@in_bytes": 100,
+            "@out_bytes": 140
+          }
+        }
+      }
+    }
+  },
+
+  "test_matrix": {
+    "T1": "⊕ only (DICT fold) passes I1-I4",
+    "T2": "⊕ + π̂ where π̂ removes only unreachable fields (must pass)",
+    "T3": "π̂ removes reachable field (must fail at V3)",
+    "T4": "⊗ changes edge ordering (must fail at V2)",
+    "T5": "≈ used without declaration (must fail at V1)",
+    "T6": "τ fold without reconstruction hooks (must fail at V4)"
+  }
+}

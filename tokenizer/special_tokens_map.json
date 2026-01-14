@@ -1,0 +1,13 @@
+{
+  "unk_token": "[UNK]",
+  "bos_token": "<s>",
+  "eos_token": "</s>",
+  "additional_special_tokens": [
+    "[Pop]",
+    "[Wo]",
+    "[Ch'en]",
+    "[Yax]",
+    "[Sek]",
+    "[Xul]"
+  ]
+}

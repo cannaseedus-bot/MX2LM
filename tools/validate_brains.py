@@ -1,342 +1,152 @@
-#!/usr/bin/env python3
 """
-Validate brain topology SVG bindings against the repository schema and registry.
+Validate brain topology assets against deterministic, non-executable rules.
 
 Checks performed:
-1) JSON Schema validation using the bundled schema definition.
-2) Referential integrity between binding IDs and the topology registry.
-3) SVG path and domain validation using the schema's declared constraints.
-4) Enforcement of @rules invariants to guarantee projection-only, non-executable assets.
+- Required top-level invariants on the bindings file (context, authority, rules, etc.).
+- Binding entry structure and patterns.
+- Cross-reference between bindings and the topology registry (id existence and domain match).
 """
 
 from __future__ import annotations
 
 import argparse
-import json
+import pathlib
 import re
 import sys
-from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, Sequence
+from typing import Dict, Iterable, List, Mapping, Set, Tuple
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-SCHEMA_PATH = REPO_ROOT / "brains" / "brain_topology_bindings.schema.json"
-BINDINGS_PATH = REPO_ROOT / "brains" / "brain_topology_bindings.svg.json"
-REGISTRY_PATH = REPO_ROOT / "brains" / "brain_topology.registry.json"
-METADATA_FIELDS = {"$id", "$schema", "@description"}
+import json
 
-def strip_json_comments(raw: str) -> str:
-    """Remove // and /* */ style comments from JSON-like text, ignoring strings."""
-    result: list[str] = []
-    i = 0
-    in_string = False
-    escape = False
+REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+BRAINS_DIR = REPO_ROOT / "brains"
+TOPOLOGY_DIR = BRAINS_DIR / "topologies"
 
-    while i < len(raw):
-        ch = raw[i]
-        nxt = raw[i + 1] if i + 1 < len(raw) else ""
+BINDINGS_PATH = TOPOLOGY_DIR / "brain_topology_bindings.svg.json"
+REGISTRY_PATH = TOPOLOGY_DIR / "brain_topology_registry.json"
+SCHEMA_PATH = BRAINS_DIR / "brain_topology_bindings.schema.json"
 
-        if in_string:
-            result.append(ch)
-            if escape:
-                escape = False
-            elif ch == "\\":
-                escape = True
-            elif ch == '"':
-                in_string = False
-            i += 1
-            continue
-
-        if ch == '"':
-            in_string = True
-            result.append(ch)
-            i += 1
-            continue
-
-        if ch == "/" and nxt == "/":
-            # Skip until end of line, preserve newline if present.
-            i += 2
-            while i < len(raw) and raw[i] not in ("\n", "\r"):
-                i += 1
-            if i < len(raw):
-                result.append(raw[i])
-                i += 1
-            continue
-
-        if ch == "/" and nxt == "*":
-            # Skip until closing */
-            i += 2
-            while i + 1 < len(raw) and not (raw[i] == "*" and raw[i + 1] == "/"):
-                if raw[i] in ("\n", "\r"):
-                    result.append(raw[i])
-                i += 1
-            i += 2  # Skip the closing */
-            continue
-
-        result.append(ch)
-        i += 1
-
-    return "".join(result)
+SVG_PATTERN = re.compile(r"^brains/[a-z0-9_\-]+\.svg$")
+ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]{2,48}$")
+ALLOWED_DOMAINS = {"atomic", "cluster", "training", "replay", "runtime"}
 
 
-def load_json(path: Path, *, allow_comments: bool = False) -> Any:
-    """Load JSON from disk, optionally stripping comments first."""
-    contents = path.read_text(encoding="utf-8")
-    if allow_comments:
-        contents = strip_json_comments(contents)
-    return json.loads(contents)
+def _strip_json_comments(raw: str) -> str:
+    raw = re.sub(r"/\*.*?\*/", "", raw, flags=re.DOTALL)
+    return raw
 
 
-def validate_against_schema(instance: Any, schema: Mapping[str, Any]) -> List[str]:
-    """
-    Perform a lightweight JSON schema validation for the specific bindings schema.
+def _load_json(path: pathlib.Path) -> Mapping[str, object]:
+    with path.open("r", encoding="utf-8") as f:
+        content = f.read()
+    return json.loads(_strip_json_comments(content))
 
-    Supported keywords: type, properties, required, additionalProperties, items,
-    minItems, pattern, enum, const, and $ref into #/$defs.
-    """
+
+def _validate_top_level(bindings: Mapping[str, object], schema: Mapping[str, object]) -> List[str]:
     errors: List[str] = []
-    definitions: Mapping[str, Any] = schema.get("$defs", {})
+    required_keys: Iterable[str] = schema.get("required", [])
+    for key in required_keys:
+        if key not in bindings:
+            errors.append(f"missing required top-level key: {key}")
 
-    def resolve(node: Mapping[str, Any]) -> Mapping[str, Any]:
-        ref = node.get("$ref")
-        if ref and isinstance(ref, str) and ref.startswith("#/$defs/"):
-            key = ref.split("/")[-1]
-            target = definitions.get(key)
-            if target is None:
-                errors.append(f"Unresolvable schema reference: {ref}")
-                return {}
-            return target
-        return node
+    const_pairs = {
+        "@context": "asx://brain/topology/bindings/svg/v1",
+        "@authority": "KUHUL_XCFE_OMEGA",
+        "@mutation": "forbidden",
+        "@extension": "append_only",
+        "@executable": False,
+    }
+    for key, expected in const_pairs.items():
+        if bindings.get(key) != expected:
+            errors.append(f"{key} expected {expected!r} but found {bindings.get(key)!r}")
 
-    def validate_node(value: Any, node_schema: Mapping[str, Any], path: str) -> None:
-        resolved_schema = resolve(node_schema)
-        expected_type = resolved_schema.get("type")
+    version = bindings.get("@version")
+    if not isinstance(version, str) or version != "1.0.0":
+        errors.append(f"@version must equal '1.0.0', found {version!r}")
 
-        type_mapping = {
-            "object": dict,
-            "array": list,
-            "string": str,
-            "boolean": bool,
-        }
+    rules = bindings.get("@rules", {})
+    expected_rules = {
+        "@svg_policy": "SANITIZED_NO_SCRIPT_NO_EVENT_NO_ANIMATION",
+        "@binding_mode": "id_to_asset_only",
+        "@runtime_execution": False,
+        "@projection_only": True,
+    }
+    for key, expected in expected_rules.items():
+        if rules.get(key) != expected:
+            errors.append(f"@rules.{key} expected {expected!r} but found {rules.get(key)!r}")
 
-        if expected_type:
-            python_type = type_mapping.get(expected_type)
-            if python_type is None:
-                errors.append(f"{path}: Unsupported schema type '{expected_type}'")
-                return
-            if not isinstance(value, python_type):
-                errors.append(
-                    f"{path}: Expected {expected_type}, found {type(value).__name__}"
-                )
-                return
-
-        if "const" in resolved_schema and value != resolved_schema["const"]:
-            errors.append(
-                f"{path}: Expected constant value {resolved_schema['const']!r}, "
-                f"found {value!r}"
-            )
-            return
-
-        if expected_type == "object":
-            properties: Mapping[str, Any] = resolved_schema.get("properties", {})
-            required_fields: Sequence[str] = resolved_schema.get("required", [])
-
-            for field in required_fields:
-                if field not in value:
-                    errors.append(f"{path}: Missing required field '{field}'")
-
-            if resolved_schema.get("additionalProperties") is False:
-                allowed_extras = METADATA_FIELDS if path == "<root>" else set()
-                extras = set(value.keys()) - set(properties.keys()) - allowed_extras
-                for extra in sorted(extras):
-                    errors.append(f"{path}: Unexpected field '{extra}'")
-
-            for key, child in value.items():
-                if key in properties:
-                    child_path = f"{path}.{key}" if path else key
-                    validate_node(child, properties[key], child_path)
-
-        elif expected_type == "array":
-            min_items = resolved_schema.get("minItems")
-            if min_items is not None and len(value) < int(min_items):
-                errors.append(
-                    f"{path}: Expected at least {min_items} item(s), found {len(value)}"
-                )
-            item_schema = resolved_schema.get("items")
-            if item_schema:
-                for index, item in enumerate(value):
-                    validate_node(item, item_schema, f"{path}[{index}]")
-
-        elif expected_type == "string":
-            enum_values: Iterable[str] | None = resolved_schema.get("enum")
-            if enum_values is not None and value not in enum_values:
-                errors.append(
-                    f"{path}: Value {value!r} not in allowed set {list(enum_values)}"
-                )
-
-            pattern = resolved_schema.get("pattern")
-            if pattern and not re.fullmatch(pattern, value):
-                errors.append(
-                    f"{path}: Value {value!r} does not match pattern {pattern!r}"
-                )
-
-        elif expected_type == "boolean":
-            # No extra validation beyond the type/const checks.
-            pass
-
-    validate_node(instance, schema, "<root>")
     return errors
 
 
-def load_registry_ids(path: Path) -> set[str]:
-    registry = load_json(path, allow_comments=True)
-    brains = registry.get("brains", [])
-    if not isinstance(brains, list):
-        raise ValueError("Registry 'brains' field must be an array")
-    ids = []
-    for entry in brains:
-        if isinstance(entry, Mapping) and "id" in entry:
-            ids.append(str(entry["id"]))
-    return set(ids)
+def _index_registry(registry: Mapping[str, object]) -> Dict[str, str]:
+    mapping: Dict[str, str] = {}
+    for entry in registry.get("@brains", []):
+        mapping[entry["id"]] = entry["domain"]
+    return mapping
 
 
-def check_bindings(
-    bindings: Sequence[Mapping[str, Any]],
-    registry_ids: set[str],
-    id_pattern: str,
-    svg_pattern: str,
-    allowed_domains: Sequence[str],
-) -> List[str]:
+def _validate_binding_entries(
+    bindings: Iterable[Mapping[str, object]], registry_map: Mapping[str, str]
+) -> Tuple[List[str], Set[str]]:
     errors: List[str] = []
-    id_regex = re.compile(id_pattern)
-    svg_regex = re.compile(svg_pattern)
-    seen_ids: set[str] = set()
+    seen_ids: Set[str] = set()
 
     for entry in bindings:
         entry_id = entry.get("id")
-        svg_path = entry.get("svg")
+        svg = entry.get("svg")
         domain = entry.get("domain")
-        if entry_id is None:
-            errors.append("Binding missing 'id'")
-            continue
 
-        if not isinstance(entry_id, str) or not id_regex.fullmatch(entry_id):
-            errors.append(f"Binding id {entry_id!r} does not match pattern {id_pattern}")
+        if not entry_id or not isinstance(entry_id, str) or not ID_PATTERN.match(entry_id):
+            errors.append(f"invalid id: {entry_id!r}")
         if entry_id in seen_ids:
-            errors.append(f"Duplicate binding id detected: {entry_id}")
+            errors.append(f"duplicate id: {entry_id}")
         seen_ids.add(entry_id)
-        if entry_id not in registry_ids:
-            errors.append(f"Binding id {entry_id!r} not found in registry")
 
-        if svg_path is None:
-            errors.append(f"{entry_id}: missing 'svg' path")
-        elif not isinstance(svg_path, str) or not svg_regex.fullmatch(svg_path):
+        if not svg or not isinstance(svg, str) or not SVG_PATTERN.match(svg):
+            errors.append(f"invalid svg path for {entry_id}: {svg!r}")
+
+        if domain not in ALLOWED_DOMAINS:
+            errors.append(f"invalid domain for {entry_id}: {domain!r}")
+
+        if entry_id not in registry_map:
+            errors.append(f"id {entry_id} missing from registry")
+        elif registry_map[entry_id] != domain:
             errors.append(
-                f"{entry_id}: svg path {svg_path!r} does not match {svg_pattern}"
+                f"domain mismatch for {entry_id}: bindings={domain!r} registry={registry_map[entry_id]!r}"
             )
 
-        if domain is None:
-            errors.append(f"{entry_id}: missing 'domain'")
-        elif domain not in allowed_domains:
-            errors.append(
-                f"{entry_id}: domain {domain!r} not in allowed set {list(allowed_domains)}"
-            )
-
-    return errors
+    return errors, seen_ids
 
 
-def check_rules_invariants(bindings_doc: Mapping[str, Any]) -> List[str]:
+def validate() -> int:
+    bindings = _load_json(BINDINGS_PATH)
+    schema = _load_json(SCHEMA_PATH)
+    registry = _load_json(REGISTRY_PATH)
+
     errors: List[str] = []
-    rules = bindings_doc.get("@rules")
-    if not isinstance(rules, Mapping):
-        return ["Missing @rules block or it is not an object"]
+    errors.extend(_validate_top_level(bindings, schema))
 
-    runtime_exec = rules.get("@runtime_execution")
-    projection_only = rules.get("@projection_only")
+    registry_map = _index_registry(registry)
+    binding_entries = bindings.get("@bindings", [])
+    entry_errors, seen_ids = _validate_binding_entries(binding_entries, registry_map)
+    errors.extend(entry_errors)
 
-    if runtime_exec is not False:
-        errors.append("@rules.@runtime_execution must be false to forbid execution")
-    if projection_only is not True:
-        errors.append("@rules.@projection_only must be true to enforce projections")
+    missing_from_bindings = set(registry_map) - seen_ids
+    if missing_from_bindings:
+        errors.append(f"registry ids missing bindings: {sorted(missing_from_bindings)}")
 
-    executable_flag = bindings_doc.get("@executable")
-    if executable_flag not in (False, None):
-        errors.append("@executable must be false for bindings documents")
-
-    return errors
-
-
-def build_report_line(label: str, issues: Sequence[str]) -> str:
-    status = "OK" if not issues else f"FAILED ({len(issues)} issue(s))"
-    return f"{label}: {status}"
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Validate brain topology SVG bindings against schema and registry."
-    )
-    parser.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Only emit errors, suppress success banner.",
-    )
-    args = parser.parse_args(argv)
-
-    try:
-        schema = load_json(SCHEMA_PATH)
-        bindings_doc = load_json(BINDINGS_PATH, allow_comments=True)
-        registry_ids = load_registry_ids(REGISTRY_PATH)
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
-        print(f"Failed to load validation inputs: {exc}", file=sys.stderr)
+    if errors:
+        for err in errors:
+            print(f"[ERROR] {err}")
         return 1
 
-    schema_errors = validate_against_schema(bindings_doc, schema)
-
-    defs = schema.get("$defs", {})
-    binding_def = defs.get("binding_entry", {})
-    id_pattern = binding_def.get("properties", {}).get("id", {}).get(
-        "pattern", ".*"
-    )
-    svg_pattern = binding_def.get("properties", {}).get("svg", {}).get(
-        "pattern", ".*"
-    )
-    allowed_domains = binding_def.get("properties", {}).get("domain", {}).get(
-        "enum", []
-    )
-
-    bindings = bindings_doc.get("@bindings", [])
-    binding_errors = []
-    if isinstance(bindings, list):
-        binding_errors = check_bindings(
-            bindings, registry_ids, id_pattern, svg_pattern, allowed_domains
-        )
-    else:
-        binding_errors = ["@bindings must be an array of binding entries"]
-
-    invariant_errors = check_rules_invariants(bindings_doc)
-
-    all_errors = [*schema_errors, *binding_errors, *invariant_errors]
-
-    report_lines = [
-        build_report_line("Schema validation", schema_errors),
-        build_report_line("Registry and SVG checks", binding_errors),
-        build_report_line("Rules invariants", invariant_errors),
-    ]
-
-    if not args.quiet:
-        print("Brain topology bindings validation report")
-        for line in report_lines:
-            print(f"- {line}")
-
-    if all_errors:
-        print("Issues detected:")
-        for issue in all_errors:
-            print(f"- {issue}")
-        return 1
-
-    if not args.quiet:
-        print("All bindings are valid and projection-only.")
+    print("All brain topology bindings validated successfully.")
     return 0
 
 
+def main(argv: List[str]) -> int:
+    _ = argparse.ArgumentParser(description="Validate brain topology assets").parse_args(argv)
+    return validate()
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))

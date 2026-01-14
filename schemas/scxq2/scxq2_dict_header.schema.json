@@ -1,0 +1,21 @@
+{
+  "$schema": "xjson://schema/draft/2020-12",
+  "$id": "asx://schema/scxq2/scxq2_dict_header.v1",
+  "type": "object",
+  "required": ["@scxq2_dict"],
+  "properties": {
+    "@scxq2_dict": {
+      "type": "object",
+      "required": ["@version", "@dict_id", "@count", "@hash"],
+      "properties": {
+        "@version": { "const": "1.0" },
+        "@dict_id": { "type": "string" },
+        "@count": { "type": "integer", "minimum": 0 },
+        "@encoding": { "type": "string", "enum": ["utf8", "bytes"] },
+        "@hash": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

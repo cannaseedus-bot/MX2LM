@@ -1,0 +1,134 @@
+{
+  "@type": "xcfe/model_schema",
+  "@id": "openai_gpt4",
+  "@law": "CC-FULL",
+  "@version": "4.0.0",
+
+  "Σ": {
+    "@doc": "Symbol set for OpenAI GPT",
+    "atoms": ["token", "attention", "mlp", "vision", "tool"],
+    "glyphs": {
+      "🌐": "gpt_gen",
+      "👁️": "vision_mode",
+      "🔧": "function_call",
+      "🎨": "dalle_gen",
+      "🗣️": "voice_mode"
+    }
+  },
+
+  "V": {
+    "@doc": "Value bindings - GPT-4 Turbo reference",
+    "π": 3.141592653589793,
+    "φ": 1.6180339887498948,
+    "context_window": 128000,
+    "max_output_tokens": 4096,
+    "vision_supported": true,
+    "function_calling": true,
+    "json_mode": true
+  },
+
+  "Φ": {
+    "@doc": "Control structure - GPT-4 Flow",
+    "entry": "input_processor",
+    "nodes": {
+      "input_processor": {
+        "@type": "control/branch",
+        "conditions": {
+          "has_image": "vision_processor",
+          "has_functions": "function_processor",
+          "text_only": "text_processor"
+        }
+      },
+      "vision_processor": {
+        "@type": "π/transform",
+        "operation": "encode_images",
+        "detail_levels": ["low", "high", "auto"],
+        "next": "multimodal_merge"
+      },
+      "text_processor": {
+        "@type": "π/transform",
+        "operation": "tiktoken_encode",
+        "next": "transformer"
+      },
+      "function_processor": {
+        "@type": "π/transform",
+        "operation": "parse_functions",
+        "next": "text_processor"
+      },
+      "multimodal_merge": {
+        "@type": "control/merge",
+        "strategy": "tile_encode",
+        "next": "transformer"
+      },
+      "transformer": {
+        "@type": "π/transform",
+        "operation": "gpt4_forward",
+        "next": "output_router"
+      },
+      "output_router": {
+        "@type": "control/branch",
+        "conditions": {
+          "function_call": "function_executor",
+          "json_mode": "json_output",
+          "text": "text_output"
+        }
+      },
+      "function_executor": {
+        "@type": "tool/execute",
+        "parallel": true,
+        "next": "text_processor"
+      },
+      "json_output": {
+        "@type": "data/output",
+        "format": "json_object"
+      },
+      "text_output": {
+        "@type": "data/output",
+        "format": "text"
+      }
+    }
+  },
+
+  "compression": {
+    "@law": "CC-v1",
+    "operators": ["⊕", "π̂", "⊗", "≈", "τ"],
+    "openai_compression": {
+      "tiktoken_optimization": true,
+      "vision_tile_compression": true,
+      "function_schema_cache": true
+    }
+  },
+
+  "capabilities": {
+    "chat_completion": true,
+    "vision": true,
+    "function_calling": true,
+    "json_mode": true,
+    "code_generation": true,
+    "reasoning": true
+  },
+
+  "api_binding": {
+    "provider": "openai",
+    "models": {
+      "gpt4_turbo": "gpt-4-turbo",
+      "gpt4o": "gpt-4o",
+      "gpt4o_mini": "gpt-4o-mini",
+      "o1": "o1-preview",
+      "o1_mini": "o1-mini"
+    },
+    "endpoints": {
+      "chat": "https://api.openai.com/v1/chat/completions",
+      "embeddings": "https://api.openai.com/v1/embeddings",
+      "images": "https://api.openai.com/v1/images/generations"
+    }
+  },
+
+  "adapters": {
+    "kuhul_pi": {
+      "wave_transform": true,
+      "golden_compression": true,
+      "tiktoken_glyph": true
+    }
+  }
+}

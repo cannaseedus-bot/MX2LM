@@ -1,0 +1,13 @@
+{
+  "layers": [
+    { "id": 0, "type": "transformer_block", "params": 100000, "entropy": 3.2 },
+    { "id": 1, "type": "transformer_block", "params": 80000,  "entropy": 2.8 },
+    { "id": 2, "type": "transformer_block", "params": 62000,  "entropy": 1.2 },
+    { "id": 3, "type": "transformer_block", "params": 48000,  "entropy": 0.8 }
+  ],
+  "stats": {
+    "total_params": 290000,
+    "avg_entropy": 3.2,
+    "perplexity_eval": 7.5
+  }
+}

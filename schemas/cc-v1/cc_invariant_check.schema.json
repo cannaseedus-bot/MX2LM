@@ -1,0 +1,28 @@
+{
+  "$schema": "xjson://schema/draft/2020-12",
+  "$id": "asx://schema/cc/cc_invariant_check.v1",
+  "type": "object",
+  "required": ["@cc_invariant_check"],
+  "properties": {
+    "@cc_invariant_check": {
+      "type": "object",
+      "required": ["@invariant", "@result"],
+      "properties": {
+        "@invariant": {
+          "type": "string",
+          "enum": ["I1", "I2", "I3", "I4"]
+        },
+        "@result": {
+          "type": "string",
+          "enum": ["pass", "fail"]
+        },
+        "@detail": {
+          "type": ["object", "null"],
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

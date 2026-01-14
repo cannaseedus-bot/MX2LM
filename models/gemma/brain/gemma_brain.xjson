@@ -1,0 +1,101 @@
+{
+  "@type": "xcfe/brain",
+  "@id": "gemma_brain",
+  "@law": "Ω-BLACK-PANEL",
+  "@schema": "../schema/gemma.xjson",
+
+  "identity": {
+    "name": "Gemma 2",
+    "version": "27B",
+    "family": "alternating_attention",
+    "architecture": "local_global_transformer",
+    "source": "google/gemma-2-27b-it"
+  },
+
+  "π_kuhul": {
+    "@doc": "π-KUHUL integration for alternating attention",
+    "constants": {
+      "π": 3.141592653589793,
+      "φ": 1.6180339887498948,
+      "τ": 6.283185307179586
+    },
+    "wave_functions": {
+      "local_window": "sin(π × pos / local_size)",
+      "global_attend": "softmax(x / sqrt(d)) × φ",
+      "logit_cap": "tanh(x / soft_cap) × soft_cap"
+    },
+    "alternating_physics": {
+      "local_window": 4096,
+      "pattern": ["local", "global"],
+      "soft_cap": 30.0
+    }
+  },
+
+  "glyph_codex": {
+    "@doc": "Glyph encoding for Gemma operations",
+    "primitives": {
+      "💎→✨": "input_to_quality",
+      "✨→🔬": "quality_to_research",
+      "✨→📖": "quality_to_instruction"
+    },
+    "opcodes": {
+      "GEM_TOK": "⟁G0",
+      "GEM_EMB": "⟁G1",
+      "GEM_LOC": "⟁G2",
+      "GEM_GLB": "⟁G3",
+      "GEM_GEG": "⟁G4",
+      "GEM_OUT": "⟁G5"
+    }
+  },
+
+  "xcfe_paths": {
+    "@doc": "Control flow paths",
+    "instruction": ["tokenizer", "embed", "transformer_layers", "output_head", "sample"],
+    "reasoning": ["tokenizer", "embed", "transformer_layers", "reasoning_head", "verify"]
+  },
+
+  "compression_calculus": {
+    "@law": "CC-FULL",
+    "symbol_folding": {
+      "enabled": true,
+      "max_depth": 3,
+      "glyph_cache": true
+    },
+    "alternating_compression": {
+      "logit_soft_cap": true,
+      "local_global_fusion": true
+    }
+  },
+
+  "memory_binding": {
+    "ngram_table": "gemma_patterns",
+    "glyph_weights": "gemma_effectiveness"
+  },
+
+  "inference": {
+    "modes": {
+      "instruction": {
+        "temperature": 0.7,
+        "max_tokens": 4096,
+        "top_k": 40
+      },
+      "safety": {
+        "temperature": 0.3,
+        "max_tokens": 2048,
+        "safety_filter": true
+      }
+    }
+  },
+
+  "api_binding": {
+    "local": {
+      "enabled": true,
+      "device": "cuda",
+      "dtype": "bfloat16"
+    },
+    "remote": {
+      "enabled": true,
+      "endpoint": "https://generativelanguage.googleapis.com/v1"
+    }
+  }
+}

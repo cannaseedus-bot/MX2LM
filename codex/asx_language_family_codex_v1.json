@@ -1,0 +1,636 @@
+{
+  "@id": "asx://codex/asx.v1",
+  "@type": "asx.codex",
+  "@version": "1.0.0",
+  "@status": "frozen",
+  "@title": "ASX Language Family Codex v1",
+  "@timestamp": 1890000012290,
+
+  "@authority": {
+    "@language_family": "ASX",
+    "@runtime_language": "ASX-R",
+    "@surface_syntax": "XJSON",
+    "@control_law": "XCFE",
+    "@ast_law": "K’UHUL-A",
+    "@glyph_surface": "K’UHUL-S",
+    "@query_language": "KQL",
+    "@persistence": "IDB-API",
+    "@compression_algebra": "SCXQ2",
+    "@compression_calculus": "CC-v1",
+    "@principle": "structure_is_law"
+  },
+
+  "@stack": [
+    { "@name": "ASX", "@role": "language_family", "@id": "asx://layer/asx" },
+    { "@name": "ASX-R", "@role": "authoritative_runtime_language", "@id": "asx://layer/asx-r" },
+    { "@name": "XCFE", "@role": "control_flow_law", "@id": "asx://layer/xcfe" },
+    { "@name": "XJSON", "@role": "surface_serialization", "@id": "asx://layer/xjson" },
+    { "@name": "K’UHUL-A", "@role": "ast_execution_law", "@id": "asx://layer/kuhul-a" },
+    { "@name": "K’UHUL-S", "@role": "glyph_surface_syntax", "@id": "asx://layer/kuhul-s" },
+    { "@name": "ARS", "@role": "structural_scripting_surface", "@id": "asx://layer/ars" },
+    { "@name": "KQL", "@role": "authoritative_query_language", "@id": "asx://layer/kql" },
+    { "@name": "IDB-API", "@role": "authoritative_persistence_api", "@id": "asx://layer/idb-api" },
+    { "@name": "SCXQ2", "@role": "execution_compression_algebra", "@id": "asx://layer/scxq2" },
+    { "@name": "CC-v1", "@role": "formal_compression_calculus", "@id": "asx://layer/cc-v1" },
+    { "@name": "Proof System", "@role": "structural_proof_authority", "@id": "asx://layer/proof" },
+    { "@name": "Conformance Suite", "@role": "compliance_tests_and_vectors", "@id": "asx://layer/conformance" },
+    { "@name": "ASX-R/REF", "@role": "reference_interpreter_profile", "@id": "asx://layer/asx-r-ref" },
+    { "@name": "Runtime Folds", "@role": "deterministic_execution_domains", "@id": "asx://layer/folds" },
+    { "@name": "ASX RAM", "@role": "volatile_tick_state_plane", "@id": "asx://layer/asx-ram" },
+    { "@name": "K’UHUL π", "@role": "deterministic_math_physics_layer", "@id": "asx://layer/kuhul-pi" },
+    { "@name": "Projection Law", "@role": "ui_is_projection_not_authority", "@id": "asx://layer/projection-law" },
+    { "@name": "Kernel Substrate", "@role": "replaceable_execution_engine", "@id": "asx://layer/kernel" },
+    { "@name": "Tape System", "@role": "deterministic_packaging", "@id": "asx://layer/tapes" },
+    { "@name": "Shards", "@role": "multi_hive_partitioning", "@id": "asx://layer/shards" },
+    { "@name": "Mesh", "@role": "canonical_transport_layer", "@id": "asx://layer/mesh" },
+    { "@name": "MeshChain", "@role": "contract_ledger_domain", "@id": "asx://layer/meshchain" },
+    { "@name": "Liquidaty", "@role": "contract_dsl_compiler", "@id": "asx://layer/liquidaty" },
+    { "@name": "SecuroLink", "@role": "zero_trust_capability_auth", "@id": "asx://layer/securolink" },
+    { "@name": "Verification Flux", "@role": "phase_barrier_audit_system", "@id": "asx://layer/flux" },
+    { "@name": "AGL", "@role": "atomic_glyph_language", "@id": "asx://layer/agl" },
+    { "@name": "ASM", "@role": "atomic_symbolic_markup", "@id": "asx://layer/asm" },
+    { "@name": "ATOMIC.CSS", "@role": "visual_control_surface", "@id": "asx://layer/atomic-css" },
+    { "@name": "ATOMIC.XJSON", "@role": "machine_readable_visual_model", "@id": "asx://layer/atomic-xjson" },
+    { "@name": "ASXR", "@role": "browser_vm_runtime_bundle", "@id": "asx://layer/asxr" },
+    { "@name": "Trinity Runtime", "@role": "cpu_gpu_tpu_orchestration", "@id": "asx://layer/trinity" }
+  ],
+
+  "@invariants": [
+    {
+      "@id": "asx://invariant/determinism",
+      "@type": "asx.invariant",
+      "@name": "Determinism",
+      "@statement": "Identical input MUST yield identical output. No ambient state, randomness, or time-dependence.",
+      "@applies_to": ["asx://layer/asx-r", "asx://layer/xcfe", "asx://layer/kuhul-a", "asx://layer/kql", "asx://layer/idb-api", "asx://layer/scxq2"],
+      "@severity": "fatal"
+    },
+    {
+      "@id": "asx://invariant/structural_legality",
+      "@type": "asx.invariant",
+      "@name": "Structural Legality",
+      "@statement": "Invalid structure is illegal execution. No partial or best-effort behavior is permitted.",
+      "@applies_to": ["asx://layer/asx-r", "asx://layer/kuhul-a", "asx://layer/xjson"],
+      "@severity": "fatal"
+    },
+    {
+      "@id": "asx://invariant/replayability",
+      "@type": "asx.invariant",
+      "@name": "Replayability",
+      "@statement": "Outputs MUST be derivable from inputs + proofs alone.",
+      "@applies_to": ["asx://layer/asx-r", "asx://layer/proof", "asx://layer/scxq2"],
+      "@severity": "fatal"
+    },
+    {
+      "@id": "asx://invariant/phase_ordering",
+      "@type": "asx.invariant",
+      "@name": "Phase Ordering",
+      "@statement": "Execution phases are fixed and ordered; phases must execute in order and may not be skipped.",
+      "@applies_to": ["asx://layer/asx-r", "asx://layer/xcfe"],
+      "@severity": "fatal"
+    },
+    {
+      "@id": "asx://invariant/compression_semantics",
+      "@type": "asx.invariant",
+      "@name": "Compression Semantics",
+      "@statement": "Compression affects meaning, not only size. Decompression MUST yield identical semantic structure.",
+      "@applies_to": ["asx://layer/asx-r", "asx://layer/scxq2", "asx://layer/cc-v1"],
+      "@severity": "fatal"
+    }
+  ],
+
+  "@laws": [
+    {
+      "@id": "asx://law/structure_is_law",
+      "@type": "asx.law",
+      "@name": "Structure is Law",
+      "@scope": "language_family",
+      "@statement": "ASX semantics are defined by canonical structure. Interpreter behavior may not introduce semantics.",
+      "@severity": "fatal",
+      "@status": "immutable"
+    },
+    {
+      "@id": "asx://law/runtime_becomes_language",
+      "@type": "asx.law",
+      "@name": "Runtime Becomes Language",
+      "@scope": "asx-r",
+      "@statement": "Once a runtime’s structure, invariants, phase ordering, and legality rules are frozen, the runtime becomes a language.",
+      "@severity": "fatal",
+      "@status": "immutable"
+    },
+    {
+      "@id": "asx://law/everything_gets_compressed",
+      "@type": "asx.law",
+      "@name": "Everything Gets Compressed",
+      "@scope": "language_family",
+      "@statement": "All semantic artifacts MUST admit a canonical SCXQ2 form. If it cannot lower to SCXQ2 canonical structure, it is not valid ASX content.",
+      "@enforced_by": ["asx://layer/scxq2", "asx://layer/cc-v1"],
+      "@severity": "fatal",
+      "@status": "immutable"
+    },
+    {
+      "@id": "asx://law/ui_is_projection",
+      "@type": "asx.law",
+      "@name": "UI Is Projection",
+      "@scope": "language_family",
+      "@statement": "UI (CSS/DOM/HTML) is projection only and has no authority over semantics. Semantics originate from ASX-R structures and proofs.",
+      "@enforced_by": ["asx://layer/projection-law", "asx://layer/atomic-css", "asx://layer/atomic-xjson"],
+      "@severity": "fatal",
+      "@status": "immutable"
+    }
+  ],
+
+  "@layers": {
+    "asx://layer/asx": {
+      "@id": "asx://layer/asx",
+      "@type": "asx.layer",
+      "@name": "ASX",
+      "@role": "language_family",
+      "@definition": "The umbrella family defining the authority model, hierarchy, and invariants for all ASX sublanguages and subsystems.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/asx-r": {
+      "@id": "asx://layer/asx-r",
+      "@type": "asx.layer",
+      "@name": "ASX-R",
+      "@role": "authoritative_runtime_language",
+      "@definition": "The authoritative runtime language defining legality of execution independent of implementation style.",
+      "@status": "frozen",
+      "@defines": {
+        "@phases": ["@Pop", "@Wo", "@Sek", "@Collapse"],
+        "@execution": "deterministic",
+        "@replayable": true,
+        "@structural_legality": true
+      },
+      "@depends_on": [
+        "asx://layer/xcfe",
+        "asx://layer/xjson",
+        "asx://layer/kuhul-a",
+        "asx://layer/scxq2",
+        "asx://layer/proof"
+      ]
+    },
+
+    "asx://layer/xcfe": {
+      "@id": "asx://layer/xcfe",
+      "@type": "asx.layer",
+      "@name": "XCFE",
+      "@role": "control_flow_law",
+      "@definition": "Control-flow governor defining phase ordering, branch legality, barriers, and auditable control vectors.",
+      "@status": "frozen",
+      "@governs": ["phase_order", "branch_legality", "barriers", "control_vectors"]
+    },
+
+    "asx://layer/xjson": {
+      "@id": "asx://layer/xjson",
+      "@type": "asx.layer",
+      "@name": "XJSON",
+      "@role": "surface_serialization",
+      "@definition": "Canonical serialization and transport format for ASX structures. Not authoritative semantics; must lower deterministically to AST.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/kuhul-a": {
+      "@id": "asx://layer/kuhul-a",
+      "@type": "asx.layer",
+      "@name": "K’UHUL-A",
+      "@role": "ast_execution_law",
+      "@definition": "AST execution law defining the only legal execution shapes (explicit node types, ordering, and mutation rules).",
+      "@status": "frozen",
+      "@requires": ["explicit_node_types", "explicit_child_ordering", "no_implicit_behavior", "no_hidden_mutation"]
+    },
+
+    "asx://layer/kuhul-s": {
+      "@id": "asx://layer/kuhul-s",
+      "@type": "asx.layer",
+      "@name": "K’UHUL-S",
+      "@role": "glyph_surface_syntax",
+      "@definition": "Glyph-based surface syntax. Syntactic sugar only; must lower deterministically to K’UHUL-A AST. Ambiguity is illegal.",
+      "@status": "frozen",
+      "@authority": "derived"
+    },
+
+    "asx://layer/ars": {
+      "@id": "asx://layer/ars",
+      "@type": "asx.layer",
+      "@name": "ARS",
+      "@role": "structural_scripting_surface",
+      "@definition": "Human-readable structural scripting surface that lowers deterministically to XJSON blocks and ASX-R AST shapes. No ambient state, no interpreter-defined semantics.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/kql": {
+      "@id": "asx://layer/kql",
+      "@type": "asx.layer",
+      "@name": "KQL",
+      "@role": "authoritative_query_language",
+      "@definition": "Query language expressed as data. Governs SQL-like queries, IDB access, event streams, and structured dataset access with deterministic lowering and canonical parameter order.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/idb-api": {
+      "@id": "asx://layer/idb-api",
+      "@type": "asx.layer",
+      "@name": "IDB-API",
+      "@role": "authoritative_persistence_api",
+      "@definition": "Authoritative persistence interface: KQL-only access, deterministic commits, replay-verifiable history, SCXQ2 compression at rest. No raw SQL outside KQL.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/scxq2": {
+      "@id": "asx://layer/scxq2",
+      "@type": "asx.layer",
+      "@name": "SCXQ2",
+      "@role": "execution_compression_algebra",
+      "@definition": "Concrete execution/compression algebra with canonical layout DICT/FIELD/LANE/EDGE. Decompression must preserve semantic structure.",
+      "@status": "frozen",
+      "@layout": ["DICT", "FIELD", "LANE", "EDGE"]
+    },
+
+    "asx://layer/cc-v1": {
+      "@id": "asx://layer/cc-v1",
+      "@type": "asx.layer",
+      "@name": "CC-v1",
+      "@role": "formal_compression_calculus",
+      "@definition": "Formal compression calculus defining meaning-preserving compression operators and verifier requirements. SCXQ2 is an instantiation of CC-v1.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/proof": {
+      "@id": "asx://layer/proof",
+      "@type": "asx.layer",
+      "@name": "Proof System",
+      "@role": "structural_proof_authority",
+      "@definition": "Hash-based proof material binding canonical structure and legality. Proof failure implies execution failure. Proofs cover canonical forms only.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/conformance": {
+      "@id": "asx://layer/conformance",
+      "@type": "asx.layer",
+      "@name": "Conformance Suite",
+      "@role": "compliance_tests_and_vectors",
+      "@definition": "Official compliance vectors defining must-accept and must-reject cases: phase rules, AST legality, SCXQ2 decoding, proof checks, KQL normalization, metric assertions.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/asx-r-ref": {
+      "@id": "asx://layer/asx-r-ref",
+      "@type": "asx.layer",
+      "@name": "ASX-R/REF",
+      "@role": "reference_interpreter_profile",
+      "@definition": "Non-code reference interpreter profile specifying strict baseline behavior and canonical ordering. Passing REF implies portability.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/folds": {
+      "@id": "asx://layer/folds",
+      "@type": "asx.layer",
+      "@name": "Runtime Folds",
+      "@role": "deterministic_execution_domains",
+      "@definition": "Deterministic domain modules providing structured execution surfaces (compute, geometry, query, proof, etc.) without altering language semantics.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/asx-ram": {
+      "@id": "asx://layer/asx-ram",
+      "@type": "asx.layer",
+      "@name": "ASX RAM",
+      "@role": "volatile_tick_state_plane",
+      "@definition": "Volatile tick-scoped state plane authoritative for the current tick and disposable between ticks. Transitions remain proof-bound and replayable via logs.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/kuhul-pi": {
+      "@id": "asx://layer/kuhul-pi",
+      "@type": "asx.layer",
+      "@name": "K’UHUL π",
+      "@role": "deterministic_math_physics_layer",
+      "@definition": "Deterministic math/physics layer (vectors, forces, integrators) usable as a math domain provided it lowers to AST and remains deterministic.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/projection-law": {
+      "@id": "asx://layer/projection-law",
+      "@type": "asx.layer",
+      "@name": "Projection Law",
+      "@role": "ui_is_projection_not_authority",
+      "@definition": "UI is projection only; CSS/DOM/HTML do not define semantics. They render canonical state emitted by the runtime.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/kernel": {
+      "@id": "asx://layer/kernel",
+      "@type": "asx.layer",
+      "@name": "Kernel Substrate",
+      "@role": "replaceable_execution_engine",
+      "@definition": "Replaceable execution engine that runs ASX structures. Must not introduce semantics beyond the language.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/tapes": {
+      "@id": "asx://layer/tapes",
+      "@type": "asx.layer",
+      "@name": "Tape System",
+      "@role": "deterministic_packaging",
+      "@definition": "Deterministic packaging of runtime fold bundles as portable content. Tapes are content and cannot override language semantics.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/shards": {
+      "@id": "asx://layer/shards",
+      "@type": "asx.layer",
+      "@name": "Shards",
+      "@role": "multi_hive_partitioning",
+      "@definition": "Partitioning of folds and responsibilities into isolated domains (multi-hive architecture) without semantic drift.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/mesh": {
+      "@id": "asx://layer/mesh",
+      "@type": "asx.layer",
+      "@name": "Mesh",
+      "@role": "canonical_transport_layer",
+      "@definition": "Transport and coordination layer for moving canonical ASX blocks between nodes while preserving proofs and canonical forms.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/meshchain": {
+      "@id": "asx://layer/meshchain",
+      "@type": "asx.layer",
+      "@name": "MeshChain",
+      "@role": "contract_ledger_domain",
+      "@definition": "Contract/ledger domain expressed as ASX structures with deterministic execution and replayable ledger state.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/liquidaty": {
+      "@id": "asx://layer/liquidaty",
+      "@type": "asx.layer",
+      "@name": "Liquidaty",
+      "@role": "contract_dsl_compiler",
+      "@definition": "Solidity-style DSL that compiles deterministically into XJSON @asx_contract objects executed by MeshChain runtime.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/securolink": {
+      "@id": "asx://layer/securolink",
+      "@type": "asx.layer",
+      "@name": "SecuroLink",
+      "@role": "zero_trust_capability_auth",
+      "@definition": "Zero-trust capability-link identity/auth layer issuing scoped capability keys and domain-bound tokens. Gates access; does not define semantics.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/flux": {
+      "@id": "asx://layer/flux",
+      "@type": "asx.layer",
+      "@name": "Verification Flux",
+      "@role": "phase_barrier_audit_system",
+      "@definition": "Phase/barrier audit system producing first-class audit blocks enforcing monotonic ticks, phase exclusivity, and barrier non-reentrancy.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/agl": {
+      "@id": "asx://layer/agl",
+      "@type": "asx.layer",
+      "@name": "AGL",
+      "@role": "atomic_glyph_language",
+      "@definition": "Atomic Glyph Language: governed glyph lifecycle, grammar, registry, validation and binding rules. Glyphs must lower deterministically.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/asm": {
+      "@id": "asx://layer/asm",
+      "@type": "asx.layer",
+      "@name": "ASM",
+      "@role": "atomic_symbolic_markup",
+      "@definition": "Atomic Symbolic Markup: attribute-based DOM semantics (⚛️/⟁) with deterministic binding and valid HTML compatibility.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/atomic-css": {
+      "@id": "asx://layer/atomic-css",
+      "@type": "asx.layer",
+      "@name": "ATOMIC.CSS",
+      "@role": "visual_control_surface",
+      "@definition": "Visual control surface defining atomic blocks, layout tokens, cognitive visualization bindings, and projection primitives.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/atomic-xjson": {
+      "@id": "asx://layer/atomic-xjson",
+      "@type": "asx.layer",
+      "@name": "ATOMIC.XJSON",
+      "@role": "machine_readable_visual_model",
+      "@definition": "Machine-readable model mirroring ATOMIC.CSS for structural reasoning about layout, state, modes, and visualization bindings.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/asxr": {
+      "@id": "asx://layer/asxr",
+      "@type": "asx.layer",
+      "@name": "ASXR",
+      "@role": "browser_vm_runtime_bundle",
+      "@definition": "Deployable runtime bundle executing ASX-R structures in a browser VM context (e.g., service workers and DOM bridges). Implementation, not authority.",
+      "@status": "frozen"
+    },
+
+    "asx://layer/trinity": {
+      "@id": "asx://layer/trinity",
+      "@type": "asx.layer",
+      "@name": "Trinity Runtime",
+      "@role": "cpu_gpu_tpu_orchestration",
+      "@definition": "Multi-runtime orchestration profile routing workloads across CPU/GPU/TPU shards without altering language semantics.",
+      "@status": "frozen"
+    }
+  },
+
+  "@registries": {
+    "@geometry": {
+      "@id": "asx://registry/geometry.v1",
+      "@type": "asx.registry.geometry",
+      "@status": "frozen",
+      "@items": [
+        { "@name": "Plane2D", "@manifold": "euclidean", "@dimensions": 2, "@metric": "L2" },
+        { "@name": "Space3D", "@manifold": "euclidean", "@dimensions": 3, "@metric": "L2" },
+        { "@name": "Surface", "@manifold": "riemannian", "@dimensions": 2, "@metric_tensor": "g_ij" }
+      ]
+    },
+    "@metric": {
+      "@id": "asx://registry/metric.v1",
+      "@type": "asx.registry.metric",
+      "@status": "frozen",
+      "@items": [
+        { "@name": "L2", "@kind": "distance", "@space": "euclidean" },
+        { "@name": "L1", "@kind": "distance", "@space": "manhattan" },
+        { "@name": "Linf", "@kind": "distance", "@space": "chebyshev" },
+        { "@name": "Geodesic", "@kind": "distance", "@space": "manifold" }
+      ]
+    },
+    "@shapes": {
+      "@id": "asx://registry/shapes.v1",
+      "@type": "asx.registry.shapes",
+      "@status": "frozen",
+      "@items": [
+        { "@name": "Point", "@fields": { "x": "number", "y": "number" } },
+        { "@name": "Vec3", "@fields": { "x": "number", "y": "number", "z": "number" } },
+        { "@name": "Line", "@fields": { "a": "Point", "b": "Point" } },
+        { "@name": "Circle", "@fields": { "center": "Point", "radius": "number" } },
+        { "@name": "Rect", "@fields": { "min": "Point", "max": "Point" } },
+        { "@name": "Box3D", "@fields": { "min": "Vec3", "max": "Vec3" } },
+        { "@name": "Sphere", "@fields": { "center": "Vec3", "radius": "number" } }
+      ]
+    },
+    "@scxq2_layout": {
+      "@id": "asx://registry/scxq2.layout.v1",
+      "@type": "asx.registry.scxq2.layout",
+      "@status": "frozen",
+      "@items": [
+        { "@name": "DICT", "@role": "symbol_dictionary" },
+        { "@name": "FIELD", "@role": "typed_values" },
+        { "@name": "LANE", "@role": "ordered_sequences" },
+        { "@name": "EDGE", "@role": "relational_bindings" }
+      ]
+    }
+  },
+
+  "@extensions": {
+    "@g2l_1": {
+      "@id": "asx://law/g2l-1",
+      "@type": "asx.extension",
+      "@name": "G2L-1",
+      "@status": "frozen",
+      "@role": "geometry_to_lanes_mapping",
+      "@statement": "Geometry/types MUST map canonically to SCXQ2 lanes with hash-derived dict_id/field_id/batch_id and canonical ordering for proof stability.",
+      "@ids": {
+        "@dict_id": "H32(\"DICT|\" + category + \"|\" + name)",
+        "@field_id": "H32(\"FIELD|\" + dict_name + \"|\" + field_name)",
+        "@batch_id": "H32(\"BATCH|\" + type_name + \"|\" + stream_name)"
+      },
+      "@ordering": {
+        "@dict_blocks": "sort_asc(dict_id)",
+        "@lane_blocks": "sort_asc(dict_id,field_id,batch_id)"
+      }
+    },
+    "@mfa_1": {
+      "@id": "asx://law/mfa-1",
+      "@type": "asx.extension",
+      "@name": "MFA-1",
+      "@status": "frozen",
+      "@role": "metric_aware_fold_assertions",
+      "@statement": "Metric assertions are verifier-grade constraints; failure yields illegal execution. Assertions are proof-bound and must evaluate deterministically.",
+      "@metric_functions": ["distance", "contains", "angle", "geodesic"],
+      "@forbidden": ["ambient_epsilon", "random_sampling", "implicit_tolerance"],
+      "@tolerance": { "@required_if_used": true, "@field": "tolerance" }
+    }
+  },
+
+  "@relationships": [
+    {
+      "@type": "asx.relationship",
+      "@from": "asx://layer/asx-r",
+      "@to": "asx://layer/xjson",
+      "@relation": "uses_as_surface_serialization"
+    },
+    {
+      "@type": "asx.relationship",
+      "@from": "asx://layer/asx-r",
+      "@to": "asx://layer/xcfe",
+      "@relation": "mandates_control_flow_law"
+    },
+    {
+      "@type": "asx.relationship",
+      "@from": "asx://layer/asx-r",
+      "@to": "asx://layer/kuhul-a",
+      "@relation": "mandates_ast_execution_law"
+    },
+    {
+      "@type": "asx.relationship",
+      "@from": "asx://layer/kuhul-s",
+      "@to": "asx://layer/kuhul-a",
+      "@relation": "must_lower_to_ast"
+    },
+    {
+      "@type": "asx.relationship",
+      "@from": "asx://layer/ars",
+      "@to": "asx://layer/xjson",
+      "@relation": "lowers_to_blocks"
+    },
+    {
+      "@type": "asx.relationship",
+      "@from": "asx://layer/kql",
+      "@to": "asx://layer/kuhul-a",
+      "@relation": "query_is_data_and_lowers_to_ast"
+    },
+    {
+      "@type": "asx.relationship",
+      "@from": "asx://layer/idb-api",
+      "@to": "asx://layer/kql",
+      "@relation": "kql_only_access"
+    },
+    {
+      "@type": "asx.relationship",
+      "@from": "asx://layer/asx-r",
+      "@to": "asx://layer/scxq2",
+      "@relation": "requires_canonical_compressed_form"
+    },
+    {
+      "@type": "asx.relationship",
+      "@from": "asx://layer/scxq2",
+      "@to": "asx://layer/cc-v1",
+      "@relation": "instantiates"
+    },
+    {
+      "@type": "asx.relationship",
+      "@from": "asx://layer/proof",
+      "@to": "asx://layer/asx-r",
+      "@relation": "binds_legality"
+    },
+    {
+      "@type": "asx.relationship",
+      "@from": "asx://layer/atomic-css",
+      "@to": "asx://layer/projection-law",
+      "@relation": "projection_only"
+    },
+    {
+      "@type": "asx.relationship",
+      "@from": "asx://layer/meshchain",
+      "@to": "asx://layer/asx-r",
+      "@relation": "contract_execution_must_be_asx_r_legal"
+    },
+    {
+      "@type": "asx.relationship",
+      "@from": "asx://layer/liquidaty",
+      "@to": "asx://layer/meshchain",
+      "@relation": "compiles_to_contract_blocks"
+    },
+    {
+      "@type": "asx.relationship",
+      "@from": "asx://layer/securolink",
+      "@to": "asx://layer/asx",
+      "@relation": "gates_access_not_semantics"
+    }
+  ],
+
+  "@hello_world": {
+    "@id": "asx://example/hello_world.v1",
+    "@type": "asx.example",
+    "@note": "Minimal lawful ASX-R program definition for conformance smoke test. Surface ARS shown; compilers must lower deterministically.",
+    "@ars": [
+      "asx-r 1.0",
+      "phase @Pop { let message = \"hello world\" }",
+      "phase @Wo { emit log { text: message } }",
+      "phase @Sek { apply log }",
+      "phase @Collapse { seal }"
+    ],
+    "@required_blocks": [
+      "asx://layer/xcfe",
+      "asx://layer/ars",
+      "asx://layer/xjson",
+      "asx://layer/kuhul-a",
+      "asx://layer/proof",
+      "asx://layer/scxq2"
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "vocab": [
+    { "id": 0, "token": "<BOS>", "freq": 1200, "class": "special" },
+    { "id": 1, "token": "the",   "freq": 5000, "class": "word" },
+    { "id": 2, "token": "cat",   "freq": 900,  "class": "word" },
+    { "id": 3, "token": "sat",   "freq": 620,  "class": "word" },
+    { "id": 4, "token": ".",     "freq": 700,  "class": "punct" }
+  ],
+  "merges": [
+    { "left": "c", "right": "at", "count": 120 },
+    { "left": "s", "right": "at", "count": 80 },
+    { "left": "th", "right": "e", "count": 200 }
+  ],
+  "ngrams": {
+    "unigram_total": 9000,
+    "bigram": {
+      "the cat": 200,
+      "cat sat": 80,
+      "sat .": 50,
+      "the .": 30
+    }
+  },
+  "embeddings": {
+    "dim": 2,
+    "vectors": {
+      "0": [1.0, 0.0],
+      "1": [0.5, 0.5],
+      "2": [-0.5, 0.6],
+      "3": [-0.5, -0.5],
+      "4": [0.25, -0.8]
+    }
+  }
+}
