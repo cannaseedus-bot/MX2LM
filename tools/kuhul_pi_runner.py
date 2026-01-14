@@ -103,7 +103,7 @@ def render_svg(events: List[Dict[str, object]], out_path: str) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="KUHUL π task runner (deterministic)")
-    parser.add_argument("--plan", default="PLAN.md", help="Path to PLAN.md")
+    parser.add_argument("--plan", default="docs/plans/PLAN.md", help="Path to PLAN.md")
     parser.add_argument("--out", default="output", help="Output directory for event logs")
     parser.add_argument("--list", action="store_true", help="List TODO tasks")
     parser.add_argument("--complete", help="Mark the named task complete")

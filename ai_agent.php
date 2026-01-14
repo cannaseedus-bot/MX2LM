@@ -8,13 +8,13 @@ function usage(): void
 KUHUL AI Agent Scaffold (PHP-first, cPanel-ready)
 
 Usage:
-  php ai_agent.php [--plan PLAN.md] [--out output] [--list]
-  php ai_agent.php [--plan PLAN.md] [--out output] --complete "Task name"
-  php ai_agent.php [--plan PLAN.md] [--out output] --complete-first
+  php ai_agent.php [--plan docs/plans/PLAN.md] [--out output] [--list]
+  php ai_agent.php [--plan docs/plans/PLAN.md] [--out output] --complete "Task name"
+  php ai_agent.php [--plan docs/plans/PLAN.md] [--out output] --complete-first
   php ai_agent.php --replay output/agent.events.jsonl --svg output/agent.replay.svg
 
 Options:
-  --plan            Path to PLAN.md (default: PLAN.md)
+  --plan            Path to PLAN.md (default: docs/plans/PLAN.md)
   --out             Output directory for event logs (default: output)
   --list            Print TODO tasks
   --complete        Mark the named task complete
@@ -176,7 +176,7 @@ if (isset($options['replay'])) {
     exit(0);
 }
 
-$planPath = $options['plan'] ?? 'PLAN.md';
+$planPath = $options['plan'] ?? 'docs/plans/PLAN.md';
 $outDir = $options['out'] ?? 'output';
 $lines = read_plan($planPath);
 $tasks = parse_tasks($lines);

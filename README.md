@@ -1,6 +1,6 @@
 # MX2LM
 <p align="center">
-<img src="https://github.com/cannaseedus-bot/MX2LM/blob/main/mx2lm-logo.svg" style="width:400px;">
+<img src="https://github.com/cannaseedus-bot/MX2LM/blob/main/assets/images/mx2lm-logo.svg" style="width:400px;">
 </p>
 ---
 

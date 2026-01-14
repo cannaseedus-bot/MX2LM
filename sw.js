@@ -3386,28 +3386,28 @@ self.addEventListener("install", (e) => {
    ============================================================ */
 
 // Import brain integration (inline for Service Worker)
-importScripts('./brain_integration.js');
+importScripts('./src/brain_integration.js');
 
 // Import chat inference and web learning engine
-importScripts('./chat_inference.js');
+importScripts('./src/chat_inference.js');
 
 // Import Atomic Block Runtime
-importScripts('./block_runtime.js');
+importScripts('./src/block_runtime.js');
 
 // Import GlyphVM Bytecode Virtual Machine
-importScripts('./glyph_vm.js');
+importScripts('./src/glyph_vm.js');
 
 // Import Real WebRTC P2P Network
-importScripts('./p2p_network.js');
+importScripts('./src/p2p_network.js');
 
 // Import Web Crypto Encryption
-importScripts('./glyph_crypto.js');
+importScripts('./src/glyph_crypto.js');
 
 // Import RLHF N-gram Engine
-importScripts('./rlhf_ngram_engine.js');
+importScripts('./src/rlhf_ngram_engine.js');
 
 // Import SCXQ2/CC-v1 Binding
-importScripts('./scxq2_binding.js');
+importScripts('./src/scxq2_binding.js');
 
 // Import ArXiv Research Paper Fetcher
 importScripts('./research/arxiv_fetcher.js');
@@ -3423,7 +3423,7 @@ importScripts('./models/qwen-asx/adapters/qwen_asx_pi_kuhul.js');
 // Import K'UHUL Kernel (Qwen-ASX base training format)
 importScripts('./sw.khl');
 
-// Note: voice_interface.js requires browser APIs (SpeechRecognition, SpeechSynthesis)
+// Note: src/voice_interface.js requires browser APIs (SpeechRecognition, SpeechSynthesis)
 // and should be loaded in the main page context, not in Service Worker
 
 // Initialize global instances
