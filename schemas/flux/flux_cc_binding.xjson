@@ -1,0 +1,77 @@
+{
+  "$schema": "xjson://schema/draft/2020-12",
+  "$id": "asx://schema/flux/cc_binding.v1",
+  "@type": "xcfe/flux_binding",
+  "@law": "CC-v1",
+
+  "flux_phases": {
+    "native_verify": {
+      "@doc": "CC verification as first-class FLUX phase",
+      "barrier": "cc.verify",
+      "non_reentrant": true,
+      "steps": [
+        "validate_input_headers",
+        "validate_cc_blocks",
+        "run_verifier_v0_v5",
+        "emit_cc_verify_result",
+        "release_barrier",
+        "exit_phase"
+      ]
+    }
+  },
+
+  "phase_blocks": {
+    "enter": {
+      "@flux_phase_enter": {
+        "@phase": "native_verify",
+        "@epoch": "u64",
+        "@tick": "u64"
+      }
+    },
+    "exit": {
+      "@flux_phase_exit": {
+        "@phase": "native_verify",
+        "@epoch": "u64",
+        "@tick": "u64",
+        "@ok": "boolean"
+      }
+    }
+  },
+
+  "barrier_blocks": {
+    "enter": {
+      "@flux_barrier_enter": {
+        "@barrier": "cc.verify",
+        "@epoch": "u64",
+        "@tick": "u64",
+        "@non_reentrant": true
+      }
+    },
+    "release": {
+      "@flux_barrier_release": {
+        "@barrier": "cc.verify",
+        "@epoch": "u64",
+        "@tick": "u64"
+      }
+    }
+  },
+
+  "cc_schema_allowlist": [
+    "asx://schema/cc/cc_phase_enter.v1",
+    "asx://schema/cc/cc_phase_exit.v1",
+    "asx://schema/cc/cc_operator_apply.v1",
+    "asx://schema/cc/cc_invariant_check.v1",
+    "asx://schema/cc/cc_proof.v1",
+    "asx://schema/cc/cc_proof_emit.v1",
+    "asx://schema/cc/cc_verify_result.v1"
+  ],
+
+  "failure_rule": {
+    "@doc": "If CC fails, both phase exit and verify result must report failure",
+    "condition": "cc_verify_result.@ok == false",
+    "requires": [
+      "@flux_phase_exit.@ok == false",
+      "@cc_verify_result.@ok == false"
+    ]
+  }
+}
