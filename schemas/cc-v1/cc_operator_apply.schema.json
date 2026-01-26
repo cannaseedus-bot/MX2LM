@@ -1,0 +1,23 @@
+{
+  "$schema": "xjson://schema/draft/2020-12",
+  "$id": "asx://schema/cc/cc_operator_apply.v1",
+  "type": "object",
+  "required": ["@cc_operator_apply"],
+  "properties": {
+    "@cc_operator_apply": {
+      "type": "object",
+      "required": ["@op", "@before_hash", "@after_hash"],
+      "properties": {
+        "@op": {
+          "type": "string",
+          "enum": ["⊕", "π̂", "⊗", "≈", "τ"]
+        },
+        "@evidence_ref": { "type": ["string", "null"] },
+        "@before_hash": { "type": "string" },
+        "@after_hash": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -21,58 +21,58 @@
 
   "@bindings": [
     /* =========================
-       ATOMIC DOMAIN (10)
+       ATOMIC DOMAIN (8)
        ========================= */
 
-    { "id": "atomic_core",              "svg": "brains/atomic_core.svg",              "domain": "atomic" },
-    { "id": "atomic_ring",              "svg": "brains/atomic_ring.svg",              "domain": "atomic" },
-    { "id": "atomic_grid",              "svg": "brains/atomic_grid.svg",              "domain": "atomic" },
-    { "id": "atomic_stack",             "svg": "brains/atomic_stack.svg",             "domain": "atomic" },
-    { "id": "atomic_flow",              "svg": "brains/atomic_flow.svg",              "domain": "atomic" },
-    { "id": "atomic_matrix",            "svg": "brains/atomic_matrix.svg",            "domain": "atomic" },
-    { "id": "atomic_spine",             "svg": "brains/atomic_spine.svg",             "domain": "atomic" },
-    { "id": "atomic_compass",           "svg": "brains/atomic_compass.svg",           "domain": "atomic" },
-    { "id": "atomic_cascade",           "svg": "brains/atomic_cascade.svg",           "domain": "atomic" },
-    { "id": "atomic_anchor",            "svg": "brains/atomic_anchor.svg",            "domain": "atomic" },
+    { "id": "orbital_halo",        "svg": "brains/orbital_halo.svg",        "domain": "atomic" },
+    { "id": "stack_grid",          "svg": "brains/stack_grid.svg",          "domain": "atomic" },
+    { "id": "fractal_lattice",     "svg": "brains/fractal_lattice.svg",     "domain": "atomic" },
+    { "id": "weight_flow_river",   "svg": "brains/weight_flow_river.svg",   "domain": "atomic" },
+    { "id": "confidence_rings",    "svg": "brains/confidence_rings.svg",    "domain": "atomic" },
+    { "id": "decision_fork",       "svg": "brains/decision_fork.svg",       "domain": "atomic" },
+    { "id": "collapse_cone",       "svg": "brains/collapse_cone.svg",       "domain": "atomic" },
+    { "id": "entropy_field",       "svg": "brains/entropy_field.svg",       "domain": "atomic" },
 
     /* =========================
-       CLUSTER DOMAIN (8)
+       CLUSTER DOMAIN (6)
        ========================= */
 
-    { "id": "cluster_constellation",    "svg": "brains/cluster_constellation.svg",    "domain": "cluster" },
-    { "id": "cluster_federation",       "svg": "brains/cluster_federation.svg",       "domain": "cluster" },
-    { "id": "cluster_mesh",             "svg": "brains/cluster_mesh.svg",             "domain": "cluster" },
-    { "id": "cluster_hub",              "svg": "brains/cluster_hub.svg",              "domain": "cluster" },
-    { "id": "cluster_orbit",            "svg": "brains/cluster_orbit.svg",            "domain": "cluster" },
-    { "id": "cluster_delta",            "svg": "brains/cluster_delta.svg",            "domain": "cluster" },
-    { "id": "cluster_merge",            "svg": "brains/cluster_merge.svg",            "domain": "cluster" },
-    { "id": "cluster_barrier",          "svg": "brains/cluster_barrier.svg",          "domain": "cluster" },
+    { "id": "cluster_constellation", "svg": "brains/cluster_constellation.svg", "domain": "cluster" },
+    { "id": "delta_stream",          "svg": "brains/delta_stream.svg",          "domain": "cluster" },
+    { "id": "merge_weave",           "svg": "brains/merge_weave.svg",           "domain": "cluster" },
+    { "id": "conflict_knot",         "svg": "brains/conflict_knot.svg",         "domain": "cluster" },
+    { "id": "epoch_ladder",          "svg": "brains/epoch_ladder.svg",          "domain": "cluster" },
+    { "id": "hash_anchor",           "svg": "brains/hash_anchor.svg",           "domain": "cluster" },
 
     /* =========================
        TRAINING DOMAIN (5)
        ========================= */
 
-    { "id": "training_pipeline",        "svg": "brains/training_pipeline.svg",        "domain": "training" },
-    { "id": "training_gradient",        "svg": "brains/training_gradient.svg",        "domain": "training" },
-    { "id": "training_loss_field",      "svg": "brains/training_loss_field.svg",      "domain": "training" },
-    { "id": "training_memory_lattice",  "svg": "brains/training_memory_lattice.svg",  "domain": "training" },
-    { "id": "training_convergence",     "svg": "brains/training_convergence.svg",     "domain": "training" },
+    { "id": "reward_gradient",    "svg": "brains/reward_gradient.svg",    "domain": "training" },
+    { "id": "penalty_sink",       "svg": "brains/penalty_sink.svg",       "domain": "training" },
+    { "id": "pattern_miner",      "svg": "brains/pattern_miner.svg",      "domain": "training" },
+    { "id": "routine_spiral",     "svg": "brains/routine_spiral.svg",     "domain": "training" },
+    { "id": "memory_strata",      "svg": "brains/memory_strata.svg",      "domain": "training" },
 
     /* =========================
-       REPLAY DOMAIN (4)
+       REPLAY DOMAIN (5)
        ========================= */
 
-    { "id": "replay_trace",             "svg": "brains/replay_trace.svg",             "domain": "replay" },
-    { "id": "replay_delta",             "svg": "brains/replay_delta.svg",             "domain": "replay" },
-    { "id": "replay_verifier",          "svg": "brains/replay_verifier.svg",          "domain": "replay" },
-    { "id": "replay_seal",              "svg": "brains/replay_seal.svg",              "domain": "replay" },
+    { "id": "trace_timeline",     "svg": "brains/trace_timeline.svg",     "domain": "replay" },
+    { "id": "replay_mirror",      "svg": "brains/replay_mirror.svg",      "domain": "replay" },
+    { "id": "proof_chain",        "svg": "brains/proof_chain.svg",        "domain": "replay" },
+    { "id": "verification_gate",  "svg": "brains/verification_gate.svg",  "domain": "replay" },
+    { "id": "causality_graph",    "svg": "brains/causality_graph.svg",    "domain": "replay" },
 
     /* =========================
-       RUNTIME DOMAIN (3)
+       RUNTIME DOMAIN (6)
        ========================= */
 
-    { "id": "runtime_shell",            "svg": "brains/runtime_shell.svg",            "domain": "runtime" },
-    { "id": "runtime_orbital_halo",     "svg": "brains/runtime_orbital_halo.svg",     "domain": "runtime" },
-    { "id": "runtime_black_panel",      "svg": "brains/runtime_black_panel.svg",      "domain": "runtime" }
+    { "id": "hud_ring",           "svg": "brains/hud_ring.svg",           "domain": "runtime" },
+    { "id": "tunnel_rail",        "svg": "brains/tunnel_rail.svg",        "domain": "runtime" },
+    { "id": "api_mesh",           "svg": "brains/api_mesh.svg",           "domain": "runtime" },
+    { "id": "io_portal",          "svg": "brains/io_portal.svg",          "domain": "runtime" },
+    { "id": "security_shell",     "svg": "brains/security_shell.svg",     "domain": "runtime" },
+    { "id": "system_singularity", "svg": "brains/system_singularity.svg", "domain": "runtime" }
   ]
 }

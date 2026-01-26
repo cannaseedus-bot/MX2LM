@@ -1,0 +1,107 @@
+{
+  "@type": "xcfe/brain",
+  "@id": "qwen_brain",
+  "@law": "Ω-BLACK-PANEL",
+  "@schema": "../schema/qwen.xjson",
+
+  "identity": {
+    "name": "Qwen 2.5",
+    "version": "72B",
+    "family": "long_context_transformer",
+    "architecture": "yarn_rope",
+    "source": "Qwen/Qwen2.5-72B-Instruct"
+  },
+
+  "π_kuhul": {
+    "@doc": "π-KUHUL integration for long context handling",
+    "constants": {
+      "π": 3.141592653589793,
+      "φ": 1.6180339887498948,
+      "τ": 6.283185307179586,
+      "rope_theta": 1000000
+    },
+    "wave_functions": {
+      "yarn_scale": "1 + log(seq_len / base_len) × φ",
+      "position_encode": "cos(pos × π / rope_theta^(dim/d))",
+      "long_compress": "⌊x × τ⌋ / τ"
+    },
+    "long_context_physics": {
+      "base_length": 8192,
+      "max_length": 131072,
+      "scaling_type": "yarn",
+      "attention_sink": true
+    }
+  },
+
+  "glyph_codex": {
+    "@doc": "Glyph encoding for Qwen operations",
+    "primitives": {
+      "🐧→📚": "input_to_long_context",
+      "📚→🔢": "context_to_math",
+      "📚→💻": "context_to_code",
+      "📚→🌐": "context_to_multilingual"
+    },
+    "opcodes": {
+      "QWN_TOK": "⟁Q0",
+      "QWN_EMB": "⟁Q1",
+      "QWN_YRN": "⟁Q2",
+      "QWN_ATT": "⟁Q3",
+      "QWN_MLP": "⟁Q4",
+      "QWN_OUT": "⟁Q5"
+    }
+  },
+
+  "xcfe_paths": {
+    "@doc": "Control flow paths",
+    "chat": ["tokenizer", "embed", "transformer_layers", "output_head", "sample"],
+    "math": ["tokenizer", "embed", "transformer_layers", "math_head", "verify"],
+    "code": ["tokenizer", "embed", "transformer_layers", "code_head", "format"]
+  },
+
+  "compression_calculus": {
+    "@law": "CC-FULL",
+    "symbol_folding": {
+      "enabled": true,
+      "max_depth": 4,
+      "glyph_cache": true
+    },
+    "long_context_compression": {
+      "yarn_scaling": true,
+      "attention_sink": true,
+      "chunk_summarization": true
+    }
+  },
+
+  "memory_binding": {
+    "ngram_table": "qwen_patterns",
+    "glyph_weights": "qwen_effectiveness",
+    "long_context_cache": "qwen_context"
+  },
+
+  "inference": {
+    "modes": {
+      "chat": {
+        "temperature": 0.7,
+        "max_tokens": 8192,
+        "top_p": 0.8
+      },
+      "long_context": {
+        "temperature": 0.5,
+        "max_tokens": 32768,
+        "streaming": true
+      }
+    }
+  },
+
+  "api_binding": {
+    "local": {
+      "enabled": false,
+      "device": "cuda",
+      "dtype": "bfloat16"
+    },
+    "remote": {
+      "enabled": true,
+      "endpoint": "https://dashscope.aliyuncs.com/api/v1"
+    }
+  }
+}

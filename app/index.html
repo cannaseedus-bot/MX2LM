@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MX2LM App</title>
+
+  <!-- PWA Essentials -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#000000">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/styles/main.css">
+
+  <!-- Icons -->
+  <link rel="icon" href="/icon-192.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+</head>
+<body>
+  <!-- Single Page Application Container -->
+  <div id="app">
+    <header class="app-header">
+      <h1>MX2LM App</h1>
+      <div class="phase-indicators">
+        <span class="phase-tag" data-phase="Pop">[Pop]</span>
+        <span class="phase-tag" data-phase="Wo">[Wo]</span>
+        <span class="phase-tag" data-phase="Ch'en">[Ch'en]</span>
+        <span class="phase-tag" data-phase="Yax">[Yax]</span>
+        <span class="phase-tag" data-phase="Sek">[Sek]</span>
+        <span class="phase-tag" data-phase="Xul">[Xul]</span>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <!-- Tokenizer Input -->
+      <section class="tokenizer-section">
+        <h2>Tokenizer Interface</h2>
+        <textarea
+          id="tokenizer-input"
+          placeholder="Enter text with phase tokens like [Pop frontend_expert] → GET /api..."
+          rows="6"
+        ></textarea>
+
+        <div class="controls">
+          <button id="tokenize-btn">Tokenize</button>
+          <button id="clear-btn">Clear</button>
+        </div>
+
+        <div class="token-output">
+          <h3>Tokens:</h3>
+          <div id="tokens-display"></div>
+        </div>
+      </section>
+
+      <!-- Pipeline Visualizer -->
+      <section class="pipeline-section">
+        <h2>Pipeline Flow</h2>
+        <div class="pipeline-flow">
+          <div class="pipeline-step" data-step="input">Input</div>
+          <div class="pipeline-arrow">→</div>
+          <div class="pipeline-step" data-step="processing">Processing</div>
+          <div class="pipeline-arrow">→</div>
+          <div class="pipeline-step" data-step="output">Output</div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>MX2LM × Qwen2-1.5B Tokenizer PWA</p>
+    </footer>
+  </div>
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(() => console.log('Service Worker Registered'))
+        .catch(err => console.error('SW registration failed:', err));
+    }
+
+    // Phase Token Handler
+    const phaseTokens = {
+      Pop: ['shard_processor', 'hive_collaboration', 'frontend_expert'],
+      Wo: ['api_request', 'project_spec', 'design_spec'],
+      "Ch'en": ['request', 'spec', 'brief'],
+      Yax: ['request', 'shard_response', 'hive'],
+      Sek: ['route_to_shard', 'process_data', 'send_response'],
+    };
+
+    console.log('Phase token catalog loaded', phaseTokens);
+  </script>
+
+  <!-- Main App Script -->
+  <script src="/app.js"></script>
+</body>
+</html>

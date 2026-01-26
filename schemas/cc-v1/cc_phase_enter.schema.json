@@ -1,0 +1,23 @@
+{
+  "$schema": "xjson://schema/draft/2020-12",
+  "$id": "asx://schema/cc/cc_phase_enter.v1",
+  "type": "object",
+  "required": ["@cc_phase_enter"],
+  "properties": {
+    "@cc_phase_enter": {
+      "type": "object",
+      "required": ["@epoch", "@tick", "@phase", "@input_hash"],
+      "properties": {
+        "@epoch": { "type": "integer", "minimum": 0 },
+        "@tick": { "type": "integer", "minimum": 0 },
+        "@phase": {
+          "type": "string",
+          "enum": ["cc.verify", "cc.expand", "cc.compress"]
+        },
+        "@input_hash": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

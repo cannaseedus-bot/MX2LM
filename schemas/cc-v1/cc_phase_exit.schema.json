@@ -1,0 +1,21 @@
+{
+  "$schema": "xjson://schema/draft/2020-12",
+  "$id": "asx://schema/cc/cc_phase_exit.v1",
+  "type": "object",
+  "required": ["@cc_phase_exit"],
+  "properties": {
+    "@cc_phase_exit": {
+      "type": "object",
+      "required": ["@epoch", "@tick", "@phase", "@output_hash", "@ok"],
+      "properties": {
+        "@epoch": { "type": "integer", "minimum": 0 },
+        "@tick": { "type": "integer", "minimum": 0 },
+        "@phase": { "type": "string" },
+        "@output_hash": { "type": "string" },
+        "@ok": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

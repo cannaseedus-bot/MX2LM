@@ -11,7 +11,7 @@
 -------------------------------- */
 
 const Ω = Object.freeze({
-  VERSION: "Ω-KUHUL-PI-KERNEL.v11.0.0",
+  VERSION: "Ω-KUHUL-PI-KERNEL.v19.0.0",
   DETERMINISTIC: true,
   UI_READS_STATE: true,
   STATE_READS_UI: false,
@@ -91,6 +91,8 @@ const SCXQ2_GLYPHS = Object.freeze({
    KERNEL STATE (NON-UI)
 -------------------------------- */
 
+let SUPREME_API = null;
+
 const KERNEL_STATE = {
   manifest: null,
   brain: null,
@@ -102,10 +104,16 @@ const KERNEL_STATE = {
 
   entropy: 0.32,
   ticks: 0,
+  micro: {
+    agents: [],
+    builders: [],
+    jobs: []
+  },
   
   // Supreme JSON REST API State
   api: {
     routes: null,
+    registry: new Map(),
     performance: {
       health: 0,
       infer: 0,
@@ -122,7 +130,8 @@ const KERNEL_STATE = {
       inference:      { cap: 1000,  tokens: 1000,  reset_tick: 0, window_ticks: 1000 },
       memory_ops:     { cap: 10000, tokens: 10000, reset_tick: 0, window_ticks: 1000 },
       reinforcement:  { cap: 5000,  tokens: 5000,  reset_tick: 0, window_ticks: 1000 },
-      snapshots:      { cap: 100,   tokens: 100,   reset_tick: 0, window_ticks: 1000 }
+      snapshots:      { cap: 100,   tokens: 100,   reset_tick: 0, window_ticks: 1000 },
+      micro_jobs:     { cap: 100,   tokens: 100,   reset_tick: 0, window_ticks: 1000 }
     },
     authentication: {
       kernel_tokens: new Set(),
@@ -134,8 +143,10 @@ const KERNEL_STATE = {
       successful_requests: 0,
       auth_failures: 0,
       rate_limit_hits: 0,
+      capability_denials: 0,
       avg_response_time: 0
-    }
+    },
+    route_metrics: {}
   }
 };
 
@@ -152,9 +163,100 @@ async function loadManifest() {
   // Load API routes from manifest
   if (manifest["🌐NATIVE_JSON_REST_API"]?.api_routes) {
     KERNEL_STATE.api.routes = manifest["🌐NATIVE_JSON_REST_API"].api_routes;
+    applyManifestToKernel(manifest);
   }
   
   return manifest;
+}
+
+function hydrateMicroState(manifest) {
+  const microRoot = manifest?.["👷🌀MICRO_AGENTS_BUILDERS_RECURSIVE_ECOSYSTEM"];
+  const tables = microRoot?.tables || {};
+  const agentSeeds = tables["🤖🌀micro_agents"]?.seed_agents || [];
+  const builderSeeds = tables["🛠🌀micro_builders"]?.seed_builders || [];
+
+  KERNEL_STATE.micro.agents = agentSeeds;
+  KERNEL_STATE.micro.builders = builderSeeds;
+  KERNEL_STATE.micro.jobs = KERNEL_STATE.micro.jobs || [];
+}
+
+const DEFAULT_API_PATHS = [
+  "/health","/infer","/memory/read","/memory/write",
+  "/reinforce","/penalize","/ngrams/snapshot",
+  "/routines/detect","/asx/blocks","/weights",
+  "/micro/jobs/submit","/micro/agents/status","/micro/builders/status"
+];
+
+const CAPABILITY_RULES = Object.freeze({
+  "/memory/read": ["cap:memory.read"],
+  "/memory/write": ["cap:memory.write"],
+  "/reinforce": ["cap:rlhf"],
+  "/penalize": ["cap:rlhf"],
+  "/micro/jobs/submit": ["cap:micro.submit"],
+  "/micro/agents/status": ["cap:micro.status"],
+  "/micro/builders/status": ["cap:micro.status"]
+});
+
+const ASX_PHASE_ORDER = ["@Pop", "@Wo", "@Sek", "@Collapse"];
+
+let API_PATHS = new Set(DEFAULT_API_PATHS);
+
+function updateApiPathSet() {
+  const manifestRoutes = KERNEL_STATE.manifest?.["🌐NATIVE_JSON_REST_API"]?.api_routes;
+  if (manifestRoutes) {
+    API_PATHS = new Set(Object.keys(manifestRoutes));
+  } else {
+    API_PATHS = new Set(DEFAULT_API_PATHS);
+  }
+}
+
+function applyManifestToKernel(manifest) {
+  hydrateMicroState(manifest);
+  if (SUPREME_API?.setManifest) {
+    SUPREME_API.setManifest(manifest);
+  }
+  updateApiPathSet();
+}
+
+function isPlainObject(obj) {
+  return Object.prototype.toString.call(obj) === "[object Object]" &&
+    (Object.getPrototypeOf(obj) === Object.prototype || Object.getPrototypeOf(obj) === null);
+}
+
+function assertStructuralLegality(value, path = "root") {
+  if (typeof value === "function" || typeof value === "symbol") {
+    throw new Error(`Ω: structural_illegal at ${path}`);
+  }
+  if (Array.isArray(value)) {
+    value.forEach((v, i) => assertStructuralLegality(v, `${path}[${i}]`));
+    return;
+  }
+  if (value && typeof value === "object") {
+    if (!isPlainObject(value)) throw new Error(`Ω: non_plain_object at ${path}`);
+    Object.keys(value).forEach((k) => {
+      if (k === "__proto__") throw new Error(`Ω: proto_pollution_blocked at ${path}`);
+      assertStructuralLegality(value[k], `${path}.${k}`);
+    });
+  }
+}
+
+function deepFreeze(value) {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    Object.getOwnPropertyNames(value).forEach((prop) => deepFreeze(value[prop]));
+  }
+  return value;
+}
+
+function sealProjection(svgString) {
+  const sealed = Object.freeze({
+    svg: String(svgString),
+    tick: ΩCLOCK.tick,
+    proof: Ω_hash32(String(svgString))
+  });
+  KERNEL_STATE.expandedSVG = sealed.svg;
+  KERNEL_STATE.projection = sealed;
+  return sealed;
 }
 
 /* ============================================================
@@ -173,8 +275,8 @@ function extractBrain(manifest, brainId = "mx2lm_v1_1") {
    ============================================================ */
 
 function expandNodeGlyph(node, layout) {
-  const [x, y] = layout.⟁P;
-  const [w, h] = layout.⟁S;
+  const [x, y] = layout["⟁P"];
+  const [w, h] = layout["⟁S"];
 
   const bindNode = node?.bind?.node || "UNKNOWN_NODE";
   const bindLayer = node?.bind?.layer || "unknown";
@@ -192,17 +294,17 @@ function expandNodeGlyph(node, layout) {
 }
 
 function expandLayer(layer, nodes) {
-  const layout = layer.layout || { ⟁P: [64, 64], ⟁S: [960, 118] };
-  const baseX = (layout.⟁P && layout.⟁P[0]) || 0;
-  const baseY = (layout.⟁P && layout.⟁P[1]) || 0;
+  const layout = layer.layout || { "⟁P": [64, 64], "⟁S": [960, 118] };
+  const baseX = (layout["⟁P"] && layout["⟁P"][0]) || 0;
+  const baseY = (layout["⟁P"] && layout["⟁P"][1]) || 0;
 
   const offsetX = baseX;
   const offsetY = baseY + 40;
 
   return (nodes || []).map((node, i) =>
     expandNodeGlyph(node, {
-      ⟁P: [offsetX + i * 320, offsetY],
-      ⟁S: [300, 58]
+      "⟁P": [offsetX + i * 320, offsetY],
+      "⟁S": [300, 58]
     })
   ).join("");
 }
@@ -226,8 +328,8 @@ function expandBrainToSVG(brain) {
   }
 
   svg += `</svg>`;
-  KERNEL_STATE.expandedSVG = svg;
-  return svg;
+  const sealed = sealProjection(svg);
+  return sealed.svg;
 }
 
 /* ============================================================
@@ -248,6 +350,456 @@ function symbolicWeight(tokens) {
     if (t === "e") return sum + π.E;
     return sum + 1;
   }, 0);
+}
+
+/* ============================================================
+   π — HELPER BRIDGE + SVG SHELL RENDERER
+   ============================================================ */
+
+function piVecNorm(v = []) {
+  if (!Array.isArray(v)) return 0;
+  return Math.sqrt(v.reduce((acc, val) => {
+    const n = Number(val) || 0;
+    return acc + n * n;
+  }, 0));
+}
+
+function piSoftmax(xs = []) {
+  if (!Array.isArray(xs) || xs.length === 0) return [];
+  const normalized = xs.map((x) => Number(x) || 0);
+  const maxX = Math.max(...normalized);
+  const exps = normalized.map((x) => Math.exp(x - maxX));
+  const sumE = exps.reduce((a, b) => a + b, 0) || 1;
+  return exps.map((e) => e / sumE);
+}
+
+function piEntropy(probs = []) {
+  if (!Array.isArray(probs)) return 0;
+  return probs.reduce((H, pRaw) => {
+    const p = Number(pRaw) || 0;
+    if (p > 0) {
+      return H - (p * Math.log2(p));
+    }
+    return H;
+  }, 0);
+}
+
+function piNgramProb(count, total) {
+  const c = Number(count) || 0;
+  const t = Number(total) || 0;
+  if (t <= 0) return 0;
+  return c / t;
+}
+
+function piPmi(p_xy, p_x, p_y) {
+  const pxy = Number(p_xy) || 0;
+  const px = Number(p_x) || 0;
+  const py = Number(p_y) || 0;
+  if (pxy <= 0 || px <= 0 || py <= 0) return 0;
+  return Math.log2(pxy / (px * py));
+}
+
+function piAngleFromVec(v = []) {
+  const arr = Array.isArray(v) ? v : [0, 0];
+  const x = Number(arr[0]) || 0;
+  const y = Number(arr[1]) || 0;
+  let theta = Math.atan2(y, x);
+  if (theta < 0) theta += (2 * Math.PI);
+  return theta;
+}
+
+function piClamp(x, lo, hi) {
+  const v = Number(x);
+  if (!Number.isFinite(v)) return lo;
+  if (v < lo) return lo;
+  if (v > hi) return hi;
+  return v;
+}
+
+const PI_BRIDGE = Object.freeze({
+  vecNorm: piVecNorm,
+  softmax: piSoftmax,
+  entropy: piEntropy,
+  ngramProb: piNgramProb,
+  pmi: piPmi,
+  angleFromVec: piAngleFromVec,
+  clamp: piClamp
+});
+
+async function loadJSON(fetchImpl, url) {
+  if (typeof fetchImpl !== "function") {
+    throw new Error("Ω: fetch implementation required for model loading");
+  }
+  const res = await fetchImpl(url);
+  if (!res || !res.ok) throw new Error(`Ω: Failed to load ${url}`);
+  return res.json();
+}
+
+async function loadModelAssets(modelId, fetchImpl = (typeof fetch !== "undefined" ? fetch : null)) {
+  if (!modelId) throw new Error("Ω: model_id is required");
+  if (typeof fetchImpl !== "function") throw new Error("Ω: fetch implementation required for model assets");
+  const base = `/models/${modelId}`;
+  const [tokenizer, checkpoint] = await Promise.all([
+    loadJSON(fetchImpl, `${base}/tokenizer.json`),
+    loadJSON(fetchImpl, `${base}/checkpoint.json`)
+  ]);
+  return { tokenizer, checkpoint };
+}
+
+function percentileThreshold(sorted, fraction) {
+  if (!Array.isArray(sorted) || sorted.length === 0) return 0;
+  const idx = Math.min(sorted.length - 1, Math.floor(fraction * sorted.length));
+  return sorted[idx];
+}
+
+function classToColor(clazz) {
+  switch (clazz) {
+    case "special": return "#ff6b6b";
+    case "punct": return "#feca57";
+    case "number": return "#54a0ff";
+    case "api": return "#5f27cd";
+    default: return "#1dd1a1";
+  }
+}
+
+function buildOrbitalHaloData(tok = {}) {
+  const vocab = Array.isArray(tok.vocab) ? tok.vocab : [];
+  const total = tok.ngrams?.unigram_total || 0;
+  const embeddings = tok.embeddings?.vectors || {};
+  const freqs = vocab.map((t) => Number(t.freq) || 0);
+  const sorted = [...freqs].sort((a, b) => b - a);
+  const innerThresh = percentileThreshold(sorted, 0.05);
+  const midThresh = percentileThreshold(sorted, 0.35);
+
+  const rings = { inner: [], mid: [], outer: [] };
+
+  for (const t of vocab) {
+    const freq = Number(t.freq) || 0;
+    const p = piNgramProb(freq, total);
+    const size = Math.log10(freq + 10) * 2.0;
+    const v = embeddings[String(t.id)] || embeddings[t.id] || [0, 0];
+    const theta = piAngleFromVec(v);
+    const elev = (1 - p) * 60.0;
+    const glyph = {
+      id: t.id,
+      token: t.token,
+      theta,
+      phi: elev,
+      color: classToColor(t.class),
+      size,
+      prob: p
+    };
+
+    if (freq >= innerThresh) {
+      rings.inner.push(glyph);
+    } else if (freq >= midThresh) {
+      rings.mid.push(glyph);
+    } else {
+      rings.outer.push(glyph);
+    }
+  }
+
+  return { halo: rings };
+}
+
+function buildStackGridData(ckpt = {}) {
+  const layers = Array.isArray(ckpt.layers) ? ckpt.layers : [];
+  const blocks = [];
+  const cols = 4;
+  const rows = 3;
+
+  for (let i = 0; i < layers.length; i++) {
+    const layer = layers[i] || {};
+    const col = i % cols;
+    const row = Math.floor(i / cols) % rows;
+    const layerZ = Math.floor(i / (cols * rows));
+    const params = Number(layer.params) || 0;
+    const entropy = Number(layer.entropy) || 0;
+
+    const block = {
+      col,
+      row,
+      layer: layerZ,
+      height: Math.log10(params + 10) * 6.0,
+      tone: piClamp(entropy / 8.0, 0.0, 1.0),
+      glyph_id: `layer_${typeof layer.id === "undefined" ? i : layer.id}`
+    };
+
+    blocks.push(block);
+  }
+
+  return { blocks };
+}
+
+function buildTunnelStreamData(tok = {}) {
+  const ngrams = tok.ngrams || {};
+  const bigram = ngrams.bigram || {};
+  const total = ngrams.unigram_total || 0;
+  const vocab = Array.isArray(tok.vocab) ? tok.vocab : [];
+  const uniCount = {};
+  for (const t of vocab) {
+    uniCount[t.token] = Number(t.freq) || 0;
+  }
+
+  const packetsLeft = [];
+  const packetsRight = [];
+  const packetsTop = [];
+
+  const entries = Object.entries(bigram).sort(([a], [b]) => a.localeCompare(b));
+
+  for (let index = 0; index < entries.length && index <= 256; index++) {
+    const [key, rawCount] = entries[index];
+    const parts = key.split(" ");
+    if (parts.length !== 2) continue;
+    const [x, y] = parts;
+    const count = Number(rawCount) || 0;
+
+    const p_xy = piNgramProb(count, total);
+    const p_x = piNgramProb(uniCount[x] ?? 1, total);
+    const p_y = piNgramProb(uniCount[y] ?? 1, total);
+    const pmi = piPmi(p_xy, p_x, p_y);
+
+    const packet = {
+      glyph: `${x}→${y}`,
+      depth: index * 4.0,
+      lane: 0,
+      energy: Math.abs(pmi)
+    };
+
+    if (pmi > 2.0) {
+      packetsTop.push({ ...packet, lane: 0 });
+    } else if (pmi > 0.0) {
+      packetsLeft.push({ ...packet, lane: -1 });
+    } else {
+      packetsRight.push({ ...packet, lane: 1 });
+    }
+  }
+
+  return {
+    left_stream: packetsLeft,
+    right_stream: packetsRight,
+    top_stream: packetsTop
+  };
+}
+
+function buildFractalTreeData(tok = {}) {
+  const merges = Array.isArray(tok.merges) ? tok.merges : [];
+  const nodes = {};
+  const rootId = "ROOT";
+  nodes[rootId] = {
+    id: rootId,
+    parent: null,
+    depth: 0,
+    weight: 0,
+    glyph_id: "root"
+  };
+
+  for (let i = 0; i < merges.length; i++) {
+    const m = merges[i] || {};
+    const id = `m${i}`;
+    nodes[id] = {
+      id,
+      parent: rootId,
+      depth: Math.floor(i / 64),
+      weight: Math.log10((Number(m.count) || 0) + 10),
+      glyph_id: `${m.left}+${m.right}`
+    };
+  }
+
+  return { root: rootId, nodes };
+}
+
+function buildHudRingData(ckpt = {}) {
+  const stats = ckpt.stats || {};
+  return {
+    shards: [
+      { name: "CPU", status: "ok",   load: 0.4, glyph_id: "CPU" },
+      { name: "GPU", status: "warn", load: 0.7, glyph_id: "GPU" },
+      { name: "TPU", status: "ok",   load: 0.5, glyph_id: "TPU" },
+      { name: "RLHF", status: "ok",  load: 0.3, glyph_id: "RLHF" }
+    ],
+    runtimes: [
+      { name: "ASXR",     status: "ok",   load: 0.5, glyph_id: "ASXR" },
+      { name: "ASXR-GPU", status: "ok",   load: 0.6, glyph_id: "ASXR-GPU" },
+      { name: "TPU-OS",   status: "warn", load: 0.7, glyph_id: "TPU-OS" },
+      { name: "BROWSER",  status: "ok",   load: 0.2, glyph_id: "DOM" }
+    ],
+    core: [
+      { name: "XJSON", status: "ok", load: 0.3, glyph_id: "XJSON" },
+      { name: "K'UHUL", status: "ok", load: 0.4, glyph_id: "KUHUL" },
+      { name: "SCXQ2", status: "ok", load: 0.2, glyph_id: "SCXQ2" },
+      { name: "KLH",   status: "ok", load: 0.35, glyph_id: "KLH" }
+    ],
+    center: {
+      name: "MX2LM",
+      status: "ok",
+      load: piClamp((stats.avg_entropy || 0) / 8.0, 0.0, 1.0),
+      glyph_id: "MX2LM"
+    }
+  };
+}
+
+const SHELL_LAYOUT = Object.freeze({
+  orbital: { x: 260, y: 240 },
+  stack: { x: 720, y: 240 },
+  tunnel: { x: 260, y: 720 },
+  tree: { x: 720, y: 720 },
+  hud: { x: 1180, y: 460 }
+});
+
+const SHELL_CANVAS = Object.freeze({ width: 1400, height: 920 });
+
+function fmt(num) {
+  return Number.isFinite(num) ? Number(num).toFixed(3) : "0.000";
+}
+
+function piIsoCoords(col, row, layer, height) {
+  const cell = 32.0;
+  const x2d = (col - row) * (cell * 0.866);
+  const y2d = ((col + row) * (cell * 0.5)) - (layer * 22.0) - height;
+  const points = `${fmt(-10)},${fmt(0)} ${fmt(0)},${fmt(-height)} ${fmt(10)},${fmt(0)} ${fmt(0)},${fmt(height)}`;
+  return { x: x2d, y: y2d, points };
+}
+
+function renderOrbitalHalo(halo = {}) {
+  const rings = [
+    { key: "inner", radius: 60 },
+    { key: "mid", radius: 110 },
+    { key: "outer", radius: 160 }
+  ];
+
+  const ringMarkup = rings.map(({ key, radius }) => {
+    const glyphs = (halo[key] || []).map((g) => {
+      const x = radius * Math.cos(g.theta || 0);
+      const y = radius * Math.sin(g.theta || 0);
+      return `<circle cx="${fmt(x)}" cy="${fmt(y)}" r="${fmt(g.size)}" fill="${g.color}" class="glyph-node" data-id="${g.id}" data-token="${g.token}" data-prob="${fmt(g.prob)}" data-phi="${fmt(g.phi)}"></circle>`;
+    }).join("");
+    return `<g data-layer="${key}" data-radius="${radius}">${glyphs}</g>`;
+  }).join("");
+
+  return `<g data-shell="orbital_halo">${ringMarkup}</g>`;
+}
+
+function renderStackGrid(grid = {}) {
+  const blocks = Array.isArray(grid.blocks) ? grid.blocks : [];
+  const cells = blocks.map((b) => {
+    const iso = piIsoCoords(b.col || 0, b.row || 0, b.layer || 0, b.height || 0);
+    return `<g data-block="${b.glyph_id}" transform="translate(${fmt(iso.x)},${fmt(iso.y)})"><polygon points="${iso.points}" class="block-stack" data-tone="${fmt(b.tone)}"></polygon></g>`;
+  }).join("");
+  return `<g data-shell="stack_grid">${cells}</g>`;
+}
+
+function renderTunnelRail(streams = {}) {
+  const rails = ["left_stream", "right_stream", "top_stream"];
+  const railMarkup = rails.map((railId) => {
+    const packets = Array.isArray(streams[railId]) ? streams[railId] : [];
+    const packetMarkup = packets.map((p) => {
+      const z = Number(p.depth) || 0;
+      const scale = 1.0 - piClamp(z / 600.0, 0.0, 0.9);
+      const y = -40 + z * 0.1;
+      const x = (Number(p.lane) || 0) * 40;
+      return `<rect x="${fmt(x - 4)}" y="${fmt(y)}" width="${fmt(8 * scale)}" height="${fmt(4 * scale)}" class="packet" data-energy="${fmt(p.energy)}"></rect>`;
+    }).join("");
+    return `<g data-rail="${railId}">${packetMarkup}</g>`;
+  }).join("");
+  return `<g data-shell="tunnel_rail">${railMarkup}</g>`;
+}
+
+function renderFractalTree(tree = {}) {
+  const nodes = tree.nodes || {};
+  const rootId = tree.root;
+  if (!rootId || !nodes[rootId]) return `<g data-shell="fractal_tree"></g>`;
+
+  const childMap = {};
+  for (const [id, node] of Object.entries(nodes)) {
+    if (node.parent) {
+      childMap[node.parent] = childMap[node.parent] || [];
+      childMap[node.parent].push(id);
+    }
+  }
+  for (const key of Object.keys(childMap)) {
+    childMap[key].sort();
+  }
+
+  const segments = [];
+  function renderNode(nodeId, depth, x, y) {
+    const node = nodes[nodeId] || {};
+    segments.push(`<circle cx="${fmt(x)}" cy="${fmt(y)}" r="${fmt(3 + (node.weight || 0))}" class="tree-node" data-id="${nodeId}" data-depth="${depth}"></circle>`);
+    const children = childMap[nodeId] || [];
+    const angleStart = -40;
+    const angleStep = 80 / Math.max(1, children.length);
+    children.forEach((cid, index) => {
+      const a = angleStart + (index * angleStep);
+      const rad = a * (Math.PI / 180);
+      const length = 40 * (0.8 ** depth);
+      const x2 = x + (length * Math.cos(rad));
+      const y2 = y + (length * Math.sin(rad));
+      segments.push(`<line x1="${fmt(x)}" y1="${fmt(y)}" x2="${fmt(x2)}" y2="${fmt(y2)}" class="tree-branch"></line>`);
+      renderNode(cid, depth + 1, x2, y2);
+    });
+  }
+
+  renderNode(rootId, 0, 0, -120);
+  return `<g data-shell="fractal_tree">${segments.join("")}</g>`;
+}
+
+function renderHudRingLayer(ringId, items = [], radius) {
+  const n = items.length;
+  if (!n) return "";
+  const arcs = items.map((item, i) => {
+    const theta = (2 * Math.PI * i) / n;
+    const theta2 = (2 * Math.PI * (i + 1)) / n;
+    const x1 = radius * Math.cos(theta);
+    const y1 = radius * Math.sin(theta);
+    const x2 = radius * Math.cos(theta2);
+    const y2 = radius * Math.sin(theta2);
+    return `<path d="M ${fmt(x1)} ${fmt(y1)} A ${fmt(radius)} ${fmt(radius)} 0 0 1 ${fmt(x2)} ${fmt(y2)}" class="hud-segment" data-name="${item.name}" data-status="${item.status}" data-load="${fmt(item.load)}"></path>`;
+  }).join("");
+  return `<g data-ring="${ringId}" data-radius="${radius}">${arcs}</g>`;
+}
+
+function renderHudCenter(center = {}) {
+  return `<g class="hud-center"><circle cx="0" cy="0" r="24" data-load="${fmt(center.load || 0)}"></circle><text x="0" y="4" text-anchor="middle" font-size="12">${center.name || ""}</text></g>`;
+}
+
+function renderHudRing(hud = {}) {
+  const shards = renderHudRingLayer("outer_status", hud.shards, 140);
+  const runtimes = renderHudRingLayer("mid_runtime", hud.runtimes, 100);
+  const core = renderHudRingLayer("inner_core", hud.core, 60);
+  const center = renderHudCenter(hud.center || {});
+  return `<g data-shell="hud_ring">${shards}${runtimes}${core}${center}</g>`;
+}
+
+function renderShellsFromData(tokenizer, checkpoint) {
+  const haloData = buildOrbitalHaloData(tokenizer);
+  const gridData = buildStackGridData(checkpoint);
+  const tunnelData = buildTunnelStreamData(tokenizer);
+  const treeData = buildFractalTreeData(tokenizer);
+  const hudData = buildHudRingData(checkpoint);
+
+  const sections = [
+    { pos: SHELL_LAYOUT.orbital, svg: renderOrbitalHalo(haloData.halo) },
+    { pos: SHELL_LAYOUT.stack, svg: renderStackGrid(gridData) },
+    { pos: SHELL_LAYOUT.tunnel, svg: renderTunnelRail(tunnelData) },
+    { pos: SHELL_LAYOUT.tree, svg: renderFractalTree(treeData) },
+    { pos: SHELL_LAYOUT.hud, svg: renderHudRing(hudData) }
+  ];
+
+  const rendered = sections.map(({ pos, svg }) => `<g transform="translate(${fmt(pos.x)},${fmt(pos.y)})">${svg}</g>`).join("");
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SHELL_CANVAS.width} ${SHELL_CANVAS.height}" data-shell-renderer="kuhul_pi_bridge"><rect width="100%" height="100%" fill="#070b12"></rect>${rendered}</svg>`;
+}
+
+async function renderModelShells(modelId, { assets = null, fetchImpl = (typeof fetch !== "undefined" ? fetch : null) } = {}) {
+  const modelAssets = assets || await loadModelAssets(modelId, fetchImpl);
+  const svg = renderShellsFromData(modelAssets.tokenizer, modelAssets.checkpoint);
+  const sealed = sealProjection(svg);
+  return sealed.svg;
+}
+
+// Expose entrypoint for UI projections
+if (typeof self !== "undefined") {
+  self.render_model_shells = renderModelShells;
 }
 
 /* ============================================================
@@ -275,6 +827,139 @@ class SupremeJSONRESTAPI {
     this.quantumCircuits = new Map();
     this.entanglementPairs = new Map();
     this.scxEngine = new SCXQ2Engine();
+    this.codec = new SCXQ2Codec(this.scxEngine);
+    this.manifest = null;
+    this.routeRegistry = new Map();
+  }
+
+  createPhaseController(routeEntry) {
+    return {
+      order: ASX_PHASE_ORDER.slice(),
+      index: -1,
+      route: routeEntry ? routeEntry.path : "unknown"
+    };
+  }
+
+  advancePhase(controller, name, fn) {
+    const expected = controller.order[controller.index + 1];
+    if (expected !== name) {
+      throw new Error(`Ω: phase_order_violation expected=${expected} got=${name}`);
+    }
+    controller.index += 1;
+    return fn();
+  }
+
+  computeProof(body) {
+    const canonical = this.codec.canonicalize(body);
+    const proof = Ω_hash32(JSON.stringify(canonical));
+    return { proof, canonical };
+  }
+
+  enforceProofIntegrity(canonicalBody, providedProof) {
+    const { proof, canonical } = this.computeProof(canonicalBody);
+    if (providedProof && providedProof !== proof) {
+      return { ok: false, reason: "proof_mismatch", proof, canonical };
+    }
+    return { ok: true, proof, canonical };
+  }
+
+  runPhasePipeline(routeEntry, rawPayload) {
+    const controller = this.createPhaseController(routeEntry);
+    let decoded;
+    try {
+      decoded = this.advancePhase(controller, "@Pop", () => this.codec.decodeRequest(routeEntry.schema.request, rawPayload));
+    } catch (err) {
+      return { ok: false, status: 400, error: "phase_pop_failed", reason: err.message };
+    }
+
+    if (!decoded.ok) {
+      return { ok: false, status: 400, error: "invalid_request_payload", reason: decoded.error, phase: "@Pop" };
+    }
+
+    let canonicalBody;
+    try {
+      canonicalBody = this.advancePhase(controller, "@Wo", () => {
+        const body = this.codec.canonicalize(decoded.body);
+        assertStructuralLegality(body);
+        return body;
+      });
+    } catch (err) {
+      return { ok: false, status: 400, error: "structural_illegal", reason: err.message, phase: "@Wo" };
+    }
+
+    const proofResult = this.advancePhase(controller, "@Sek", () =>
+      this.enforceProofIntegrity(canonicalBody, rawPayload?.scx_proof || decoded.body?.scx_proof)
+    );
+
+    if (!proofResult.ok) {
+      return { ok: false, status: 400, error: "proof_invalid", reason: proofResult.reason, phase: "@Sek" };
+    }
+
+    const sealed = this.advancePhase(controller, "@Collapse", () => {
+      const frozen = deepFreeze({ ...canonicalBody, scx_proof: proofResult.proof });
+      return { body: frozen, proof: proofResult.proof };
+    });
+
+    return { ok: true, body: sealed.body, proof: sealed.proof };
+  }
+
+  enforceCapability(path, authResult) {
+    const required = CAPABILITY_RULES[path];
+    if (!required || required.length === 0) return { ok: true };
+    if (authResult?.type === "kernel" || authResult?.type === "quantum") return { ok: true };
+    if (authResult?.type === "external") {
+      const scopeRaw = authResult.meta?.scope || "";
+      const scopes = Array.isArray(scopeRaw) ? scopeRaw : String(scopeRaw).split(/\s+/).filter(Boolean);
+      const missing = required.filter((r) => !scopes.includes(r));
+      if (missing.length === 0) return { ok: true, type: "external" };
+      return { ok: false, reason: "capability_missing", missing };
+    }
+    return { ok: false, reason: "capability_requires_authenticated_principal" };
+  }
+
+  registerAuthToken(token, meta) {
+    try {
+      MX2_MEM?.maps?.authTokens?.set(token, meta);
+    } catch (_) {}
+  }
+
+  issueKernelToken(subject = "kernel") {
+    const token = Ω_id("kernel_token", subject, ΩCLOCK.tick.toString());
+    KERNEL_STATE.api.authentication.kernel_tokens.add(token);
+    this.registerAuthToken(token, { type: "kernel", issued_tick: ΩCLOCK.tick });
+    return token;
+  }
+
+  issueExternalToken({ subject = "external", scope = "api", ttl_ticks = 1000 } = {}) {
+    const payload = {
+      subject,
+      scope,
+      issued_tick: ΩCLOCK.tick,
+      expires_tick: ΩCLOCK.tick + ttl_ticks
+    };
+    const encoded = this.scxEngine.b64encUtf8(payload);
+    const token = `⟁EXT:${Ω_hash32(encoded)}:${encoded}⟁`;
+    KERNEL_STATE.api.authentication.external_tokens.set(token, payload);
+    this.registerAuthToken(token, { type: "external", expires_tick: payload.expires_tick, scope });
+    return token;
+  }
+
+  issueQuantumSignature(id = "default", ttl_ticks = 2048) {
+    const signature = this.generateQuantumSignature(id);
+    const cleanSig = signature.replace(/^⟁Q/, "").replace(/⟁$/, "");
+    const [entangledPairId, proof] = cleanSig.split("|");
+    const pair = this.entanglementPairs.get(entangledPairId) || { coherence: 0 };
+    const entry = {
+      id,
+      entangledPairId,
+      proof,
+      issued_tick: ΩCLOCK.tick,
+      expires_tick: ΩCLOCK.tick + ttl_ticks,
+      coherence: pair.coherence
+    };
+    KERNEL_STATE.api.authentication.quantum_signatures.set(signature, entry);
+    this.registerAuthToken(signature, { type: "quantum", expires_tick: entry.expires_tick });
+    return signature;
   }
 
   // UTF-8 safe base64 encoding/decoding
@@ -294,33 +979,144 @@ class SupremeJSONRESTAPI {
     return JSON.parse(s);
   }
 
+  setManifest(manifest) {
+    this.manifest = manifest || null;
+    KERNEL_STATE.manifest = this.manifest;
+    const routes = manifest?.["🌐NATIVE_JSON_REST_API"]?.api_routes || {};
+    this.routeRegistry = new Map();
+    KERNEL_STATE.api.registry = this.routeRegistry;
+    KERNEL_STATE.api.routes = routes;
+      const handlerMap = this.getHandlerMap();
+      Object.entries(routes).forEach(([path, def]) => {
+        const handler = handlerMap[path];
+        if (!handler) return;
+        this.routeRegistry.set(path, {
+          path,
+          method: def.method || "GET",
+          handler,
+          authentication: def.authentication || "KERNEL_TOKEN_OPTIONAL",
+          schema: {
+            request: def.request_schema || null,
+          response: def.response_schema || null
+        },
+        latency_target_ticks: def.latency_target_ticks || 0
+      });
+      this.ensureRouteMetric(path);
+    });
+    updateApiPathSet();
+  }
+
+  getHandlerMap() {
+    return {
+      "/health": this.healthEndpoint.bind(this),
+      "/infer": this.inferEndpoint.bind(this),
+      "/memory/read": this.memoryReadEndpoint.bind(this),
+      "/memory/write": this.memoryWriteEndpoint.bind(this),
+      "/reinforce": this.reinforceEndpoint.bind(this),
+      "/penalize": this.penalizeEndpoint.bind(this),
+      "/ngrams/snapshot": this.ngramsSnapshotEndpoint.bind(this),
+      "/routines/detect": this.routinesDetectEndpoint.bind(this),
+      "/asx/blocks": this.asxBlocksEndpoint.bind(this),
+      "/weights": this.weightsEndpoint.bind(this),
+      "/micro/jobs/submit": this.microJobsSubmitEndpoint.bind(this),
+      "/micro/agents/status": this.microAgentsStatusEndpoint.bind(this),
+      "/micro/builders/status": this.microBuildersStatusEndpoint.bind(this)
+    };
+  }
+
+  getRouteEntry(path, method) {
+    const entry = this.routeRegistry.get(path);
+    if (!entry) return null;
+    if ((entry.method || "GET") !== method) return null;
+    return entry;
+  }
+
+  ensureRouteMetric(path) {
+    if (!KERNEL_STATE.api.route_metrics[path]) {
+      KERNEL_STATE.api.route_metrics[path] = {
+        requests: 0,
+        total_latency_ticks: 0,
+        last_latency_ticks: 0
+      };
+    }
+  }
+
+  updateRouteMetrics(path, startTick) {
+    this.ensureRouteMetric(path);
+    const metrics = KERNEL_STATE.api.route_metrics[path];
+    const latencyTicks = Math.max(1, ΩCLOCK.tick - startTick);
+    metrics.requests += 1;
+    metrics.total_latency_ticks += latencyTicks;
+    metrics.last_latency_ticks = latencyTicks;
+    return latencyTicks;
+  }
+
   // API Authentication
-  validateAuthToken(token, method, path) {
-    if (path === "/health" && method === "GET") return true;
-    
-    // Kernel internal tokens
+  validateAuthToken(token) {
+    if (!token) return { ok: false, reason: "missing_token" };
+
     if (KERNEL_STATE.api.authentication.kernel_tokens.has(token)) {
-      return true;
+      return { ok: true, type: "kernel" };
     }
     
-    // External tokens (SCXQ2 encrypted)
-    if (KERNEL_STATE.api.authentication.external_tokens.has(token)) {
-      const tokenData = KERNEL_STATE.api.authentication.external_tokens.get(token);
-      if (Ω_now() < tokenData.expires) {
-        return true;
+    const externalData = KERNEL_STATE.api.authentication.external_tokens.get(token);
+    if (externalData) {
+      if (ΩCLOCK.tick <= externalData.expires_tick) {
+        return { ok: true, type: "external", meta: externalData };
       }
+      return { ok: false, type: "external", reason: "token_expired" };
     }
     
-    // Quantum signatures
-    if (token?.startsWith("⟁Q") && token?.endsWith("⟁")) {
-      const signature = this.verifyQuantumSignature(token);
-      return signature.valid;
+    const quantumVerification = this.verifyQuantumSignature(token);
+    if (quantumVerification.valid) {
+      return { ok: true, type: "quantum", meta: quantumVerification };
     }
-    
-    return false;
+
+    return { ok: false, reason: "token_unrecognized" };
+  }
+
+  enforceRouteAuthentication(routeEntry, authToken) {
+    const mode = routeEntry.authentication || "KERNEL_TOKEN_OPTIONAL";
+    const validation = this.validateAuthToken(authToken);
+
+    if (mode === "NONE_KERNEL_INTERNAL") {
+      return { ok: true, mode };
+    }
+
+    if (mode === "KERNEL_TOKEN_OPTIONAL") {
+      if (!authToken) return { ok: true, mode };
+      return validation.ok ? { ok: true, mode, type: validation.type } : { ok: false, mode, reason: validation.reason };
+    }
+
+    if (mode === "KERNEL_REQUIRED") {
+      if (!authToken) return { ok: false, mode, reason: "kernel_token_missing" };
+      if (validation.ok && (validation.type === "kernel" || validation.type === "quantum")) {
+        return { ok: true, mode, type: validation.type };
+      }
+      return { ok: false, mode, reason: validation.reason || "kernel_token_invalid" };
+    }
+
+    if (mode === "KERNEL_OR_EXTERNAL_TOKEN") {
+      if (!authToken) return { ok: false, mode, reason: "token_missing" };
+      if (validation.ok && (validation.type === "kernel" || validation.type === "external" || validation.type === "quantum")) {
+        return { ok: true, mode, type: validation.type };
+      }
+      return { ok: false, mode, reason: validation.reason || "token_invalid" };
+    }
+
+    return { ok: false, mode, reason: "authentication_mode_unknown" };
   }
 
   verifyQuantumSignature(signature) {
+    const stored = KERNEL_STATE.api.authentication.quantum_signatures.get(signature);
+    if (stored) {
+      const valid = ΩCLOCK.tick <= stored.expires_tick;
+      return { valid, entangledPairId: stored.entangledPairId, coherence: stored.coherence };
+    }
+    return this.verifyEntanglementSignature(signature);
+  }
+
+  verifyEntanglementSignature(signature) {
     try {
       const cleanSig = signature.replace(/^⟁Q/, "").replace(/⟁$/, "");
       const [entangledPairId, proof] = cleanSig.split("|");
@@ -354,96 +1150,113 @@ class SupremeJSONRESTAPI {
       case "memory_ops": limit = KERNEL_STATE.api.rate_limits.memory_ops; break;
       case "reinforcement": limit = KERNEL_STATE.api.rate_limits.reinforcement; break;
       case "snapshots": limit = KERNEL_STATE.api.rate_limits.snapshots; break;
-      default: return true;
+      case "micro_jobs": limit = KERNEL_STATE.api.rate_limits.micro_jobs; break;
+      default: return { allowed: true, limit: null };
     }
     
     // Reset if needed
-    rate_reset_if_needed(limit);
+    if (ΩCLOCK.tick >= limit.reset_tick || limit.reset_tick === 0) {
+      limit.tokens = limit.cap;
+      limit.reset_tick = ΩCLOCK.tick + limit.window_ticks;
+    }
     
     if (limit.tokens > 0) {
       limit.tokens--;
-      return true;
+      return { allowed: true, limit };
     }
     
     KERNEL_STATE.api.metrics.rate_limit_hits++;
-    return false;
+    return { allowed: false, limit };
   }
 
   // Route Dispatcher
   async dispatchRoute(path, method, payload, authToken) {
     const wallStart = performance.now(); // non-authoritative telemetry only
+    const startTick = ΩCLOCK.tick;
+    kuhulTick(); // deterministic tick for every route
     KERNEL_STATE.api.metrics.total_requests++;
+
+    const routeEntry = this.getRouteEntry(path, method);
+    if (!routeEntry) {
+      return this.formatResponse(404, {
+        error: "route_not_found",
+        available_routes: Object.keys(KERNEL_STATE.api.routes || {})
+      });
+    }
     
     // Authentication
-    if (!this.validateAuthToken(authToken, method, path)) {
+    const authResult = this.enforceRouteAuthentication(routeEntry, authToken);
+    if (!authResult.ok) {
       KERNEL_STATE.api.metrics.auth_failures++;
       return this.formatResponse(401, {
         error: "authentication_failed",
+        auth_mode: authResult.mode,
+        reason: authResult.reason,
         quantum_state: "|Ψ⟩ = |AUTH_FAILURE⟩"
+      });
+    }
+    
+    const capabilityResult = this.enforceCapability(path, authResult);
+    if (!capabilityResult.ok) {
+      KERNEL_STATE.api.metrics.capability_denials++;
+      return this.formatResponse(403, {
+        error: "capability_required",
+        reason: capabilityResult.reason,
+        missing: capabilityResult.missing || [],
+        quantum_state: "|Ψ⟩ = |CAPABILITY_DENIED⟩"
       });
     }
     
     // Rate limiting
     const endpoint = this.getEndpointFromPath(path);
-    if (!this.checkRateLimit(endpoint)) {
+    const rateCheck = this.checkRateLimit(endpoint);
+    if (!rateCheck.allowed) {
       return this.formatResponse(429, {
         error: "rate_limit_exceeded",
-        retry_after_ms: 1000
+        retry_after_ms: Math.max(0, (rateCheck.limit.reset_tick - ΩCLOCK.tick) * ΩCLOCK.step_ms),
+        reset_tick: rateCheck.limit.reset_tick,
+        window_ticks: rateCheck.limit.window_ticks,
+        remaining_tokens: rateCheck.limit.tokens
       });
     }
-    
+
+    const phaseResult = this.runPhasePipeline(routeEntry, payload);
+    if (!phaseResult.ok) {
+      return this.formatResponse(phaseResult.status || 400, {
+        error: phaseResult.error,
+        reason: phaseResult.reason,
+        phase: phaseResult.phase
+      });
+    }
+
     let response;
     
     try {
-      switch(path) {
-        case "/health":
-          response = await this.healthEndpoint();
-          break;
-        case "/infer":
-          response = await this.inferEndpoint(payload);
-          break;
-        case "/memory/read":
-          response = await this.memoryReadEndpoint(payload);
-          break;
-        case "/memory/write":
-          response = await this.memoryWriteEndpoint(payload);
-          break;
-        case "/reinforce":
-          response = await this.reinforceEndpoint(payload);
-          break;
-        case "/penalize":
-          response = await this.penalizeEndpoint(payload);
-          break;
-        case "/ngrams/snapshot":
-          response = await this.ngramsSnapshotEndpoint();
-          break;
-        case "/routines/detect":
-          response = await this.routinesDetectEndpoint(payload);
-          break;
-        case "/asx/blocks":
-          response = await this.asxBlocksEndpoint();
-          break;
-        case "/weights":
-          response = await this.weightsEndpoint();
-          break;
-        default:
-          return this.formatResponse(404, {
-            error: "route_not_found",
-            available_routes: Object.keys(KERNEL_STATE.api.routes || {})
-          });
+      response = await routeEntry.handler(phaseResult.body, routeEntry);
+
+      if (!response || typeof response.status !== "number" || !response.headers || !response.data) {
+        response = this.formatResponse(200, response || {});
+      }
+
+      response.data = this.codec.encodeResponse(routeEntry.schema.response, response.data);
+      if (phaseResult.proof) {
+        response.data.request_proof = phaseResult.proof;
+        response.data.phase_order = ASX_PHASE_ORDER;
       }
       
       const wallEnd = performance.now();
       const responseTime = wallEnd - wallStart;
+      const latencyTicks = this.updateRouteMetrics(path, startTick);
       
       // Update performance metrics
-      this.updatePerformanceMetrics(endpoint, responseTime);
+      this.updatePerformanceMetrics(endpoint, responseTime, latencyTicks);
       
       // Add timing info (non-authoritative telemetry)
       if (response.data) {
         response.data.response_time_ms = responseTime;
         response.data.telemetry_wall_ms = responseTime;
         response.data.quantum_routing_ms = responseTime * 0.1;
+        response.data.latency_ticks = latencyTicks;
       }
       
       KERNEL_STATE.api.metrics.successful_requests++;
@@ -474,24 +1287,75 @@ class SupremeJSONRESTAPI {
       memory_utilization: this.calculateMemoryUtilization(),
       uptime_ticks: state.ticks,
       quantum_coherence: this.calculateQuantumCoherence(),
+      route_metrics: KERNEL_STATE.api.route_metrics,
+      micro_state: {
+        agents: KERNEL_STATE.micro.agents.length,
+        builders: KERNEL_STATE.micro.builders.length,
+        jobs: KERNEL_STATE.micro.jobs.length
+      },
       api_metrics: {
         total_requests: KERNEL_STATE.api.metrics.total_requests,
         successful_requests: KERNEL_STATE.api.metrics.successful_requests,
-        auth_failures: KERNEL_STATE.api.metrics.auth_failures,
-        rate_limit_hits: KERNEL_STATE.api.metrics.rate_limit_hits,
-        avg_response_time: KERNEL_STATE.api.metrics.avg_response_time
-      },
-      quantum_state: "|Ψ⟩ = α|HEALTHY⟩⊗β|COHERENT⟩⊗γ|READY⟩"
-    });
-  }
+          auth_failures: KERNEL_STATE.api.metrics.auth_failures,
+          rate_limit_hits: KERNEL_STATE.api.metrics.rate_limit_hits,
+          capability_denials: KERNEL_STATE.api.metrics.capability_denials,
+          avg_response_time: KERNEL_STATE.api.metrics.avg_response_time
+        },
+        quantum_state: "|Ψ⟩ = α|HEALTHY⟩⊗β|COHERENT⟩⊗γ|READY⟩"
+      });
+    }
 
   async inferEndpoint(payload) {
-    const { prompt, temperature = 0.7, max_tokens = 100, mode = "standard", ngram_level = 3, use_memory = true, reinforcement_source } = payload;
-    
+    const { prompt, temperature = 0.7, max_tokens = 100, mode = "standard", ngram_level = 3, use_memory = true, reinforcement_source, script, env } = payload;
+
+    // K'UHUL Mode: Execute via brain pipeline if script is provided or mode is "kuhul"
+    if (script || mode === "kuhul" || mode === "glyph") {
+      try {
+        const pipelineInput = script || prompt;
+        const pipelineResult = executeBrainPipeline(
+          { script: pipelineInput, env: env || {} },
+          { includeTrace: false, includeProgram: false }
+        );
+
+        // Record activation for training
+        if (use_memory && MX2_MEM) {
+          try {
+            mx2_record_activation({
+              node: "KUHUL_INFER",
+              layer: "brain_pipeline",
+              token: "kuhul_exec",
+              weight: 1.0,
+              tokens: [pipelineInput.substring(0, 100)]
+            });
+          } catch (e) {}
+        }
+
+        return this.formatResponse(200, {
+          mode: "kuhul",
+          result: pipelineResult.result,
+          stack: pipelineResult.stack,
+          env: pipelineResult.env,
+          ticks: pipelineResult.ticks,
+          timing: pipelineResult.timing,
+          metrics: pipelineResult.metrics?.current,
+          entropy: KERNEL_STATE.entropy,
+          inference_id: Ω_id("kuhul", (pipelineInput || '').substring(0, 20), ΩCLOCK.tick),
+          quantum_state: "|Ψ⟩ = |KUHUL_EXECUTED⟩⊗|BRAIN_PIPELINE⟩"
+        });
+      } catch (err) {
+        return this.formatResponse(500, {
+          error: "kuhul_execution_failed",
+          message: err.message,
+          quantum_state: "|Ψ⟩ = |ERROR⟩⊗|KUHUL_FAULT⟩"
+        });
+      }
+    }
+
+    // Standard Mode: Original inference path
     // Tokenize and process
     const tokens = this.tokenizeText(prompt);
     const bundle = this.buildAllOrders(tokens, ngram_level);
-    
+
     // Memory ingestion if enabled
     if (use_memory && MX2_MEM) {
       try {
@@ -504,20 +1368,21 @@ class SupremeJSONRESTAPI {
         });
       } catch (e) {}
     }
-    
+
     // Generate completion (simplified - in real implementation, call actual MX2LM)
     const completion = this.generateCompletion(tokens, {
       temperature,
       max_tokens,
       mode
     });
-    
+
     // Detect routines
     const routines = this.detectRoutines(completion);
     const blocks = this.matchASXBlocks(routines);
     const quantumCircuit = this.selectQuantumCircuit(mode);
-    
+
     return this.formatResponse(200, {
+      mode: "standard",
       completion,
       tokens_used: tokens.length,
       entropy: KERNEL_STATE.entropy,
@@ -602,7 +1467,7 @@ class SupremeJSONRESTAPI {
       memory_updated: true,
       inference_bias_applied: true,
       reinforcement_id,
-      quantum_signature: this.generateQuantumSignature(reinforcement_id)
+      quantum_signature: this.issueQuantumSignature(reinforcement_id)
     });
   }
 
@@ -712,6 +1577,42 @@ class SupremeJSONRESTAPI {
     });
   }
 
+  async microJobsSubmitEndpoint(payload) {
+    const payloadCopy = { ...(payload || {}) };
+    const jobId = payloadCopy.job_id || Ω_id("micro_job", JSON.stringify(payloadCopy), ΩCLOCK.tick);
+    const job = {
+      id: jobId,
+      status: "queued",
+      received_tick: ΩCLOCK.tick,
+      payload: this.codec.canonicalize(payloadCopy)
+    };
+    KERNEL_STATE.micro.jobs.push(job);
+    return this.formatResponse(200, {
+      status: "accepted",
+      job_id: jobId,
+      queued_jobs: KERNEL_STATE.micro.jobs.length,
+      quantum_state: "|Ψ⟩ = |MICRO_JOB|⊗|QUEUED|"
+    });
+  }
+
+  async microAgentsStatusEndpoint() {
+    const agents = KERNEL_STATE.micro.agents || [];
+    return this.formatResponse(200, {
+      agents,
+      total_agents: agents.length,
+      quantum_state: "|Ψ⟩ = Σ|AGENT⟩"
+    });
+  }
+
+  async microBuildersStatusEndpoint() {
+    const builders = KERNEL_STATE.micro.builders || [];
+    return this.formatResponse(200, {
+      builders,
+      total_builders: builders.length,
+      quantum_state: "|Ψ⟩ = Σ|BUILDER⟩"
+    });
+  }
+
   // Helper Methods
   formatResponse(status, data) {
     return {
@@ -733,17 +1634,22 @@ class SupremeJSONRESTAPI {
   }
 
   getEndpointFromPath(path) {
+    if (path === "/health") return "health";
     if (path === "/infer") return "infer";
     if (path.startsWith("/memory/")) return "memory_ops";
     if (path === "/reinforce" || path === "/penalize") return "reinforcement";
     if (path === "/ngrams/snapshot") return "snapshots";
+    if (path.startsWith("/micro/")) return "micro_jobs";
     return "other";
   }
 
-  updatePerformanceMetrics(endpoint, responseTime) {
+  updatePerformanceMetrics(endpoint, responseTime, latencyTicks = null) {
     const metricKey = endpoint.replace("/", "_");
     if (KERNEL_STATE.api.performance[metricKey] !== undefined) {
       KERNEL_STATE.api.performance[metricKey] = responseTime;
+    }
+    if (latencyTicks != null) {
+      KERNEL_STATE.api.performance[`${metricKey}_ticks`] = latencyTicks;
     }
     
     // Update average response time (telemetry only)
@@ -855,6 +1761,82 @@ class SCXQ2Engine {
   
   currentRatio() {
     return this.compressionRatio;
+  }
+}
+
+/* ============================================================
+   SCXQ2 CODEC (Deterministic wrapper around SCXQ2 engine)
+   - canonical encoding/decoding
+   - schema-aware payload validation
+   ============================================================ */
+
+class SCXQ2Codec {
+  constructor(engine) {
+    this.engine = engine;
+  }
+
+  canonicalize(value) {
+    if (Array.isArray(value)) {
+      return value.map(v => this.canonicalize(v));
+    }
+    if (value && typeof value === "object") {
+      const sorted = {};
+      Object.keys(value).sort().forEach(k => {
+        sorted[k] = this.canonicalize(value[k]);
+      });
+      return sorted;
+    }
+    return value;
+  }
+
+  encode(value) {
+    const canonical = this.canonicalize(value ?? {});
+    const encoded = this.engine.b64encUtf8(canonical);
+    const fingerprint = Ω_hash32(encoded);
+    return `⟁SCXQ2:${fingerprint}:${encoded}⟁`;
+  }
+
+  decode(scxString) {
+    if (typeof scxString !== "string") {
+      return { ok: false, error: "invalid_scx_type" };
+    }
+    const trimmed = scxString.replace(/^⟁/, "").replace(/⟁$/, "");
+    const parts = trimmed.split(":");
+    if (parts.length < 3 || parts[0] !== "SCXQ2") {
+      return { ok: false, error: "invalid_scx_format" };
+    }
+
+    const base64Payload = parts.slice(2).join(":");
+    try {
+      const decoded = this.engine.b64decUtf8(base64Payload);
+      return { ok: true, decoded };
+    } catch {
+      return { ok: false, error: "decode_failure" };
+    }
+  }
+
+  decodeRequest(schema, payload) {
+    if (schema?.scx === "string") {
+      if (!payload || typeof payload.scx !== "string") {
+        return { ok: false, error: "request_scx_missing" };
+      }
+      const decoded = this.decode(payload.scx);
+      if (!decoded.ok) return decoded;
+
+      const body = typeof decoded.decoded === "object" ? decoded.decoded : { value: decoded.decoded };
+      const merged = { ...body, ...(payload || {}) };
+      return { ok: true, body: merged, decoded: decoded.decoded };
+    }
+    return { ok: true, body: payload || {} };
+  }
+
+  encodeResponse(schema, data) {
+    const base = data || {};
+    if (schema?.scx === "string") {
+      const scx = this.encode(base);
+      return { ...base, scx };
+    }
+    return base;
   }
 }
 
@@ -1267,7 +2249,8 @@ function mx2_json(obj, status = 200) {
 }
 
 // Initialize Supreme JSON REST API
-const SUPREME_API = new SupremeJSONRESTAPI();
+SUPREME_API = new SupremeJSONRESTAPI();
+updateApiPathSet();
 
 async function mx2_route_api(url, request) {
   const path = url.pathname;
@@ -1452,14 +2435,23 @@ self.addEventListener("message", async (event) => {
   
   // Supreme API messages
   if (type === "api.generate_token") {
-    const token = Ω_id("kernel_token", ΩCLOCK.tick.toString());
-    KERNEL_STATE.api.authentication.kernel_tokens.add(token);
+    const token = SUPREME_API.issueKernelToken(msg.subject || "kernel");
     postBack(event.source, { type: "api.token_generated", token });
+    return;
+  }
+
+  if (type === "api.external_token") {
+    const token = SUPREME_API.issueExternalToken({
+      subject: msg.subject || "external",
+      scope: msg.scope || "api",
+      ttl_ticks: msg.ttl_ticks || 1000
+    });
+    postBack(event.source, { type: "api.external_token", token });
     return;
   }
   
   if (type === "api.quantum_signature") {
-    const signature = SUPREME_API.generateQuantumSignature(msg.id || "default");
+    const signature = SUPREME_API.issueQuantumSignature(msg.id || "default");
     postBack(event.source, { type: "api.quantum_signature", signature });
     return;
   }
@@ -1581,13 +2573,6 @@ self.addEventListener("message", async (event) => {
    - Single unified fetch handler (prevents collisions)
    ============================================================ */
 
-// Exact API route matching
-const API_PATHS = new Set([
-  "/health","/infer","/memory/read","/memory/write",
-  "/reinforce","/penalize","/ngrams/snapshot",
-  "/routines/detect","/asx/blocks","/weights"
-]);
-
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
@@ -1643,27 +2628,3159 @@ self.addEventListener("activate", (e) => {
   })());
 });
 
+// Exports for deterministic local simulations / unit tests
+if (typeof module !== "undefined") {
+  module.exports = {
+    SupremeJSONRESTAPI,
+    SCXQ2Engine,
+    SCXQ2Codec,
+    PI_BRIDGE,
+    buildOrbitalHaloData,
+    buildStackGridData,
+    buildTunnelStreamData,
+    buildFractalTreeData,
+    buildHudRingData,
+    renderShellsFromData,
+    renderModelShells,
+    loadModelAssets,
+    KERNEL_STATE,
+    ΩCLOCK,
+    Ω_tick,
+    kuhulTick,
+    hydrateMicroState,
+    updateApiPathSet,
+    applyManifestToKernel
+  };
+}
+
+/* ============================================================
+   BRAIN TOPOLOGY EXECUTION ENGINE
+   Implements π_EVALUATE from pi_evaluator_pseudocode.khl
+   ============================================================ */
+
+// PI Metric Interpretation Table
+const PI_METRIC_TABLE = Object.freeze({
+  stability: { pi_effect: "weight_multiplier", description: "Scales acceptance threshold" },
+  merge_weight: { pi_effect: "merge_bias", description: "Biases conflict resolution" },
+  tick_rate: { pi_effect: "scheduler_step", description: "Controls kernel tick advancement" },
+  entropy_weight: { pi_effect: "entropy_scale", description: "Scales entropy contribution" },
+  compression_ratio: { pi_effect: "compress_gain", description: "Adjusts compression calculus" },
+  confidence_floor: { pi_effect: "filter_threshold", description: "Minimum confidence for matches" },
+  global_gain: { pi_effect: "vector_gain", description: "Global control vector amplification" },
+  strictness: { pi_effect: "weight_multiplier", description: "Strictness level" },
+  conflict_bias: { pi_effect: "merge_bias", description: "Conflict resolution bias" },
+  propagation_rate: { pi_effect: "vector_gain", description: "Propagation speed" },
+  sync_weight: { pi_effect: "merge_bias", description: "Synchronization weight" },
+  determinism: { pi_effect: "weight_multiplier", description: "Determinism level" },
+  io_latency: { pi_effect: "scheduler_step", description: "IO latency factor" },
+  node_degree: { pi_effect: "compress_gain", description: "Node connectivity degree" },
+  priority_bias: { pi_effect: "merge_bias", description: "Priority scheduling bias" },
+  throughput: { pi_effect: "vector_gain", description: "Throughput multiplier" },
+  execution_bias: { pi_effect: "weight_multiplier", description: "Execution priority" },
+  write_weight: { pi_effect: "merge_bias", description: "Write operation weight" },
+  parse_depth: { pi_effect: "scheduler_step", description: "Parser recursion depth" },
+  rewrite_passes: { pi_effect: "scheduler_step", description: "AST rewrite passes" },
+  view_count: { pi_effect: "compress_gain", description: "View count" },
+  bridge_weight: { pi_effect: "merge_bias", description: "Bridge weight" },
+  ir_passes: { pi_effect: "scheduler_step", description: "IR compilation passes" },
+  query_cost: { pi_effect: "compress_gain", description: "Query cost factor" },
+  semantic_weight: { pi_effect: "weight_multiplier", description: "Semantic weight" },
+  symbol_count: { pi_effect: "compress_gain", description: "Symbol table size" },
+  opcode_count: { pi_effect: "compress_gain", description: "Opcode count" },
+  token_count: { pi_effect: "compress_gain", description: "Token count" },
+  law_strength: { pi_effect: "weight_multiplier", description: "Law enforcement strength" },
+  fanout: { pi_effect: "vector_gain", description: "Gossip fanout" },
+  proof_depth: { pi_effect: "scheduler_step", description: "Proof depth" },
+  states: { pi_effect: "scheduler_step", description: "Lifecycle states" }
+});
+
+// Brain Topology State
+const BRAIN_ENGINE = {
+  registry: null,
+  activebrains: new Map(),
+  evaluationCache: new Map(),
+  lastEvalTick: 0
+};
+
+// Load Brain Topology Registry
+async function loadBrainTopology() {
+  try {
+    const res = await fetch('./brains/brain_topology.registry.json', { cache: 'no-store' });
+    if (!res.ok) return null;
+    const registry = await res.json();
+    BRAIN_ENGINE.registry = registry;
+    return registry;
+  } catch (e) {
+    console.error('Ω: Brain topology load failed:', e);
+    return null;
+  }
+}
+
+// π_EVALUATE Implementation - Core execution from pseudocode
+function π_EVALUATE(brain_row, input_state = {}) {
+  // Initialize effect accumulators
+  const effects = {
+    weight_multiplier: 1.0,
+    merge_bias: 0.0,
+    entropy_scale: 1.0,
+    scheduler_step: 1,
+    compress_gain: 1.0,
+    filter_threshold: 0.0,
+    vector_gain: 1.0
+  };
+
+  const metrics = brain_row.metrics || [];
+
+  // Interpret metrics
+  for (const metric of metrics) {
+    const rule = PI_METRIC_TABLE[metric.key];
+    if (!rule) continue;
+
+    const value = metric.value;
+
+    switch (rule.pi_effect) {
+      case "weight_multiplier":
+        effects.weight_multiplier *= value;
+        break;
+      case "merge_bias":
+        effects.merge_bias += value;
+        break;
+      case "entropy_scale":
+        effects.entropy_scale *= value;
+        break;
+      case "scheduler_step":
+        effects.scheduler_step = Math.max(1, Math.floor(value));
+        break;
+      case "compress_gain":
+        effects.compress_gain *= value;
+        break;
+      case "filter_threshold":
+        effects.filter_threshold = Math.max(effects.filter_threshold, value);
+        break;
+      case "vector_gain":
+        effects.vector_gain *= value;
+        break;
+    }
+  }
+
+  // Apply effects deterministically
+  const result = π_APPLY_EFFECTS(effects, input_state, brain_row);
+
+  // Generate deterministic seal
+  const sealStr = `${brain_row.id}|${JSON.stringify(effects)}|${JSON.stringify(result)}`;
+  const seal = Ω_hash32(sealStr);
+
+  return {
+    brain_id: brain_row.id,
+    domain: brain_row.domain,
+    effects,
+    output: result,
+    seal: `⟁${seal}⟁`,
+    tick: ΩCLOCK.tick,
+    bindings: brain_row.bindings || {}
+  };
+}
+
+// Apply computed effects to input state
+function π_APPLY_EFFECTS(effects, input_state, brain_row) {
+  const tokens = input_state.tokens || [];
+  const prompt = input_state.prompt || '';
+
+  // Compute weighted compression
+  const baseCompression = compressionDelta(tokens);
+  const weightedCompression = baseCompression * effects.compress_gain * effects.weight_multiplier;
+
+  // Compute symbolic weight with gain
+  const baseWeight = symbolicWeight(tokens);
+  const adjustedWeight = baseWeight * effects.vector_gain;
+
+  // Apply entropy scaling
+  const scaledEntropy = KERNEL_STATE.entropy * effects.entropy_scale;
+
+  // Apply filter threshold
+  const confidence = Math.max(effects.filter_threshold, weightedCompression);
+
+  // Generate output based on brain domain
+  const domain = brain_row.domain || 'runtime';
+  let domainOutput = {};
+
+  switch (domain) {
+    case 'atomic':
+      domainOutput = {
+        execution_trace: Ω_id('trace', brain_row.id, ΩCLOCK.tick.toString()),
+        determinism_score: effects.weight_multiplier
+      };
+      break;
+    case 'cluster':
+      domainOutput = {
+        merge_result: effects.merge_bias > 0.5 ? 'ACCEPT' : 'DEFER',
+        sync_weight: effects.merge_bias
+      };
+      break;
+    case 'runtime':
+      domainOutput = {
+        schedule_priority: effects.scheduler_step,
+        throughput_factor: effects.vector_gain
+      };
+      break;
+    case 'verification':
+      domainOutput = {
+        proof_valid: effects.weight_multiplier >= 1.0,
+        strictness: effects.weight_multiplier
+      };
+      break;
+    case 'training':
+      domainOutput = {
+        pattern_confidence: confidence,
+        learning_rate: effects.entropy_scale * 0.01
+      };
+      break;
+    default:
+      domainOutput = {};
+  }
+
+  return {
+    compression_delta: weightedCompression,
+    symbolic_weight: adjustedWeight,
+    entropy: scaledEntropy,
+    confidence,
+    domain_output: domainOutput,
+    tokens_processed: tokens.length,
+    quantum_state: `|Ψ⟩ = |${brain_row.id}⟩⊗|EFFECTS_APPLIED⟩`
+  };
+}
+
+// Get brain by ID
+function getBrainById(brainId) {
+  if (!BRAIN_ENGINE.registry?.brains) return null;
+  return BRAIN_ENGINE.registry.brains.find(b => b.id === brainId);
+}
+
+// Activate a brain
+function activateBrain(brainId, input_state = {}) {
+  const brain = getBrainById(brainId);
+  if (!brain) {
+    return { error: 'brain_not_found', brain_id: brainId };
+  }
+
+  // Run π evaluation
+  const result = π_EVALUATE(brain, input_state);
+
+  // Track activation
+  BRAIN_ENGINE.activebrains.set(brainId, {
+    activated_tick: ΩCLOCK.tick,
+    last_result: result
+  });
+
+  // Record in memory substrate
+  try {
+    mx2_record_activation({
+      node: brainId,
+      layer: brain.domain,
+      token: 'BRAIN_ACTIVATE',
+      weight: result.effects.weight_multiplier,
+      tokens: input_state.tokens || []
+    });
+  } catch (_) {}
+
+  kuhulTick();
+
+  return result;
+}
+
+/* ============================================================
+   MICRO-AGENT/BUILDER SWARM ORCHESTRATION
+   ============================================================ */
+
+const SWARM_ENGINE = {
+  agents: new Map(),
+  builders: new Map(),
+  jobs: [],
+  jobCounter: 0
+};
+
+// Initialize swarm from manifest
+function initializeSwarm(manifest) {
+  const ecosystem = manifest['👷🌀MICRO_AGENTS_BUILDERS_RECURSIVE_ECOSYSTEM'];
+  if (!ecosystem?.tables) return;
+
+  // Load seed agents
+  const agentTable = ecosystem.tables['🤖🌀micro_agents'];
+  if (agentTable?.seed_agents) {
+    for (const agent of agentTable.seed_agents) {
+      SWARM_ENGINE.agents.set(agent.id, {
+        ...agent,
+        status: 'ready',
+        current_job: null
+      });
+    }
+  }
+
+  // Load seed builders
+  const builderTable = ecosystem.tables['🛠🌀micro_builders'];
+  if (builderTable?.seed_builders) {
+    for (const builder of builderTable.seed_builders) {
+      SWARM_ENGINE.builders.set(builder.id, {
+        ...builder,
+        status: 'ready',
+        current_job: null
+      });
+    }
+  }
+}
+
+// Submit job to swarm
+function submitSwarmJob(spec) {
+  const jobId = Ω_id('job', (++SWARM_ENGINE.jobCounter).toString(), ΩCLOCK.tick.toString());
+
+  const job = {
+    id: jobId,
+    spec,
+    status: 'pending',
+    created_tick: ΩCLOCK.tick,
+    assigned_agent: null,
+    assigned_builder: null,
+    result: null
+  };
+
+  // Find matching agent
+  for (const [id, agent] of SWARM_ENGINE.agents) {
+    if (agent.status === 'ready' && agent.domain === spec.domain) {
+      job.assigned_agent = id;
+      agent.status = 'busy';
+      agent.current_job = jobId;
+      break;
+    }
+  }
+
+  // Find matching builder
+  if (job.assigned_agent) {
+    const agent = SWARM_ENGINE.agents.get(job.assigned_agent);
+    for (const builderType of (agent.builder_types || [])) {
+      const builder = SWARM_ENGINE.builders.get(`${builderType}_gen0`);
+      if (builder && builder.status === 'ready') {
+        job.assigned_builder = builder.id;
+        builder.status = 'busy';
+        builder.current_job = jobId;
+        break;
+      }
+    }
+  }
+
+  job.status = job.assigned_agent ? 'assigned' : 'queued';
+  SWARM_ENGINE.jobs.push(job);
+
+  return {
+    job_id: jobId,
+    status: job.status,
+    assigned_agent: job.assigned_agent,
+    assigned_builder: job.assigned_builder,
+    quantum_state: '|Ψ⟩ = |JOB_SUBMITTED⟩⊗|SWARM_PROCESSING⟩'
+  };
+}
+
+// Get agent status
+function getAgentsStatus() {
+  const agents = [];
+  for (const [id, agent] of SWARM_ENGINE.agents) {
+    agents.push({
+      id,
+      label: agent.label,
+      domain: agent.domain,
+      status: agent.status,
+      generation: agent.generation,
+      success_rate: agent.success_rate,
+      jobs_handled: agent.jobs_handled,
+      current_job: agent.current_job,
+      recursion_capable: agent.recursion_capable
+    });
+  }
+  return agents;
+}
+
+// Get builder status
+function getBuildersStatus() {
+  const builders = [];
+  for (const [id, builder] of SWARM_ENGINE.builders) {
+    builders.push({
+      id,
+      label: builder.label,
+      type: builder.type,
+      status: builder.status,
+      generation: builder.generation,
+      success_rate: builder.success_rate,
+      jobs_completed: builder.jobs_completed,
+      current_job: builder.current_job,
+      recursion_capable: builder.recursion_capable
+    });
+  }
+  return builders;
+}
+
+/* ============================================================
+   SVG3D VISUALIZATION PIPELINE
+   ============================================================ */
+
+// Generate brain topology SVG
+function generateBrainTopologySVG(brainId) {
+  const brain = getBrainById(brainId);
+  if (!brain) return null;
+
+  const metrics = brain.metrics || [];
+  const bindings = brain.bindings || {};
+
+  // Create orbital halo shell for brain visualization
+  const centerX = 300;
+  const centerY = 200;
+  const radius = 80;
+
+  let svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
+      <defs>
+        <radialGradient id="brain-glow-${brainId}" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.4"/>
+          <stop offset="100%" stop-color="#00d4ff" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="glow-filter">
+          <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#070b12"/>
+
+      <!-- Background constellation -->
+      <circle cx="${centerX}" cy="${centerY}" r="${radius + 60}" fill="url(#brain-glow-${brainId})"/>
+
+      <!-- Central brain node -->
+      <circle cx="${centerX}" cy="${centerY}" r="${radius}" fill="#0b1322" stroke="#00d4ff" stroke-width="2" filter="url(#glow-filter)"/>
+      <text x="${centerX}" y="${centerY - 10}" text-anchor="middle" fill="#00d4ff" font-size="12" font-family="monospace" font-weight="bold">${brain.id}</text>
+      <text x="${centerX}" y="${centerY + 10}" text-anchor="middle" fill="#8ba4c0" font-size="10" font-family="monospace">${brain.domain}</text>
+  `;
+
+  // Add metric orbitals
+  metrics.forEach((metric, i) => {
+    const angle = (i / metrics.length) * Math.PI * 2 - Math.PI / 2;
+    const orbitRadius = radius + 50;
+    const x = centerX + Math.cos(angle) * orbitRadius;
+    const y = centerY + Math.sin(angle) * orbitRadius;
+
+    svg += `
+      <line x1="${centerX}" y1="${centerY}" x2="${x}" y2="${y}" stroke="#1a2b44" stroke-width="1" stroke-dasharray="4,2"/>
+      <circle cx="${x}" cy="${y}" r="30" fill="#101828" stroke="#a855f7" stroke-width="1.5"/>
+      <text x="${x}" y="${y - 5}" text-anchor="middle" fill="#a855f7" font-size="9" font-family="monospace">${metric.key}</text>
+      <text x="${x}" y="${y + 10}" text-anchor="middle" fill="#e8f5ff" font-size="11" font-family="monospace" font-weight="bold">${metric.value}</text>
+    `;
+  });
+
+  // Add binding connections
+  const piInputs = bindings.pi_inputs || [];
+  const clusterInputs = bindings.cluster_inputs || [];
+  const runtimeOutputs = bindings.runtime_outputs || [];
+
+  svg += `
+    <!-- Binding legend -->
+    <g transform="translate(20, 320)">
+      <text fill="#00d4ff" font-size="10" font-family="monospace">π Inputs: ${piInputs.join(', ') || 'none'}</text>
+    </g>
+    <g transform="translate(20, 340)">
+      <text fill="#ff8800" font-size="10" font-family="monospace">Cluster: ${clusterInputs.join(', ') || 'none'}</text>
+    </g>
+    <g transform="translate(20, 360)">
+      <text fill="#00ff88" font-size="10" font-family="monospace">Outputs: ${runtimeOutputs.join(', ') || 'none'}</text>
+    </g>
+
+    <!-- Domain badge -->
+    <rect x="450" y="20" width="130" height="30" rx="6" fill="#101828" stroke="#1a2b44"/>
+    <text x="515" y="40" text-anchor="middle" fill="#8ba4c0" font-size="10" font-family="monospace">${brain.domain.toUpperCase()}</text>
+
+    </svg>
+  `;
+
+  return svg;
+}
+
+// Generate full topology constellation SVG
+function generateTopologyConstellationSVG() {
+  if (!BRAIN_ENGINE.registry?.brains) return null;
+
+  const brains = BRAIN_ENGINE.registry.brains;
+  const width = 1200;
+  const height = 800;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  // Group brains by domain
+  const domains = {};
+  brains.forEach(b => {
+    if (!domains[b.domain]) domains[b.domain] = [];
+    domains[b.domain].push(b);
+  });
+
+  const domainColors = {
+    cluster: '#00d4ff',
+    verification: '#ff4444',
+    runtime: '#00ff88',
+    atomic: '#a855f7',
+    training: '#ff8800'
+  };
+
+  let svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+      <defs>
+        <radialGradient id="center-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.2"/>
+          <stop offset="100%" stop-color="#00d4ff" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#070b12"/>
+      <circle cx="${centerX}" cy="${centerY}" r="300" fill="url(#center-glow)"/>
+  `;
+
+  // Place domains in orbital rings
+  const domainList = Object.keys(domains);
+  domainList.forEach((domain, di) => {
+    const domainAngle = (di / domainList.length) * Math.PI * 2;
+    const domainRadius = 250;
+    const domainX = centerX + Math.cos(domainAngle) * domainRadius;
+    const domainY = centerY + Math.sin(domainAngle) * domainRadius;
+    const color = domainColors[domain] || '#8ba4c0';
+
+    // Domain cluster
+    svg += `<circle cx="${domainX}" cy="${domainY}" r="100" fill="none" stroke="${color}" stroke-width="1" stroke-dasharray="4,4" opacity="0.3"/>`;
+
+    // Brain nodes in domain
+    const domainBrains = domains[domain];
+    domainBrains.forEach((brain, bi) => {
+      const brainAngle = (bi / domainBrains.length) * Math.PI * 2;
+      const brainRadius = 60;
+      const bx = domainX + Math.cos(brainAngle) * brainRadius;
+      const by = domainY + Math.sin(brainAngle) * brainRadius;
+
+      svg += `
+        <circle cx="${bx}" cy="${by}" r="20" fill="#0b1322" stroke="${color}" stroke-width="1.5"/>
+        <text x="${bx}" y="${by + 4}" text-anchor="middle" fill="${color}" font-size="7" font-family="monospace">${brain.id.substring(0, 10)}</text>
+      `;
+    });
+
+    // Domain label
+    svg += `<text x="${domainX}" y="${domainY + 120}" text-anchor="middle" fill="${color}" font-size="11" font-family="monospace" font-weight="bold">${domain.toUpperCase()}</text>`;
+  });
+
+  svg += '</svg>';
+  return svg;
+}
+
+/* ============================================================
+   EXTENDED API ROUTES FOR BRAIN & SWARM
+   ============================================================ */
+
+// Extended API paths
+const EXTENDED_API_PATHS = new Set([
+  '/brain/list', '/brain/activate', '/brain/status', '/brain/svg',
+  '/micro/jobs/submit', '/micro/agents/status', '/micro/builders/status',
+  '/topology/svg'
+]);
+
+async function handleExtendedAPI(url, request) {
+  const path = url.pathname;
+  const method = request.method;
+
+  // Ensure brain topology is loaded
+  if (!BRAIN_ENGINE.registry) {
+    await loadBrainTopology();
+  }
+
+  // Ensure swarm is initialized
+  if (SWARM_ENGINE.agents.size === 0 && KERNEL_STATE.manifest) {
+    initializeSwarm(KERNEL_STATE.manifest);
+  }
+
+  let payload = {};
+  if (method === 'POST') {
+    try { payload = await request.json(); } catch (_) {}
+  }
+
+  switch (path) {
+    case '/brain/list':
+      return mx2_json({
+        ok: true,
+        brains: BRAIN_ENGINE.registry?.brains || [],
+        total: BRAIN_ENGINE.registry?.brains?.length || 0,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/brain/activate':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      const activationResult = activateBrain(payload.brain_id, payload.input_state || {});
+      return mx2_json({
+        ok: !activationResult.error,
+        ...activationResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/brain/status':
+      const brainId = url.searchParams.get('id');
+      const brain = getBrainById(brainId);
+      const activeInfo = BRAIN_ENGINE.activebrains.get(brainId);
+      return mx2_json({
+        ok: !!brain,
+        brain: brain || null,
+        active: !!activeInfo,
+        last_activation: activeInfo || null,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/brain/svg':
+      const svgBrainId = url.searchParams.get('id');
+      const brainSVG = generateBrainTopologySVG(svgBrainId);
+      if (!brainSVG) {
+        return mx2_json({ error: 'brain_not_found' }, 404);
+      }
+      return new Response(brainSVG, {
+        status: 200,
+        headers: { 'content-type': 'image/svg+xml' }
+      });
+
+    case '/topology/svg':
+      const topoSVG = generateTopologyConstellationSVG();
+      if (!topoSVG) {
+        return mx2_json({ error: 'topology_not_loaded' }, 500);
+      }
+      return new Response(topoSVG, {
+        status: 200,
+        headers: { 'content-type': 'image/svg+xml' }
+      });
+
+    case '/micro/jobs/submit':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      const jobResult = submitSwarmJob(payload);
+      return mx2_json({
+        ok: true,
+        ...jobResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/micro/agents/status':
+      return mx2_json({
+        ok: true,
+        agents: getAgentsStatus(),
+        total: SWARM_ENGINE.agents.size,
+        tick: ΩCLOCK.tick,
+        quantum_state: '|Ψ⟩ = Σ|AGENT_i⟩⊗|STATUS⟩'
+      });
+
+    case '/micro/builders/status':
+      return mx2_json({
+        ok: true,
+        builders: getBuildersStatus(),
+        total: SWARM_ENGINE.builders.size,
+        tick: ΩCLOCK.tick,
+        quantum_state: '|Ψ⟩ = Σ|BUILDER_i⟩⊗|READY⟩'
+      });
+
+    default:
+      return null;
+  }
+}
+
+/* ============================================================
+   ENHANCED FETCH HANDLER
+   ============================================================ */
+
+// Update fetch handler to include extended routes
+const originalFetch = self.onfetch;
+
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+
+  // Only handle same-origin
+  if (url.origin !== self.location.origin) return;
+
+  // Check extended API paths
+  if (EXTENDED_API_PATHS.has(url.pathname)) {
+    event.respondWith(handleExtendedAPI(url, event.request));
+    return;
+  }
+});
+
+/* ============================================================
+   ENHANCED MESSAGE HANDLER
+   ============================================================ */
+
+// Extend message handler for brain operations
+self.addEventListener("message", async (event) => {
+  const msg = event.data || {};
+  const type = msg.type;
+
+  // Brain topology messages
+  if (type === "brain.load_topology") {
+    const registry = await loadBrainTopology();
+    postBack(event.source, {
+      type: "brain.topology_loaded",
+      ok: !!registry,
+      brain_count: registry?.brains?.length || 0
+    });
+    return;
+  }
+
+  if (type === "brain.activate") {
+    const result = activateBrain(msg.brain_id, msg.input_state || {});
+    postBack(event.source, {
+      type: "brain.activated",
+      ...result
+    });
+    return;
+  }
+
+  if (type === "brain.get_svg") {
+    const svg = generateBrainTopologySVG(msg.brain_id);
+    postBack(event.source, {
+      type: "brain.svg_ready",
+      brain_id: msg.brain_id,
+      svg
+    });
+    return;
+  }
+
+  if (type === "swarm.submit_job") {
+    const result = submitSwarmJob(msg.spec || {});
+    postBack(event.source, {
+      type: "swarm.job_submitted",
+      ...result
+    });
+    return;
+  }
+});
+
+/* ============================================================
+   INITIALIZATION ENHANCEMENT
+   ============================================================ */
+
+// Enhanced init - load brain topology on boot
+async function enhancedBoot() {
+  await mx2_mem_boot();
+  await loadBrainTopology();
+
+  if (KERNEL_STATE.manifest) {
+    initializeSwarm(KERNEL_STATE.manifest);
+  }
+}
+
+// Hook into install
+self.addEventListener("install", (e) => {
+  e.waitUntil(enhancedBoot().then(() => self.skipWaiting()));
+});
+
+/* ============================================================
+   BRAIN MODEL INTEGRATION LAYER
+   External LLM orchestration + RLHF learning
+   ============================================================ */
+
+// Import brain integration (inline for Service Worker)
+importScripts('./src/brain_integration.js');
+
+// Import chat inference and web learning engine
+importScripts('./src/chat_inference.js');
+
+// Import Atomic Block Runtime
+importScripts('./src/block_runtime.js');
+
+// Import GlyphVM Bytecode Virtual Machine
+importScripts('./src/glyph_vm.js');
+
+// Import Real WebRTC P2P Network
+importScripts('./src/p2p_network.js');
+
+// Import Web Crypto Encryption
+importScripts('./src/glyph_crypto.js');
+
+// Import RLHF N-gram Engine
+importScripts('./src/rlhf_ngram_engine.js');
+
+// Import SCXQ2/CC-v1 Binding
+importScripts('./src/scxq2_binding.js');
+
+// Import ArXiv Research Paper Fetcher
+importScripts('./research/arxiv_fetcher.js');
+
+// Import Model Providers (Multi-API support)
+importScripts('./models/model_providers.js');
+
+// Import π-KUHUL Model Adapters
+importScripts('./models/janus/adapters/janus_pi_kuhul.js');
+importScripts('./models/deepseek/adapters/deepseek_pi_kuhul.js');
+importScripts('./models/qwen-asx/adapters/qwen_asx_pi_kuhul.js');
+
+// Import K'UHUL Kernel (Qwen-ASX base training format)
+importScripts('./sw.khl');
+
+// Note: src/voice_interface.js requires browser APIs (SpeechRecognition, SpeechSynthesis)
+// and should be loaded in the main page context, not in Service Worker
+
+// Initialize global instances
+let SCXQ2_ENCODER = null;
+let ARXIV_FETCHER = null;
+let MODEL_PROVIDER_MANAGER = null;
+let JANUS_ADAPTER = null;
+let DEEPSEEK_ADAPTER = null;
+let QWEN_ASX_ADAPTER = null;
+
+// Lazy initialization for new components
+function initNewComponents() {
+  if (!SCXQ2_ENCODER && typeof SCXQ2 !== 'undefined') {
+    SCXQ2_ENCODER = new SCXQ2();
+  }
+  if (!ARXIV_FETCHER && typeof ArxivFetcher !== 'undefined') {
+    ARXIV_FETCHER = new ArxivFetcher();
+  }
+  if (!MODEL_PROVIDER_MANAGER && typeof ModelProviderManager !== 'undefined') {
+    MODEL_PROVIDER_MANAGER = new ModelProviderManager();
+  }
+  if (!JANUS_ADAPTER && typeof JanusPiKuhulAdapter !== 'undefined') {
+    JANUS_ADAPTER = new JanusPiKuhulAdapter();
+  }
+  if (!DEEPSEEK_ADAPTER && typeof DeepseekPiKuhulAdapter !== 'undefined') {
+    DEEPSEEK_ADAPTER = new DeepseekPiKuhulAdapter();
+  }
+  if (!QWEN_ASX_ADAPTER && typeof QwenASXPiKuhulAdapter !== 'undefined') {
+    QWEN_ASX_ADAPTER = new QwenASXPiKuhulAdapter();
+  }
+}
+
+// Brain model API paths
+const BRAIN_MODEL_API_PATHS = new Set([
+  '/models/list', '/models/status', '/models/route',
+  '/models/infer', '/models/reinforce', '/models/penalize',
+  '/models/knowledge/export', '/models/knowledge/import',
+  '/models/api-key'
+]);
+
+// Handle brain model API requests
+async function handleBrainModelAPI(url, request) {
+  const path = url.pathname;
+  const method = request.method;
+
+  // Initialize orchestrator if needed
+  if (!BRAIN_ORCHESTRATOR.ready) {
+    await BRAIN_ORCHESTRATOR.initialize();
+  }
+
+  let payload = {};
+  if (method === 'POST') {
+    try { payload = await request.json(); } catch (_) {}
+  }
+
+  switch (path) {
+    case '/models/list':
+      return mx2_json({
+        ok: true,
+        models: BRAIN_ORCHESTRATOR.registry?.models || {},
+        routing_rules: BRAIN_ORCHESTRATOR.registry?.routing_rules || {},
+        tick: ΩCLOCK.tick
+      });
+
+    case '/models/status':
+      return mx2_json({
+        ok: true,
+        ...BRAIN_ORCHESTRATOR.getStatus(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/models/route':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      const routeResult = await BRAIN_ORCHESTRATOR.route(
+        payload.prompt || '',
+        payload.options || {}
+      );
+      kuhulTick();
+      return mx2_json({
+        ok: !routeResult.error,
+        ...routeResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/models/infer':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      const modelId = payload.model || 'mistral_glyph';
+      const inferResult = await BRAIN_ORCHESTRATOR.executeModel(
+        modelId,
+        payload.prompt || '',
+        payload.options || {}
+      );
+
+      // Record interaction for learning
+      if (!inferResult.error) {
+        inferResult.interaction_id = BRAIN_ORCHESTRATOR.learner.recordInteraction(
+          payload.prompt,
+          inferResult.completion,
+          inferResult.source,
+          { model: modelId }
+        );
+      }
+
+      kuhulTick();
+      return mx2_json({
+        ok: !inferResult.error,
+        ...inferResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/models/reinforce':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      BRAIN_ORCHESTRATOR.reinforce(
+        payload.interaction_id,
+        payload.reward || 1.0
+      );
+      return mx2_json({
+        ok: true,
+        status: 'reinforced',
+        learning_stats: BRAIN_ORCHESTRATOR.learner.getStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/models/penalize':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      BRAIN_ORCHESTRATOR.penalize(
+        payload.interaction_id,
+        payload.penalty || 1.0
+      );
+      return mx2_json({
+        ok: true,
+        status: 'penalized',
+        learning_stats: BRAIN_ORCHESTRATOR.learner.getStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/models/knowledge/export':
+      return mx2_json({
+        ok: true,
+        knowledge: BRAIN_ORCHESTRATOR.exportKnowledge(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/models/knowledge/import':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      BRAIN_ORCHESTRATOR.importKnowledge(payload.knowledge || {});
+      return mx2_json({
+        ok: true,
+        status: 'imported',
+        learning_stats: BRAIN_ORCHESTRATOR.learner.getStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/models/api-key':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      BRAIN_ORCHESTRATOR.setApiKey(payload.provider, payload.api_key);
+      return mx2_json({
+        ok: true,
+        status: 'api_key_set',
+        provider: payload.provider,
+        tick: ΩCLOCK.tick
+      });
+
+    default:
+      return null;
+  }
+}
+
+// Add brain model routes to fetch handler
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+
+  if (url.origin !== self.location.origin) return;
+
+  if (BRAIN_MODEL_API_PATHS.has(url.pathname)) {
+    event.respondWith(handleBrainModelAPI(url, event.request));
+    return;
+  }
+});
+
+// Enhanced inference endpoint that uses brain orchestrator
+async function enhancedInferEndpoint(payload) {
+  // Use brain orchestrator for inference
+  const result = await BRAIN_ORCHESTRATOR.route(
+    payload.prompt || '',
+    {
+      temperature: payload.temperature || 0.7,
+      max_tokens: payload.max_tokens || 100,
+      mode: payload.mode || 'standard'
+    }
+  );
+
+  kuhulTick();
+
+  return {
+    status: 200,
+    data: {
+      ...result,
+      tokens_used: result.tokens_used || 0,
+      entropy: KERNEL_STATE.entropy,
+      tick: ΩCLOCK.tick,
+      learning_enabled: true,
+      quantum_state: '|Ψ⟩ = |BRAIN_ORCHESTRATED⟩⊗|LEARNING⟩'
+    }
+  };
+}
+
+/* ============================================================
+   CHAT INFERENCE & WEB LEARNING API
+   ============================================================ */
+
+// Chat inference API paths
+const CHAT_INFERENCE_API_PATHS = new Set([
+  '/chat', '/chat/learn', '/chat/stats', '/chat/export',
+  '/chat/glyph/query', '/chat/p2p/query', '/chat/p2p/sync',
+  '/chat/web/scrape', '/chat/codex/status'
+]);
+
+// Global chat inference coordinator
+let CHAT_COORDINATOR = null;
+
+// Initialize chat coordinator
+async function initChatCoordinator() {
+  if (!CHAT_COORDINATOR) {
+    // Ensure brain orchestrator is ready
+    if (!BRAIN_ORCHESTRATOR.ready) {
+      await BRAIN_ORCHESTRATOR.initialize();
+    }
+
+    CHAT_COORDINATOR = new ChatInferenceCoordinator(BRAIN_ORCHESTRATOR);
+    await CHAT_COORDINATOR.initialize();
+  }
+  return CHAT_COORDINATOR;
+}
+
+// Handle chat inference API requests
+async function handleChatInferenceAPI(url, request) {
+  const path = url.pathname;
+  const method = request.method;
+
+  // Initialize coordinator if needed
+  const coordinator = await initChatCoordinator();
+
+  let payload = {};
+  if (method === 'POST') {
+    try { payload = await request.json(); } catch (_) {}
+  }
+
+  switch (path) {
+    case '/chat':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+
+      const chatResult = await coordinator.chat(
+        payload.message || '',
+        {
+          learnFromWeb: payload.learn_from_web !== false,
+          useP2P: payload.use_p2p !== false,
+          mode: payload.mode || 'comprehensive'
+        }
+      );
+
+      kuhulTick();
+
+      return mx2_json({
+        ok: !chatResult.error,
+        ...chatResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/chat/learn':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+
+      const topics = payload.topics || [];
+      const learnResults = [];
+
+      for (const topic of topics) {
+        try {
+          const result = await coordinator.learnFromWeb(topic, payload.sources || ['wikipedia']);
+          learnResults.push({ topic, ...result });
+        } catch (e) {
+          learnResults.push({ topic, error: e.message });
+        }
+      }
+
+      return mx2_json({
+        ok: true,
+        learned: learnResults,
+        stats: coordinator.getStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/chat/stats':
+      return mx2_json({
+        ok: true,
+        stats: coordinator.getStats(),
+        codex_size: coordinator.glyphEngine?.decomposer?.codex ?
+          Object.keys(coordinator.glyphEngine.decomposer.codex.glyph_codex?.semantics?.nouns || {}).length : 0,
+        p2p_peers: coordinator.p2pNetwork?.peers?.size || 0,
+        learning_config: coordinator.webLearner?.config || {},
+        tick: ΩCLOCK.tick,
+        quantum_state: '|Ψ⟩ = |CHAT_READY⟩⊗|LEARNING⟩⊗|P2P_ACTIVE⟩'
+      });
+
+    case '/chat/export':
+      return mx2_json({
+        ok: true,
+        knowledge: coordinator.exportKnowledge(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/chat/glyph/query':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+
+      // Direct glyph query execution
+      const glyphResult = await coordinator.glyphEngine.infer(
+        payload.query || '',
+        { mode: payload.mode || 'glyph_only' }
+      );
+
+      return mx2_json({
+        ok: true,
+        ...glyphResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/chat/p2p/query':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+
+      // P2P knowledge query
+      const p2pResult = await coordinator.p2pNetwork.queryPeers(
+        payload.query_type || 'PATTERN_MATCH',
+        payload.pattern || ''
+      );
+
+      return mx2_json({
+        ok: true,
+        results: p2pResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/chat/p2p/sync':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+
+      // P2P knowledge sync
+      await coordinator.p2pNetwork.broadcastNewKnowledge(
+        payload.glyph || '',
+        payload.data || {}
+      );
+
+      return mx2_json({
+        ok: true,
+        status: 'broadcast_sent',
+        peers: coordinator.p2pNetwork.peers.size,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/chat/web/scrape':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+
+      // Web scrape for knowledge
+      const source = payload.source || 'wikipedia';
+      const scrapeResult = await coordinator.webLearner.scraper.scrape(
+        source,
+        payload.query || ''
+      );
+
+      return mx2_json({
+        ok: true,
+        source,
+        results: scrapeResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/chat/codex/status':
+      const codex = coordinator.glyphEngine?.decomposer?.codex;
+      return mx2_json({
+        ok: true,
+        loaded: !!codex,
+        primitives: codex?.glyph_codex?.primitives ? Object.keys(codex.glyph_codex.primitives) : [],
+        semantics: codex?.glyph_codex?.semantics ? Object.keys(codex.glyph_codex.semantics) : [],
+        control_flow: codex?.glyph_codex?.control_flow ? Object.keys(codex.glyph_codex.control_flow) : [],
+        pi_kuhul_engine: !!codex?.pi_kuhul_engine,
+        tick: ΩCLOCK.tick
+      });
+
+    default:
+      return null;
+  }
+}
+
+// Add chat inference routes to fetch handler
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+
+  if (url.origin !== self.location.origin) return;
+
+  if (CHAT_INFERENCE_API_PATHS.has(url.pathname)) {
+    event.respondWith(handleChatInferenceAPI(url, event.request));
+    return;
+  }
+});
+
+// Chat message handler
+self.addEventListener("message", async (event) => {
+  const msg = event.data || {};
+  const type = msg.type;
+
+  if (type === "chat.message") {
+    const coordinator = await initChatCoordinator();
+    const result = await coordinator.chat(msg.message || '', msg.options || {});
+    postBack(event.source, {
+      type: "chat.response",
+      ...result
+    });
+    return;
+  }
+
+  if (type === "chat.learn") {
+    const coordinator = await initChatCoordinator();
+    const result = await coordinator.learnFromWeb(msg.topic || '', msg.sources || ['wikipedia']);
+    postBack(event.source, {
+      type: "chat.learned",
+      ...result
+    });
+    return;
+  }
+
+  if (type === "chat.export") {
+    const coordinator = await initChatCoordinator();
+    postBack(event.source, {
+      type: "chat.knowledge",
+      knowledge: coordinator.exportKnowledge()
+    });
+    return;
+  }
+});
+
+/* ============================================================
+   ATOMIC BLOCK RUNTIME & GLYPH VM API
+   ============================================================ */
+
+// Global runtime instances
+let BLOCK_EXECUTOR = null;
+let GLYPH_VM = null;
+let GLYPH_REGISTRY = null;
+let PI_KUHUL = null;
+let P2P_NETWORK_INSTANCE = null;
+let GLYPH_CRYPTO = null;
+let NGRAM_BUILDER = null;
+let RLHF_ENGINE = null;
+let MEMORY_GLYPH_BRIDGE = null;
+
+// Initialize runtime components
+async function initRuntimeComponents() {
+  if (!BLOCK_EXECUTOR && typeof BlockExecutor !== 'undefined') {
+    GLYPH_VM = new GlyphVM();
+    BLOCK_EXECUTOR = new BlockExecutor(GLYPH_VM);
+  }
+  if (!GLYPH_REGISTRY && GLYPH_VM && typeof GlyphRegistry !== 'undefined') {
+    GLYPH_REGISTRY = new GlyphRegistry(GLYPH_VM);
+  }
+  if (!PI_KUHUL && typeof PiKUHUL !== 'undefined') {
+    PI_KUHUL = new PiKUHUL();
+  }
+  if (!GLYPH_CRYPTO && typeof GlyphCrypto !== 'undefined') {
+    GLYPH_CRYPTO = new GlyphCrypto();
+  }
+  if (!P2P_NETWORK_INSTANCE && typeof P2PGlyphNetwork !== 'undefined') {
+    P2P_NETWORK_INSTANCE = new P2PGlyphNetwork({ crypto: GLYPH_CRYPTO });
+  }
+  // Initialize AtomicBlockRuntime with all components
+  if (!ATOMIC_RUNTIME && typeof AtomicBlockRuntime !== 'undefined' && GLYPH_VM) {
+    ATOMIC_RUNTIME = new AtomicBlockRuntime({
+      glyphVM: GLYPH_VM,
+      piKuhul: PI_KUHUL,
+      mode: 'hybrid'
+    });
+  }
+  // Initialize RLHF N-gram Engine
+  if (!NGRAM_BUILDER && typeof NgramBuilder !== 'undefined') {
+    NGRAM_BUILDER = new NgramBuilder({ maxN: 5, minFreq: 2 });
+  }
+  if (!RLHF_ENGINE && typeof RLHFEngine !== 'undefined' && NGRAM_BUILDER) {
+    RLHF_ENGINE = new RLHFEngine({
+      ngramBuilder: NGRAM_BUILDER,
+      glyphVM: GLYPH_VM,
+      learningRate: 0.001
+    });
+  }
+  if (!MEMORY_GLYPH_BRIDGE && typeof MemoryGlyphBridge !== 'undefined' && RLHF_ENGINE) {
+    MEMORY_GLYPH_BRIDGE = new MemoryGlyphBridge({
+      rlhfEngine: RLHF_ENGINE,
+      glyphVM: GLYPH_VM,
+      glyphRegistry: GLYPH_REGISTRY
+    });
+  }
+  return {
+    blockExecutor: !!BLOCK_EXECUTOR,
+    glyphVM: !!GLYPH_VM,
+    glyphRegistry: !!GLYPH_REGISTRY,
+    piKuhul: !!PI_KUHUL,
+    atomicRuntime: !!ATOMIC_RUNTIME,
+    ngramBuilder: !!NGRAM_BUILDER,
+    rlhfEngine: !!RLHF_ENGINE,
+    memoryBridge: !!MEMORY_GLYPH_BRIDGE,
+    p2p: !!P2P_NETWORK_INSTANCE,
+    crypto: !!GLYPH_CRYPTO
+  };
+}
+
+// Global AtomicBlockRuntime instance
+let ATOMIC_RUNTIME = null;
+
+// Runtime API paths
+const RUNTIME_API_PATHS = new Set([
+  '/runtime/status', '/runtime/init',
+  '/vm/execute', '/vm/compile', '/vm/stats', '/vm/reset',
+  '/blocks/execute', '/blocks/register', '/blocks/list',
+  '/p2p/status', '/p2p/peers', '/p2p/glyph/share', '/p2p/glyph/query',
+  '/crypto/encrypt', '/crypto/decrypt', '/crypto/hash', '/crypto/status',
+  // GlyphRegistry API
+  '/registry/list', '/registry/register', '/registry/unregister',
+  '/registry/compose', '/registry/alias', '/registry/meta-rule',
+  // PiKUHUL API
+  '/pi-kuhul/wave', '/pi-kuhul/scale', '/pi-kuhul/fractal',
+  '/pi-kuhul/spiral', '/pi-kuhul/compress', '/pi-kuhul/fibonacci',
+  // AtomicBlockRuntime API (unified Block+GlyphVM execution)
+  '/atomic/execute', '/atomic/register', '/atomic/map',
+  '/atomic/stats', '/atomic/trace', '/atomic/compile',
+  // RLHF & N-gram API
+  '/rlhf/process', '/rlhf/reinforce', '/rlhf/penalize', '/rlhf/metrics',
+  '/ngrams/snapshot', '/ngrams/ingest', '/ngrams/compress', '/ngrams/top',
+  // Claude Artifact Ingestion
+  '/artifact/ingest', '/artifact/list'
+]);
+
+// Handle runtime API requests
+async function handleRuntimeAPI(url, request) {
+  const path = url.pathname;
+  const method = request.method;
+
+  // Initialize components if needed
+  await initRuntimeComponents();
+
+  let payload = {};
+  if (method === 'POST') {
+    try { payload = await request.json(); } catch (_) {}
+  }
+
+  switch (path) {
+    // Runtime status
+    case '/runtime/status':
+      return mx2_json({
+        ok: true,
+        components: {
+          blockExecutor: !!BLOCK_EXECUTOR,
+          glyphVM: !!GLYPH_VM,
+          glyphRegistry: !!GLYPH_REGISTRY,
+          piKuhul: !!PI_KUHUL,
+          p2pNetwork: !!P2P_NETWORK_INSTANCE,
+          crypto: GLYPH_CRYPTO?.isSupported() || false
+        },
+        vmStats: GLYPH_VM?.getStats() || null,
+        registryStats: GLYPH_REGISTRY?.list() || null,
+        piKuhulConstants: PI_KUHUL ? { pi: PI_KUHUL.PI, phi: PI_KUHUL.PHI, tau: PI_KUHUL.TAU } : null,
+        p2pStats: P2P_NETWORK_INSTANCE?.getStats() || null,
+        cryptoStatus: GLYPH_CRYPTO?.getSecurityStatus() || null,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/runtime/init':
+      const initResult = await initRuntimeComponents();
+      return mx2_json({ ok: true, initialized: initResult, tick: ΩCLOCK.tick });
+
+    // GlyphVM endpoints
+    case '/vm/execute':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_VM) return mx2_json({ error: 'vm_not_initialized' }, 500);
+
+      const vmResult = GLYPH_VM.execute(payload.bytecode || '');
+      kuhulTick();
+      return mx2_json({ ok: true, ...vmResult, tick: ΩCLOCK.tick });
+
+    case '/vm/compile':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+
+      const compiler = new GlyphCompiler();
+      const bytecode = compiler.compile(payload.expression || '');
+      return mx2_json({ ok: true, bytecode, expression: payload.expression, tick: ΩCLOCK.tick });
+
+    case '/vm/stats':
+      return mx2_json({ ok: true, stats: GLYPH_VM?.getStats() || {}, tick: ΩCLOCK.tick });
+
+    case '/vm/reset':
+      if (GLYPH_VM) GLYPH_VM.reset();
+      return mx2_json({ ok: true, reset: true, tick: ΩCLOCK.tick });
+
+    // Block executor endpoints
+    case '/blocks/execute':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!BLOCK_EXECUTOR) return mx2_json({ error: 'executor_not_initialized' }, 500);
+
+      try {
+        const blockResult = BLOCK_EXECUTOR.execute(payload.block || {});
+        kuhulTick();
+        return mx2_json({ ok: true, result: blockResult, tick: ΩCLOCK.tick });
+      } catch (e) {
+        return mx2_json({ ok: false, error: e.message, tick: ΩCLOCK.tick });
+      }
+
+    case '/blocks/register':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!BLOCK_EXECUTOR) return mx2_json({ error: 'executor_not_initialized' }, 500);
+
+      BLOCK_EXECUTOR.registerBlock(payload.id, payload.block);
+      return mx2_json({ ok: true, registered: payload.id, tick: ΩCLOCK.tick });
+
+    case '/blocks/list':
+      return mx2_json({
+        ok: true,
+        blocks: BLOCK_EXECUTOR ? Array.from(BLOCK_EXECUTOR.blocks.keys()) : [],
+        stats: BLOCK_EXECUTOR?.getStats() || {},
+        tick: ΩCLOCK.tick
+      });
+
+    // P2P Network endpoints
+    case '/p2p/status':
+      return mx2_json({
+        ok: true,
+        stats: P2P_NETWORK_INSTANCE?.getStats() || {},
+        tick: ΩCLOCK.tick
+      });
+
+    case '/p2p/peers':
+      return mx2_json({
+        ok: true,
+        peers: P2P_NETWORK_INSTANCE?.getConnectedPeers() || [],
+        tick: ΩCLOCK.tick
+      });
+
+    case '/p2p/glyph/share':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!P2P_NETWORK_INSTANCE) return mx2_json({ error: 'p2p_not_initialized' }, 500);
+
+      await P2P_NETWORK_INSTANCE.broadcastGlyph(payload.glyph, payload.data, payload.metadata || {});
+      return mx2_json({ ok: true, shared: payload.glyph, tick: ΩCLOCK.tick });
+
+    case '/p2p/glyph/query':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!P2P_NETWORK_INSTANCE) return mx2_json({ error: 'p2p_not_initialized' }, 500);
+
+      const queryResult = await P2P_NETWORK_INSTANCE.queryGlyph(payload.glyph, payload.options || {});
+      return mx2_json({ ok: true, result: queryResult, tick: ΩCLOCK.tick });
+
+    // Crypto endpoints
+    case '/crypto/status':
+      return mx2_json({
+        ok: true,
+        status: GLYPH_CRYPTO?.getSecurityStatus() || { supported: false },
+        tick: ΩCLOCK.tick
+      });
+
+    case '/crypto/encrypt':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_CRYPTO) return mx2_json({ error: 'crypto_not_initialized' }, 500);
+
+      try {
+        const encrypted = await GLYPH_CRYPTO.encryptWithPassword(payload.data, payload.password);
+        return mx2_json({ ok: true, encrypted, tick: ΩCLOCK.tick });
+      } catch (e) {
+        return mx2_json({ ok: false, error: e.message, tick: ΩCLOCK.tick });
+      }
+
+    case '/crypto/decrypt':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_CRYPTO) return mx2_json({ error: 'crypto_not_initialized' }, 500);
+
+      try {
+        const decrypted = await GLYPH_CRYPTO.decryptWithPassword(payload.encrypted, payload.password);
+        return mx2_json({ ok: true, decrypted, tick: ΩCLOCK.tick });
+      } catch (e) {
+        return mx2_json({ ok: false, error: e.message, tick: ΩCLOCK.tick });
+      }
+
+    case '/crypto/hash':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_CRYPTO) return mx2_json({ error: 'crypto_not_initialized' }, 500);
+
+      const hash = await GLYPH_CRYPTO.hash(payload.data);
+      return mx2_json({ ok: true, hash, tick: ΩCLOCK.tick });
+
+    // GlyphRegistry endpoints
+    case '/registry/list':
+      return mx2_json({
+        ok: true,
+        registry: GLYPH_REGISTRY?.list() || {},
+        tick: ΩCLOCK.tick
+      });
+
+    case '/registry/register':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_REGISTRY) return mx2_json({ error: 'registry_not_initialized' }, 500);
+
+      try {
+        // Note: Dynamic function creation from string - only for controlled internal use
+        const handler = new Function('vm', payload.handler || 'vm.push(0)');
+        GLYPH_REGISTRY.register(payload.glyph, handler, payload.metadata || {});
+        return mx2_json({ ok: true, registered: payload.glyph, tick: ΩCLOCK.tick });
+      } catch (e) {
+        return mx2_json({ ok: false, error: e.message, tick: ΩCLOCK.tick });
+      }
+
+    case '/registry/unregister':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_REGISTRY) return mx2_json({ error: 'registry_not_initialized' }, 500);
+
+      GLYPH_REGISTRY.unregister(payload.glyph);
+      return mx2_json({ ok: true, unregistered: payload.glyph, tick: ΩCLOCK.tick });
+
+    case '/registry/compose':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_REGISTRY) return mx2_json({ error: 'registry_not_initialized' }, 500);
+
+      GLYPH_REGISTRY.compose(payload.glyph, payload.sequence || [], payload.metadata || {});
+      return mx2_json({ ok: true, composed: payload.glyph, sequence: payload.sequence, tick: ΩCLOCK.tick });
+
+    case '/registry/alias':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_REGISTRY) return mx2_json({ error: 'registry_not_initialized' }, 500);
+
+      GLYPH_REGISTRY.alias(payload.newGlyph, payload.existingGlyph);
+      return mx2_json({ ok: true, alias: payload.newGlyph, target: payload.existingGlyph, tick: ΩCLOCK.tick });
+
+    case '/registry/meta-rule':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!GLYPH_REGISTRY) return mx2_json({ error: 'registry_not_initialized' }, 500);
+
+      try {
+        const condition = new Function('vm', payload.condition || 'return false');
+        const transform = new Function('vm', 'registry', payload.transform || '');
+        const ruleId = GLYPH_REGISTRY.addMetaRule({
+          condition,
+          transform,
+          priority: payload.priority || 0
+        });
+        return mx2_json({ ok: true, ruleId, tick: ΩCLOCK.tick });
+      } catch (e) {
+        return mx2_json({ ok: false, error: e.message, tick: ΩCLOCK.tick });
+      }
+
+    // PiKUHUL Math Law endpoints
+    case '/pi-kuhul/wave':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!PI_KUHUL) return mx2_json({ error: 'pi_kuhul_not_initialized' }, 500);
+
+      const waveResult = PI_KUHUL.wave(payload.x || 0);
+      return mx2_json({ ok: true, input: payload.x, result: waveResult, tick: ΩCLOCK.tick });
+
+    case '/pi-kuhul/scale':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!PI_KUHUL) return mx2_json({ error: 'pi_kuhul_not_initialized' }, 500);
+
+      const scaleResult = PI_KUHUL.scale(payload.x || 0);
+      return mx2_json({ ok: true, input: payload.x, result: scaleResult, phi: PI_KUHUL.PHI, tick: ΩCLOCK.tick });
+
+    case '/pi-kuhul/fractal':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!PI_KUHUL) return mx2_json({ error: 'pi_kuhul_not_initialized' }, 500);
+
+      const fractalFn = payload.fn === 'golden' ? (x) => x * PI_KUHUL.PHI : (x) => Math.sin(Math.PI * x);
+      const fractalResult = PI_KUHUL.fractal(payload.n || 5, fractalFn, payload.initial || 1);
+      return mx2_json({ ok: true, iterations: payload.n, result: fractalResult, tick: ΩCLOCK.tick });
+
+    case '/pi-kuhul/spiral':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!PI_KUHUL) return mx2_json({ error: 'pi_kuhul_not_initialized' }, 500);
+
+      const spiralPoint = PI_KUHUL.spiral(payload.theta || 0);
+      return mx2_json({ ok: true, theta: payload.theta, point: spiralPoint, tick: ΩCLOCK.tick });
+
+    case '/pi-kuhul/compress':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!PI_KUHUL) return mx2_json({ error: 'pi_kuhul_not_initialized' }, 500);
+
+      const compressed = PI_KUHUL.compress(payload.x || 0);
+      return mx2_json({ ok: true, input: payload.x, compressed, tick: ΩCLOCK.tick });
+
+    case '/pi-kuhul/fibonacci':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!PI_KUHUL) return mx2_json({ error: 'pi_kuhul_not_initialized' }, 500);
+
+      const fibSeq = PI_KUHUL.fibonacci(Math.min(payload.n || 10, 100)); // Limit to 100
+      const isFib = payload.check !== undefined ? PI_KUHUL.isFibonacci(payload.check) : null;
+      return mx2_json({ ok: true, n: payload.n, sequence: fibSeq, isFibonacci: isFib, tick: ΩCLOCK.tick });
+
+    // AtomicBlockRuntime endpoints (unified Block + GlyphVM execution)
+    case '/atomic/execute':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!ATOMIC_RUNTIME) return mx2_json({ error: 'atomic_runtime_not_initialized' }, 500);
+
+      try {
+        const atomicResult = await ATOMIC_RUNTIME.executeBlock(payload.block, payload.inputs || {});
+        kuhulTick();
+        return mx2_json({ ok: true, result: atomicResult, tick: ΩCLOCK.tick });
+      } catch (e) {
+        return mx2_json({ ok: false, error: e.message, tick: ΩCLOCK.tick });
+      }
+
+    case '/atomic/register':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!ATOMIC_RUNTIME) return mx2_json({ error: 'atomic_runtime_not_initialized' }, 500);
+
+      ATOMIC_RUNTIME.registerBlock(payload.block);
+      return mx2_json({ ok: true, registered: payload.block['@id'] || payload.block.id, tick: ΩCLOCK.tick });
+
+    case '/atomic/map':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!ATOMIC_RUNTIME) return mx2_json({ error: 'atomic_runtime_not_initialized' }, 500);
+
+      const mapping = ATOMIC_RUNTIME.mapper.blockToGlyphs(payload.block, payload.inputs || {});
+      return mx2_json({ ok: true, mapping, tick: ΩCLOCK.tick });
+
+    case '/atomic/compile':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!ATOMIC_RUNTIME) return mx2_json({ error: 'atomic_runtime_not_initialized' }, 500);
+
+      const compiledBytecode = ATOMIC_RUNTIME.compile(payload.expression || '');
+      return mx2_json({ ok: true, bytecode: compiledBytecode, expression: payload.expression, tick: ΩCLOCK.tick });
+
+    case '/atomic/stats':
+      return mx2_json({
+        ok: true,
+        stats: ATOMIC_RUNTIME?.getStats() || {},
+        mappings: ATOMIC_RUNTIME?.mapper?.getAvailableMappings() || {},
+        tick: ΩCLOCK.tick
+      });
+
+    case '/atomic/trace':
+      return mx2_json({
+        ok: true,
+        trace: ATOMIC_RUNTIME?.getTrace() || {},
+        tick: ΩCLOCK.tick
+      });
+
+    // RLHF & N-gram endpoints
+    case '/rlhf/process':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!MEMORY_GLYPH_BRIDGE) return mx2_json({ error: 'rlhf_not_initialized' }, 500);
+
+      const processResult = MEMORY_GLYPH_BRIDGE.process(payload.input || '', payload.context || {});
+      kuhulTick();
+      return mx2_json({ ok: true, interaction: processResult, tick: ΩCLOCK.tick });
+
+    case '/rlhf/reinforce':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!RLHF_ENGINE) return mx2_json({ error: 'rlhf_not_initialized' }, 500);
+
+      const reinforceResult = RLHF_ENGINE.reinforce(
+        payload.interactionId,
+        payload.reward || 1,
+        payload.depth || 3
+      );
+      return mx2_json({ ok: true, ...reinforceResult, tick: ΩCLOCK.tick });
+
+    case '/rlhf/penalize':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!RLHF_ENGINE) return mx2_json({ error: 'rlhf_not_initialized' }, 500);
+
+      const penalizeResult = RLHF_ENGINE.penalize(
+        payload.interactionId,
+        payload.penalty || 1,
+        payload.depth || 2
+      );
+      return mx2_json({ ok: true, ...penalizeResult, tick: ΩCLOCK.tick });
+
+    case '/rlhf/metrics':
+      return mx2_json({
+        ok: true,
+        metrics: RLHF_ENGINE?.getMetrics() || {},
+        interactions: RLHF_ENGINE?.getInteractions(20) || [],
+        tick: ΩCLOCK.tick
+      });
+
+    case '/ngrams/snapshot':
+      return mx2_json({
+        ok: true,
+        snapshot: NGRAM_BUILDER?.getSnapshot() || {},
+        tick: ΩCLOCK.tick
+      });
+
+    case '/ngrams/ingest':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!NGRAM_BUILDER) return mx2_json({ error: 'ngram_not_initialized' }, 500);
+
+      const ingestResult = NGRAM_BUILDER.ingest(payload.text || '', payload.metadata || {});
+      return mx2_json({ ok: true, ...ingestResult, tick: ΩCLOCK.tick });
+
+    case '/ngrams/compress':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!NGRAM_BUILDER) return mx2_json({ error: 'ngram_not_initialized' }, 500);
+
+      const compressResult = NGRAM_BUILDER.compress(payload.text || '');
+      return mx2_json({ ok: true, ...compressResult, tick: ΩCLOCK.tick });
+
+    case '/ngrams/top':
+      const ngramOrder = parseInt(payload.n) || 2;
+      const limit = parseInt(payload.limit) || 50;
+      return mx2_json({
+        ok: true,
+        n: ngramOrder,
+        top: NGRAM_BUILDER?.getTopNgrams(ngramOrder, limit) || [],
+        tick: ΩCLOCK.tick
+      });
+
+    // Claude Artifact Ingestion endpoints
+    case '/artifact/ingest':
+      if (method !== 'POST') return mx2_json({ error: 'method_not_allowed' }, 405);
+      if (!MEMORY_GLYPH_BRIDGE) return mx2_json({ error: 'bridge_not_initialized' }, 500);
+
+      try {
+        const artifact = payload.artifact || {};
+        const artifactContent = artifact.content || artifact.code || artifact.text || '';
+        const artifactType = artifact.type || 'unknown';
+        const artifactId = artifact.id || `artifact_${Date.now()}`;
+
+        // Ingest artifact content into n-gram memory
+        const ingested = MEMORY_GLYPH_BRIDGE.process(artifactContent, {
+          source: 'claude_artifact',
+          type: artifactType,
+          id: artifactId,
+          title: artifact.title || '',
+          language: artifact.language || ''
+        });
+
+        // Store artifact metadata in ASX RAM
+        KERNEL_STATE.artifacts = KERNEL_STATE.artifacts || [];
+        KERNEL_STATE.artifacts.push({
+          id: artifactId,
+          type: artifactType,
+          title: artifact.title,
+          language: artifact.language,
+          contentLength: artifactContent.length,
+          interactionId: ingested.id,
+          timestamp: Date.now()
+        });
+
+        kuhulTick();
+        return mx2_json({
+          ok: true,
+          artifactId,
+          ingested: true,
+          interaction: ingested,
+          glyphsCreated: ingested.glyphs?.length || 0,
+          tick: ΩCLOCK.tick
+        });
+      } catch (e) {
+        return mx2_json({ ok: false, error: e.message, tick: ΩCLOCK.tick });
+      }
+
+    case '/artifact/list':
+      return mx2_json({
+        ok: true,
+        artifacts: (KERNEL_STATE.artifacts || []).slice(-100),
+        total: (KERNEL_STATE.artifacts || []).length,
+        tick: ΩCLOCK.tick
+      });
+
+    default:
+      return null;
+  }
+}
+
+// Add runtime routes to fetch handler
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
+  if (RUNTIME_API_PATHS.has(url.pathname)) {
+    event.respondWith(handleRuntimeAPI(url, event.request));
+    return;
+  }
+});
+
+// Runtime message handlers
+self.addEventListener("message", async (event) => {
+  const msg = event.data || {};
+  const type = msg.type;
+
+  if (type === "runtime.init") {
+    const result = await initRuntimeComponents();
+    postBack(event.source, { type: "runtime.initialized", ...result });
+    return;
+  }
+
+  if (type === "vm.execute") {
+    await initRuntimeComponents();
+    const result = GLYPH_VM.execute(msg.bytecode || '');
+    postBack(event.source, { type: "vm.result", ...result });
+    return;
+  }
+
+  if (type === "blocks.execute") {
+    await initRuntimeComponents();
+    try {
+      const result = BLOCK_EXECUTOR.execute(msg.block || {});
+      postBack(event.source, { type: "blocks.result", result });
+    } catch (e) {
+      postBack(event.source, { type: "blocks.error", error: e.message });
+    }
+    return;
+  }
+});
+
+/* ============================================================
+   RESEARCH, SCXQ2, AND MODEL ADAPTER API
+   ============================================================ */
+
+// Extended API paths for new components
+const EXTENDED_API_PATHS = new Set([
+  '/research/arxiv/search', '/research/arxiv/paper', '/research/arxiv/pi-kuhul',
+  '/scxq2/encode', '/scxq2/decode', '/scxq2/verify',
+  '/adapters/janus/infer', '/adapters/janus/image-to-text', '/adapters/janus/text-to-image',
+  '/adapters/deepseek/infer', '/adapters/deepseek/route',
+  '/providers/list', '/providers/configure', '/providers/request',
+  // GlyphVM & K'UHUL Pipeline
+  '/glyph/execute', '/glyph/compile', '/glyph/metrics', '/glyph/vm/status',
+  '/brain/pipeline', '/brain/infer',
+  // XCFE Transform Pipeline
+  '/xcfe/tokenize', '/xcfe/parse', '/xcfe/transform', '/xcfe/optimize', '/xcfe/pipeline',
+  // SCXQ2 Compression (enhanced)
+  '/scxq2/compress', '/scxq2/decompress', '/scxq2/dict',
+  // Qwen-ASX (base training format)
+  '/qwen-asx/infer', '/qwen-asx/test', '/qwen-asx/status',
+  '/qwen-asx/training/record', '/qwen-asx/training/emit-delta',
+  '/qwen-asx/trace',
+  // SQL API (IndexedDB query interface)
+  '/sql/query', '/sql/execute', '/sql/parse', '/sql/tables', '/sql/schema',
+  // IDB Storage API (K'UHUL-integrated IndexedDB)
+  '/idb/tensor/store', '/idb/tensor/load', '/idb/tensor/query', '/idb/tensor/delete',
+  '/idb/rlhf/store', '/idb/rlhf/query', '/idb/rlhf/aggregate',
+  '/idb/events/store', '/idb/events/query',
+  '/idb/vocab/store', '/idb/vocab/load',
+  '/idb/weights/store', '/idb/weights/load',
+  '/idb/trace/store', '/idb/trace/query',
+  '/idb/delta/store', '/idb/delta/pending', '/idb/delta/apply',
+  '/idb/cache/set', '/idb/cache/get', '/idb/cache/prune',
+  '/idb/stats', '/idb/clear',
+  '/idb/compress', '/idb/decompress',
+  // KQL (K'UHUL Query Language) API
+  '/kql/query', '/kql/parse', '/kql/tokenize', '/kql/execute', '/kql/validate',
+  '/kql/version', '/kql/schema'
+]);
+
+// Handle extended API requests
+async function handleExtendedAPI(url, request) {
+  const path = url.pathname;
+  const method = request.method;
+
+  // Initialize new components
+  initNewComponents();
+
+  let payload = {};
+  if (method === 'POST') {
+    try { payload = await request.json(); } catch (_) {}
+  }
+
+  switch (path) {
+    // ===== ArXiv Research API =====
+    case '/research/arxiv/search':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!ARXIV_FETCHER) {
+        return mx2_json({ error: 'arxiv_fetcher_not_initialized' }, 500);
+      }
+      const searchResults = await ARXIV_FETCHER.fetchPapers(
+        payload.query || '',
+        { maxResults: payload.maxResults || 10 }
+      );
+      kuhulTick();
+      return mx2_json({
+        ok: !searchResults.error,
+        papers: searchResults.error ? [] : searchResults,
+        error: searchResults.error,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/research/arxiv/paper':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!ARXIV_FETCHER) {
+        return mx2_json({ error: 'arxiv_fetcher_not_initialized' }, 500);
+      }
+      const paper = await ARXIV_FETCHER.getPaperById(payload.arxiv_id || '');
+      return mx2_json({
+        ok: !!paper,
+        paper: paper,
+        ingestFormat: paper ? ARXIV_FETCHER.paperToIngestFormat(paper) : null,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/research/arxiv/pi-kuhul':
+      if (!ARXIV_FETCHER) {
+        return mx2_json({ error: 'arxiv_fetcher_not_initialized' }, 500);
+      }
+      const piKuhulPapers = await ARXIV_FETCHER.searchPiKuhulPapers();
+      return mx2_json({
+        ok: true,
+        papers: piKuhulPapers,
+        stats: ARXIV_FETCHER.getStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    // ===== SCXQ2/CC-v1 API =====
+    case '/scxq2/encode':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!SCXQ2_ENCODER) {
+        return mx2_json({ error: 'scxq2_encoder_not_initialized' }, 500);
+      }
+      const encoded = SCXQ2_ENCODER.encode(payload.data || {}, payload.options || {});
+      kuhulTick();
+      return mx2_json({
+        ok: true,
+        stream: encoded.stream,
+        proof: encoded.proof,
+        audit: encoded.audit,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/scxq2/decode':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!SCXQ2_ENCODER) {
+        return mx2_json({ error: 'scxq2_encoder_not_initialized' }, 500);
+      }
+      const decoded = SCXQ2_ENCODER.decode(payload.stream || {});
+      return mx2_json({
+        ok: true,
+        decoded: decoded,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/scxq2/verify':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!SCXQ2_ENCODER) {
+        return mx2_json({ error: 'scxq2_encoder_not_initialized' }, 500);
+      }
+      const verifyResult = SCXQ2_ENCODER.verify(
+        payload.input || {},
+        payload.output || {},
+        payload.proof || {}
+      );
+      return mx2_json({
+        ...verifyResult,
+        tick: ΩCLOCK.tick
+      });
+
+    // ===== GlyphVM & K'UHUL Pipeline API =====
+    case '/glyph/execute':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        // Execute K'UHUL script via brain pipeline
+        const glyphResult = executeBrainPipeline(
+          {
+            script: payload.script || '',
+            env: payload.env || {},
+            labels: payload.labels || {}
+          },
+          {
+            includeTrace: payload.includeTrace || false,
+            includeProgram: payload.includeProgram || false
+          }
+        );
+        kuhulTick();
+        return mx2_json({
+          ok: true,
+          ...glyphResult,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({
+          ok: false,
+          error: err.message,
+          tick: ΩCLOCK.tick
+        }, 500);
+      }
+
+    case '/glyph/compile':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const vm = new GlyphVM();
+        const compiled = vm.compileKUHUL(payload.script || '');
+        return mx2_json({
+          ok: true,
+          program: compiled.program,
+          labels: compiled.labels,
+          instructionCount: compiled.program.length,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({
+          ok: false,
+          error: err.message,
+          tick: ΩCLOCK.tick
+        }, 500);
+      }
+
+    case '/glyph/metrics':
+      return mx2_json({
+        ok: true,
+        metrics: getAllMetricStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/glyph/vm/status':
+      return mx2_json({
+        ok: true,
+        opcodes: Object.keys(new GlyphVM().opcodes).length,
+        kuhulOpcodes: ['⟁', '⊕', '⊗', '→', '⤈', '⨁', '⨂', '🛑'],
+        metricTypes: Object.keys(PI_METRIC_TABLE),
+        version: 'GlyphVM.v2.0.0-KUHUL',
+        tick: ΩCLOCK.tick
+      });
+
+    case '/brain/pipeline':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const pipelineResult = executeBrainPipeline(
+          payload.input || payload.script || '',
+          {
+            includeTrace: true,
+            includeProgram: true
+          }
+        );
+        kuhulTick();
+        return mx2_json({
+          ok: true,
+          ...pipelineResult,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({
+          ok: false,
+          error: err.message,
+          tick: ΩCLOCK.tick
+        }, 500);
+      }
+
+    case '/brain/infer':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const inferResult = kuhulInfer(
+          payload.script || payload.input || '',
+          payload.env || {}
+        );
+        kuhulTick();
+        return mx2_json({
+          ok: true,
+          result: inferResult,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({
+          ok: false,
+          error: err.message,
+          tick: ΩCLOCK.tick
+        }, 500);
+      }
+
+    // ===== XCFE Transform Pipeline API =====
+    case '/xcfe/tokenize':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const tokens = xjsonTokenize(payload.source || '');
+        return mx2_json({
+          ok: true,
+          tokens,
+          count: tokens.length,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({ ok: false, error: err.message }, 500);
+      }
+
+    case '/xcfe/parse':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const { ast, errors } = xjsonParse(payload.source || '');
+        return mx2_json({
+          ok: errors.length === 0,
+          ast: ast?.toJSON(),
+          errors,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({ ok: false, error: err.message }, 500);
+      }
+
+    case '/xcfe/transform':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const { ast } = xjsonParse(payload.source || '');
+        const rules = (payload.rules || []).map(r =>
+          new TransformRule(r.name, r.pattern, eval(`(${r.transform})`), r.options)
+        );
+        const result = xcfeTransform(ast, rules);
+        return mx2_json({
+          ok: true,
+          ast: result.ast?.toJSON(),
+          metrics: result.metrics,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({ ok: false, error: err.message }, 500);
+      }
+
+    case '/xcfe/optimize':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const { ast } = xjsonParse(payload.source || '');
+        const result = xcfeOptimize(ast, payload.options || {});
+        return mx2_json({
+          ok: true,
+          ast: result.ast?.toJSON(),
+          metrics: result.metrics,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({ ok: false, error: err.message }, 500);
+      }
+
+    case '/xcfe/pipeline':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const result = xcfePipeline(payload.source || '', payload.options || {});
+        kuhulTick();
+        return mx2_json({
+          ...result,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({ ok: false, error: err.message }, 500);
+      }
+
+    // ===== SCXQ2 Compression API (Enhanced) =====
+    case '/scxq2/compress':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const compressed = scxq2Compress(payload.data || payload.source || '', payload.options || {});
+        kuhulTick();
+        return mx2_json({
+          ok: true,
+          ...compressed,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({ ok: false, error: err.message }, 500);
+      }
+
+    case '/scxq2/decompress':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const decompressed = scxq2Decompress(payload.compressed || {});
+        return mx2_json({
+          ok: true,
+          data: decompressed,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({ ok: false, error: err.message }, 500);
+      }
+
+    case '/scxq2/dict':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const dict = scxq2BuildDict(payload.data || payload.source || '');
+        return mx2_json({
+          ok: true,
+          dict,
+          size: Object.keys(dict).length,
+          tick: ΩCLOCK.tick
+        });
+      } catch (err) {
+        return mx2_json({ ok: false, error: err.message }, 500);
+      }
+
+    // ===== Janus Adapter API =====
+    case '/adapters/janus/infer':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!JANUS_ADAPTER) {
+        return mx2_json({ error: 'janus_adapter_not_initialized' }, 500);
+      }
+      const janusResult = await JANUS_ADAPTER.processXCFE(payload, payload.mode || 'chat');
+      kuhulTick();
+      return mx2_json({
+        ok: !janusResult.error,
+        ...janusResult,
+        xcfeAst: JANUS_ADAPTER.buildXcfeAst(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/adapters/janus/image-to-text':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!JANUS_ADAPTER) {
+        return mx2_json({ error: 'janus_adapter_not_initialized' }, 500);
+      }
+      const i2tResult = await JANUS_ADAPTER.imageToText({
+        image: payload.image,
+        prompt: payload.prompt,
+        options: payload.options || {}
+      });
+      kuhulTick();
+      return mx2_json({
+        ok: !i2tResult.error,
+        ...i2tResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/adapters/janus/text-to-image':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!JANUS_ADAPTER) {
+        return mx2_json({ error: 'janus_adapter_not_initialized' }, 500);
+      }
+      const t2iResult = await JANUS_ADAPTER.textToImage({
+        prompt: payload.prompt,
+        options: payload.options || {}
+      });
+      kuhulTick();
+      return mx2_json({
+        ok: !t2iResult.error,
+        ...t2iResult,
+        tick: ΩCLOCK.tick
+      });
+
+    // ===== Deepseek Adapter API =====
+    case '/adapters/deepseek/infer':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!DEEPSEEK_ADAPTER) {
+        return mx2_json({ error: 'deepseek_adapter_not_initialized' }, 500);
+      }
+      const dsResult = await DEEPSEEK_ADAPTER.infer(payload.prompt || '', payload.mode || 'reasoning');
+      kuhulTick();
+      return mx2_json({
+        ok: !dsResult.error,
+        ...dsResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/adapters/deepseek/route':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!DEEPSEEK_ADAPTER) {
+        return mx2_json({ error: 'deepseek_adapter_not_initialized' }, 500);
+      }
+      const routeResult = DEEPSEEK_ADAPTER.routeToExperts(payload.value || 0);
+      return mx2_json({
+        ok: true,
+        ...routeResult,
+        stats: DEEPSEEK_ADAPTER.getStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    // ===== Model Providers API =====
+    case '/providers/list':
+      if (!MODEL_PROVIDER_MANAGER) {
+        return mx2_json({ error: 'provider_manager_not_initialized' }, 500);
+      }
+      return mx2_json({
+        ok: true,
+        providers: MODEL_PROVIDER_MANAGER.getStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/providers/configure':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!MODEL_PROVIDER_MANAGER) {
+        return mx2_json({ error: 'provider_manager_not_initialized' }, 500);
+      }
+      MODEL_PROVIDER_MANAGER.initializeFromConfig(payload.config || {});
+      return mx2_json({
+        ok: true,
+        providers: MODEL_PROVIDER_MANAGER.getStats(),
+        tick: ΩCLOCK.tick
+      });
+
+    case '/providers/request':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (!MODEL_PROVIDER_MANAGER) {
+        return mx2_json({ error: 'provider_manager_not_initialized' }, 500);
+      }
+      const providerResult = await MODEL_PROVIDER_MANAGER.request(
+        payload.messages || [],
+        payload.options || {}
+      );
+      kuhulTick();
+      return mx2_json({
+        ok: !providerResult.error,
+        ...providerResult,
+        tick: ΩCLOCK.tick
+      });
+
+    // ===== Qwen-ASX API (Base Training Format) =====
+    case '/qwen-asx/infer':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (typeof KUHUL_KERNEL === 'undefined') {
+        return mx2_json({ error: 'kuhul_kernel_not_loaded' }, 500);
+      }
+      const qwenInferResult = await KUHUL_KERNEL.exec({
+        route: 'model.infer',
+        input_ids: payload.input_ids || []
+      });
+      kuhulTick();
+      return mx2_json({
+        ok: !qwenInferResult.error,
+        ...qwenInferResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/qwen-asx/test':
+      if (typeof KUHUL_KERNEL === 'undefined') {
+        return mx2_json({ error: 'kuhul_kernel_not_loaded' }, 500);
+      }
+      const qwenTestResult = await KUHUL_KERNEL.exec({ route: 'model.test' });
+      return mx2_json({
+        ...qwenTestResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/qwen-asx/status':
+      if (typeof KUHUL_KERNEL === 'undefined') {
+        return mx2_json({ error: 'kuhul_kernel_not_loaded' }, 500);
+      }
+      const qwenStatus = await KUHUL_KERNEL.exec({ route: 'model.status' });
+      return mx2_json({
+        ok: true,
+        ...qwenStatus,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/qwen-asx/training/record':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (typeof KUHUL_KERNEL === 'undefined') {
+        return mx2_json({ error: 'kuhul_kernel_not_loaded' }, 500);
+      }
+      const recordResult = await KUHUL_KERNEL.exec({
+        route: 'training.record',
+        input: payload.input,
+        output: payload.output,
+        reward: payload.reward || 0
+      });
+      return mx2_json({
+        ok: true,
+        ...recordResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/qwen-asx/training/emit-delta':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      if (typeof KUHUL_KERNEL === 'undefined') {
+        return mx2_json({ error: 'kuhul_kernel_not_loaded' }, 500);
+      }
+      const deltaResult = await KUHUL_KERNEL.exec({ route: 'training.emit_delta' });
+      kuhulTick();
+      return mx2_json({
+        ok: deltaResult.applied,
+        ...deltaResult,
+        tick: ΩCLOCK.tick
+      });
+
+    case '/qwen-asx/trace':
+      if (typeof KUHUL_KERNEL === 'undefined') {
+        return mx2_json({ error: 'kuhul_kernel_not_loaded' }, 500);
+      }
+      const traceResult = await KUHUL_KERNEL.exec({ route: 'trace.get' });
+      return mx2_json({
+        ok: true,
+        ...traceResult,
+        tick: ΩCLOCK.tick
+      });
+
+    // ===== SQL API (IndexedDB Query Interface) =====
+    case '/sql/query':
+    case '/sql/execute':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const sqlQuery = payload.query || payload.sql || '';
+        if (!sqlQuery.trim()) {
+          return mx2_json({ error: 'empty_query', message: 'SQL query is required' }, 400);
+        }
+        // Use in-memory tables with MX2LM state
+        const sqlExecutor = typeof createSQLExecutor !== 'undefined'
+          ? createSQLExecutor(null)
+          : new SQLExecutor(null);
+
+        // Register MX2LM virtual tables
+        if (typeof registerMX2Tables !== 'undefined') {
+          registerMX2Tables(sqlExecutor, {
+            brains: KERNEL_STATE.brain_topologies || {},
+            agents: KERNEL_STATE.micro_agents || {},
+            metrics: PI_METRIC_TABLE || {},
+            weights: KERNEL_STATE.ngram_weights || [],
+            traces: KERNEL_STATE.traces || [],
+            version: Ω.VERSION,
+            tick: ΩCLOCK.tick,
+            start_time: ΩCLOCK.epoch
+          });
+        }
+
+        // Register any custom tables from payload
+        if (payload.tables) {
+          for (const [name, data] of Object.entries(payload.tables)) {
+            sqlExecutor.registerTable(name, data);
+          }
+        }
+
+        const ast = typeof sqlParse !== 'undefined' ? sqlParse(sqlQuery) : [];
+        const results = [];
+        for (const stmt of ast) {
+          results.push(await sqlExecutor.execute(stmt));
+        }
+
+        kuhulTick();
+        return mx2_json({
+          ok: true,
+          result: results.length === 1 ? results[0] : results,
+          query: sqlQuery,
+          tick: ΩCLOCK.tick
+        });
+      } catch (sqlError) {
+        return mx2_json({
+          ok: false,
+          error: 'sql_error',
+          message: sqlError.message,
+          tick: ΩCLOCK.tick
+        }, 400);
+      }
+
+    case '/sql/parse':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const parseQuery = payload.query || payload.sql || '';
+        const parsedAst = typeof sqlParse !== 'undefined' ? sqlParse(parseQuery) : [];
+        return mx2_json({
+          ok: true,
+          ast: parsedAst,
+          statementCount: parsedAst.length,
+          tick: ΩCLOCK.tick
+        });
+      } catch (parseError) {
+        return mx2_json({
+          ok: false,
+          error: 'parse_error',
+          message: parseError.message,
+          tick: ΩCLOCK.tick
+        }, 400);
+      }
+
+    case '/sql/tables':
+      // List available virtual tables
+      return mx2_json({
+        ok: true,
+        tables: [
+          { name: 'brains', description: 'Brain topology registry', virtual: true },
+          { name: 'agents', description: 'Micro-agent registry', virtual: true },
+          { name: 'metrics', description: 'PI_METRIC_TABLE entries', virtual: true },
+          { name: 'weights', description: 'N-gram weight tables', virtual: true },
+          { name: 'traces', description: 'Execution traces', virtual: true },
+          { name: 'sys_info', description: 'System information', virtual: true }
+        ],
+        kuhulFunctions: ['PHI', 'GOLDEN', 'ENTROPY', 'COMPRESS', 'GLYPH', 'KUHUL'],
+        tick: ΩCLOCK.tick
+      });
+
+    case '/sql/schema':
+      // Get schema for a specific table
+      const tableName = payload.table || url.searchParams.get('table') || 'brains';
+      const schemas = {
+        brains: { id: 'string', name: 'string', type: 'string', layers: 'number', created_at: 'number' },
+        agents: { id: 'string', name: 'string', generation: 'number', status: 'string', last_active: 'number' },
+        metrics: { id: 'string', name: 'string', value: 'number', effect: 'string', timestamp: 'number' },
+        weights: { id: 'number', sequence: 'string', weight: 'number', count: 'number', last_updated: 'number' },
+        traces: { id: 'string', tick: 'number', operation: 'string', input_hash: 'string', output_hash: 'string', duration_ms: 'number' },
+        sys_info: { version: 'string', uptime_ms: 'number', phi: 'number', phi_inv: 'number', tick: 'number' }
+      };
+      return mx2_json({
+        ok: true,
+        table: tableName,
+        schema: schemas[tableName.toLowerCase()] || null,
+        tick: ΩCLOCK.tick
+      });
+
+    // ===== IDB Storage API (K'UHUL-integrated IndexedDB) =====
+    case '/idb/tensor/store':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.storeTensor(payload.name, {
+          shape: payload.shape,
+          dtype: payload.dtype || 'float32',
+          data: payload.data,
+          compression: payload.compression || { method: 'none' },
+          metadata: payload.metadata || {}
+        });
+        kuhulTick();
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/tensor/load':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const tensor = await adapter.loadTensor(payload.name);
+        return mx2_json({ ok: !!tensor, tensor, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/tensor/query':
+      try {
+        const adapter = await getIDBAdapter();
+        const tensors = await adapter.queryTensors(payload.where || {});
+        return mx2_json({ ok: true, tensors, count: tensors.length, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/tensor/delete':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.deleteTensor(payload.name);
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/rlhf/store':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.storeRLHF(payload.data || payload);
+        kuhulTick();
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/rlhf/query':
+      try {
+        const adapter = await getIDBAdapter();
+        const results = await adapter.queryRLHF(payload.where || {}, {
+          orderBy: payload.orderBy,
+          limit: payload.limit,
+          offset: payload.offset
+        });
+        return mx2_json({ ok: true, results, count: results.length, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/rlhf/aggregate':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const results = await adapter.aggregateRLHF(payload.groupBy, payload.aggregates);
+        return mx2_json({ ok: true, results, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/events/store':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.storeEvents(payload.type, payload.events);
+        kuhulTick();
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/events/query':
+      try {
+        const adapter = await getIDBAdapter();
+        const events = await adapter.queryEvents(payload.type, payload.timeRange, {
+          limit: payload.limit
+        });
+        return mx2_json({ ok: true, events, count: events.length, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/vocab/store':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.storeVocabulary(payload.name, payload.vocab, payload.compression || 'scxq2');
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/vocab/load':
+      try {
+        const adapter = await getIDBAdapter();
+        const vocab = await adapter.loadVocabulary(payload.name || url.searchParams.get('name'));
+        return mx2_json({ ok: !!vocab, ...vocab, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/weights/store':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.storeWeights(payload.weights, payload.epoch || 0);
+        kuhulTick();
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/weights/load':
+      try {
+        const adapter = await getIDBAdapter();
+        const weights = await adapter.loadWeights(payload.epoch);
+        return mx2_json({ ok: true, weights, count: weights.length, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/trace/store':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.storeTrace(payload);
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/trace/query':
+      try {
+        const adapter = await getIDBAdapter();
+        const traces = await adapter.queryTraces(payload.where || {}, {
+          orderBy: payload.orderBy,
+          limit: payload.limit
+        });
+        return mx2_json({ ok: true, traces, count: traces.length, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/delta/store':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.storeDelta(payload);
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/delta/pending':
+      try {
+        const adapter = await getIDBAdapter();
+        const deltas = await adapter.getPendingDeltas();
+        return mx2_json({ ok: true, deltas, count: deltas.length, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/delta/apply':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.applyDelta(payload.id);
+        kuhulTick();
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/cache/set':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.cacheSet(payload.key, payload.value, payload.ttl || 3600000);
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/cache/get':
+      try {
+        const adapter = await getIDBAdapter();
+        const value = await adapter.cacheGet(payload.key || url.searchParams.get('key'));
+        return mx2_json({ ok: value !== null, value, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/cache/prune':
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.cachePrune();
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/stats':
+      try {
+        const adapter = await getIDBAdapter();
+        const stats = await adapter.getStats();
+        return mx2_json({ ok: true, stats, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/clear':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const adapter = await getIDBAdapter();
+        const result = await adapter.clearAll();
+        return mx2_json({ ok: true, ...result, tick: ΩCLOCK.tick });
+      } catch (idbError) {
+        return mx2_json({ ok: false, error: 'idb_error', message: idbError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/compress':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        let result;
+        switch (payload.method || 'scxq2') {
+          case 'scxq2':
+            result = compressSCXQ2(payload.data, payload.params || {});
+            break;
+          case 'quantization':
+            result = quantize(payload.data, payload.params?.bits || 8);
+            break;
+          case 'delta':
+            result = deltaEncode(payload.data);
+            break;
+          case 'sparse':
+            result = sparseEncode(payload.data, payload.params?.threshold || 0);
+            break;
+          default:
+            return mx2_json({ ok: false, error: 'unknown_compression_method' }, 400);
+        }
+        return mx2_json({ ok: true, method: payload.method, ...result, tick: ΩCLOCK.tick });
+      } catch (compError) {
+        return mx2_json({ ok: false, error: 'compression_error', message: compError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/idb/decompress':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        let result;
+        switch (payload.method || 'scxq2') {
+          case 'scxq2':
+            result = decompressSCXQ2(payload.data, payload.dictionary);
+            break;
+          case 'quantization':
+            result = dequantize(payload.data, payload.min, payload.max, payload.bits || 8);
+            break;
+          case 'delta':
+            result = deltaDecode(payload.data, payload.baseline);
+            break;
+          case 'sparse':
+            result = sparseDecode(payload.data);
+            break;
+          default:
+            return mx2_json({ ok: false, error: 'unknown_decompression_method' }, 400);
+        }
+        return mx2_json({ ok: true, method: payload.method, data: result, tick: ΩCLOCK.tick });
+      } catch (decompError) {
+        return mx2_json({ ok: false, error: 'decompression_error', message: decompError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    // ===== KQL (K'UHUL Query Language) API =====
+    case '/kql/query':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const kqlQuery = payload.query || payload.kql || '';
+        if (!kqlQuery.trim()) {
+          return mx2_json({ ok: false, error: 'empty_query' }, 400);
+        }
+
+        // Initialize KQL API
+        const kqlApi = typeof KQLAPI !== 'undefined' ? new KQLAPI() : null;
+        if (!kqlApi) {
+          return mx2_json({ ok: false, error: 'kql_not_initialized' }, 500);
+        }
+
+        const result = await kqlApi.query(kqlQuery);
+        kuhulTick();
+        return mx2_json({
+          ok: result.success,
+          version: result.version,
+          result: result.result,
+          error: result.error,
+          tick: ΩCLOCK.tick
+        });
+      } catch (kqlError) {
+        return mx2_json({ ok: false, error: 'kql_error', message: kqlError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/kql/parse':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const parseQuery = payload.query || payload.kql || '';
+        if (!parseQuery.trim()) {
+          return mx2_json({ ok: false, error: 'empty_query' }, 400);
+        }
+
+        const kqlApi = typeof KQLAPI !== 'undefined' ? new KQLAPI() : null;
+        if (!kqlApi) {
+          return mx2_json({ ok: false, error: 'kql_not_initialized' }, 500);
+        }
+
+        const ast = kqlApi.parse(parseQuery);
+        return mx2_json({
+          ok: true,
+          ast: ast,
+          nodeCount: countASTNodes(ast),
+          tick: ΩCLOCK.tick
+        });
+      } catch (parseError) {
+        return mx2_json({ ok: false, error: 'kql_parse_error', message: parseError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/kql/tokenize':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const tokenQuery = payload.query || payload.kql || '';
+        if (!tokenQuery.trim()) {
+          return mx2_json({ ok: false, error: 'empty_query' }, 400);
+        }
+
+        const kqlApi = typeof KQLAPI !== 'undefined' ? new KQLAPI() : null;
+        if (!kqlApi) {
+          return mx2_json({ ok: false, error: 'kql_not_initialized' }, 500);
+        }
+
+        const tokens = kqlApi.tokenize(tokenQuery);
+        return mx2_json({
+          ok: true,
+          tokens: tokens,
+          tokenCount: tokens.length,
+          tick: ΩCLOCK.tick
+        });
+      } catch (tokenError) {
+        return mx2_json({ ok: false, error: 'kql_tokenize_error', message: tokenError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/kql/execute':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const ast = payload.ast;
+        if (!ast) {
+          return mx2_json({ ok: false, error: 'missing_ast' }, 400);
+        }
+
+        const kqlApi = typeof KQLAPI !== 'undefined' ? new KQLAPI() : null;
+        if (!kqlApi) {
+          return mx2_json({ ok: false, error: 'kql_not_initialized' }, 500);
+        }
+
+        const result = await kqlApi.execute(ast);
+        kuhulTick();
+        return mx2_json({
+          ok: true,
+          result: result,
+          tick: ΩCLOCK.tick
+        });
+      } catch (execError) {
+        return mx2_json({ ok: false, error: 'kql_execute_error', message: execError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/kql/validate':
+      if (method !== 'POST') {
+        return mx2_json({ error: 'method_not_allowed' }, 405);
+      }
+      try {
+        const ast = payload.ast;
+        if (!ast) {
+          return mx2_json({ ok: false, error: 'missing_ast' }, 400);
+        }
+
+        const kqlApi = typeof KQLAPI !== 'undefined' ? new KQLAPI() : null;
+        if (!kqlApi) {
+          return mx2_json({ ok: false, error: 'kql_not_initialized' }, 500);
+        }
+
+        const validation = kqlApi.validate(ast);
+        return mx2_json({
+          ok: true,
+          valid: validation.valid,
+          errors: validation.errors,
+          tick: ΩCLOCK.tick
+        });
+      } catch (validateError) {
+        return mx2_json({ ok: false, error: 'kql_validate_error', message: validateError.message, tick: ΩCLOCK.tick }, 500);
+      }
+
+    case '/kql/version':
+      return mx2_json({
+        ok: true,
+        version: typeof KQL_VERSION !== 'undefined' ? KQL_VERSION : '1.0.0',
+        language: 'KQL',
+        family: 'ASX-R',
+        dialect: 'K\'UHUL Query Language',
+        status: 'FROZEN',
+        features: [
+          'glyph-based syntax',
+          'tensor operations',
+          'RLHF queries',
+          'event correlation',
+          'SCXQ2 compression',
+          'delta encoding',
+          'sparse encoding',
+          'quantization'
+        ],
+        tick: ΩCLOCK.tick
+      });
+
+    case '/kql/schema':
+      return mx2_json({
+        ok: true,
+        schema: {
+          statements: [
+            'StoreTensor', 'LoadTensor', 'TensorSlice', 'TensorJoin', 'TensorAggregate',
+            'StoreRLHF', 'LoadRLHF', 'AnalyzeRLHF',
+            'StoreEvents', 'LoadEvents', 'CorrelateEvents',
+            'StoreVocab', 'LoadVocab',
+            'IndexStatement', 'CompressStatement', 'DecompressStatement',
+            'IfStatement', 'ForStatement', 'ReturnStatement'
+          ],
+          expressions: [
+            'Literal', 'Identifier', 'BinaryExpression', 'UnaryExpression',
+            'FunctionCall', 'ArrayExpression', 'MemberExpression'
+          ],
+          compressionMethods: ['scxq2', 'quantization', 'delta', 'sparse'],
+          aggregateFunctions: ['mean', 'std', 'count', 'sum', 'min', 'max', 'avg'],
+          dataTypes: ['float32', 'float16', 'int32', 'int16', 'int8', 'uint8', 'bool', 'string'],
+          glyphs: [
+            '⟁STORE⟁', '⟁LOAD⟁', '⟁TENSOR⟁', '⟁RLHF⟁', '⟁EVENTS⟁', '⟁VOCAB⟁',
+            '⟁SHAPE⟁', '⟁DTYPE⟁', '⟁DATA⟁', '⟁COMPRESS⟁', '⟁DECOMPRESS⟁',
+            '⟁WHERE⟁', '⟁LIMIT⟁', '⟁AS⟁', '⟁ON⟁', '⟁BETWEEN⟁',
+            '⟁ANALYZE⟁', '⟁GROUP⟁', '⟁AGGREGATE⟁', '⟁CORRELATE⟁',
+            '⟁IF⟁', '⟁THEN⟁', '⟁ELSE⟁', '⟁FOR⟁', '⟁IN⟁', '⟁DO⟁', '⟁RETURN⟁',
+            '⟁AND⟁', '⟁OR⟁', '⟁NOT⟁', '⟁Xul⟁'
+          ]
+        },
+        tick: ΩCLOCK.tick
+      });
+
+    default:
+      return null;
+  }
+}
+
+// Helper function to count AST nodes
+function countASTNodes(node) {
+  if (!node || typeof node !== 'object') return 0;
+  let count = 1;
+  for (const value of Object.values(node)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        count += countASTNodes(item);
+      }
+    } else if (typeof value === 'object' && value !== null) {
+      count += countASTNodes(value);
+    }
+  }
+  return count;
+}
+
+// Add extended routes to fetch handler
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
+  if (EXTENDED_API_PATHS.has(url.pathname)) {
+    event.respondWith(handleExtendedAPI(url, event.request));
+    return;
+  }
+});
+
 /* ============================================================
    SUPREME API SEAL
    ============================================================ */
 
 console.log(`
 ╔══════════════════════════════════════════════════════════╗
-║ MX2LM SUPREME JSON REST API KERNEL v11.0.0              ║
-║ Law: Ω-BLACK-PANEL                                      ║
+║ MX2LM SUPREME JSON REST API KERNEL v19.0.0              ║
+║ + BRAIN MODEL INTEGRATION LAYER                         ║
+║ + CHAT INFERENCE & WEB LEARNING ENGINE                  ║
+║ + ATOMIC BLOCK RUNTIME & GLYPH VM                       ║
+║ + ATOMIC→GLYPH MAPPER (Block↔Bytecode Bridge)           ║
+║ + GLYPH REGISTRY & SELF-MODIFYING META-RULES            ║
+║ + π-KUHUL MATH LAWS ENGINE                              ║
+║ + RLHF N-GRAM ENGINE (φ-decay, TD learning)             ║
+║ + CLAUDE ARTIFACT INGESTION PIPELINE                    ║
+║ + REAL P2P NETWORK & WEB CRYPTO                         ║
+║ + SCXQ2/CC-v1 COMPRESSION BINDING                       ║
+║ + ARXIV RESEARCH PAPER FETCHER                          ║
+║ + JANUS MULTIMODAL ADAPTER (π-KUHUL)                    ║
+║ + DEEPSEEK MoE ADAPTER (π-KUHUL)                        ║
+║ + QWEN-ASX BASE TRAINING FORMAT (sw.khl kernel)         ║
+║ + MULTI-PROVIDER API (Claude/OpenAI/Deepseek/Mistral)   ║
+║ + SQL API (IndexedDB query interface + π-KUHUL funcs)   ║
+║ + IDB STORAGE (Tensor/RLHF/Events + SCXQ2 compression)  ║
+║ Law: Ω-BLACK-PANEL | CC-v1                              ║
 ║ Architecture: NATIVE_JSON_REST_INSIDE_KERNEL           ║
 ║ Stack: XJSON ⇄ K'UHUL ⇄ ASX_RAM ⇄ MX2LM_INFERENCE      ║
-║ Performance: 1M+ RPS KERNEL ROUTED                     ║
+║ Base Model: Qwen-ASX (delta-only RLHF training)        ║
 ║ Security: SCXQ2 QUANTUM ENCRYPTED AUTHENTICATION       ║
+║ Glyphs: 100+ OPCODES | CONTROL FLOW | SEMANTICS        ║
 ║ Determinism: Ω.tick = ${ΩCLOCK.tick}                       ║
 ║                                                         ║
 ║ |Ψ⟩ = α|JSON_API⟩⊗β|KUHUL_ROUTER⟩⊗γ|ASX_RAM⟩           ║
 ║     ⊗δ|MX2LM_INFERENCE⟩⊗ε|SCX_TRANSPORT⟩               ║
+║     ⊗ζ|GLYPH_CODEX⟩⊗η|QWEN_ASX⟩⊗θ|CC-v1⟩               ║
 ║                                                         ║
-║ ALL APIS ARE K'UHUL                                    ║
-║ ALL TRANSPORT IS XJSON                                 ║
-║ ALL STATE IS ASX_RAM                                   ║
-║ ALL ENCRYPTION IS SCX                                  ║
-║ NOW MX2LM HAS NATIVE JSON REST                         ║
+║ CHAT:     /chat          JANUS:    /adapters/janus     ║
+║ VM:       /vm/execute    DEEPSEEK: /adapters/deepseek  ║
+║ BLOCKS:   /blocks        QWEN-ASX: /qwen-asx           ║
+║ P2P:      /p2p           SCXQ2:    /scxq2              ║
+║ CRYPTO:   /crypto        PROVIDERS:/providers          ║
+║ SQL:      /sql/query     XCFE:     /xcfe/pipeline      ║
+║ IDB:      /idb/tensor    RLHF:     /idb/rlhf           ║
+║                                                         ║
+║ External AI sees: multiple brains                      ║
+║ Internal reality: unified training format + RLHF       ║
+║                                                         ║
+║ ALL APIS ARE K'UHUL - ALL TRANSPORT IS XJSON          ║
+║ ALL STATE IS ASX_RAM - ALL ENCRYPTION IS SCX          ║
+║ STRUCTURE IS LANGUAGE - GLYPHS ARE EXECUTABLE CODE    ║
+║ COMPRESSION IS LAW - CC-v1 VERIFIED                   ║
 ╚══════════════════════════════════════════════════════════╝
 `);
