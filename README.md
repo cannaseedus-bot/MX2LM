@@ -198,6 +198,22 @@ Not by gradient noise.
 * Not consciousness
 * Not a replacement for transformers
 
+---
+
+## 10. Runtime π Evaluator
+
+MX2LM ships a deterministic π evaluator implementation in `runtime/pi_evaluator.py`. It mirrors the
+`PI_METRIC_TABLE` definition in `brains/pi_metric_interpreter.table.json` and applies those effects
+to an input state with a stable hash seal. The evaluator exposes:
+
+* **Effect accumulation**: metric rows map to cumulative effect values.
+* **Deterministic application**: weights, biases, entropy, compression, filters, and vectors are
+  updated predictably.
+* **Sealed outputs**: evaluation results are hashed to enable replay and verification.
+
+Unit tests for the evaluator live in `runtime/test_pi_evaluator.py` and cover each `pi_effect`
+branch along with seal reproducibility.
+
 It is:
 
 > a **formal cognitive substrate** that transformers *implicitly rely on* but do not expose.
