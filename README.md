@@ -198,6 +198,24 @@ Not by gradient noise.
 * Not consciousness
 * Not a replacement for transformers
 
+---
+
+## Validation Utilities
+
+To keep brain topology bindings deterministic and projection-only, use the
+repository validation helper:
+
+```bash
+python tools/validate_brains.py
+```
+
+The validator enforces:
+
+* Schema compliance for `brains/brain_topology_bindings.svg.json`.
+* Referential integrity between binding IDs and `brains/brain_topology.registry.json`.
+* SVG path patterns and allowed domains.
+* `@rules` invariants ensuring no runtime execution and projection-only assets.
+
 It is:
 
 > a **formal cognitive substrate** that transformers *implicitly rely on* but do not expose.
