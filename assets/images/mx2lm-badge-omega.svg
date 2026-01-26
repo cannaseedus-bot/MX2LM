@@ -81,7 +81,7 @@
     </text>
   </g>
 
-  <!-- Glyph formula: µπ²φ -->
+  <!-- Glyph formula: µπ²Ω -->
   <g transform="translate(130,232)" text-anchor="middle">
     <text
       x="0"
@@ -91,7 +91,7 @@
       font-family="system-ui, -apple-system, BlinkMacSystemFont, 'SF Mono', monospace"
       letter-spacing="3"
     >
-      µπ²φ
+      µπ²Ω
     </text>
   </g>
 </svg>
