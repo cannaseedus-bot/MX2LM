@@ -80,4 +80,18 @@
       UNBOUNDED MODEL • SWARM RUNTIME
     </text>
   </g>
+
+  <!-- Glyph formula: µπ²∞ -->
+  <g transform="translate(130,232)" text-anchor="middle">
+    <text
+      x="0"
+      y="0"
+      fill="#9ca3af"
+      font-size="15"
+      font-family="system-ui, -apple-system, BlinkMacSystemFont, 'SF Mono', monospace"
+      letter-spacing="3"
+    >
+      µπ²∞
+    </text>
+  </g>
 </svg>
