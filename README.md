@@ -2,6 +2,11 @@
 <p align="center">
 <img src="https://github.com/cannaseedus-bot/MX2LM/blob/main/assets/images/mx2lm-logo.svg" style="width:400px;">
 </p>
+<p align="center">
+  <img src="assets/images/mx2lm-badge-phi.svg" alt="MX2LM φ badge" width="180" />
+  <img src="assets/images/mx2lm-badge-omega.svg" alt="MX2LM Ω badge" width="180" />
+  <img src="assets/images/mx2lm-badge-infinity.svg" alt="MX2LM ∞ badge" width="180" />
+</p>
 ---
 
 ## Relationship to ASX
@@ -268,6 +273,40 @@ Not by gradient noise.
 * Not magic
 * Not consciousness
 * Not a replacement for transformers
+
+---
+
+# MX2LM — Progress Phases
+
+## Phase 1: Specification & Deterministic Foundations
+* Align core invariants (determinism, compression-first cognition).
+* Lock schema constraints and projection-only guarantees.
+
+## Phase 2: Schema & Registry Enforcement
+* Validate topology registries and SVG bindings.
+* Enforce non-executable, append-only projection rules.
+
+## Phase 3: π Runtime Realization
+* Implement π evaluator with deterministic effect aggregation.
+* Seal outputs with stable hashes for replayability.
+
+## Phase 4: SVG Cognitive Geometry Rendering
+* Render shell types (orbital halo, stack grid, tunnel rail, HUD ring, fractal lattice).
+* Bind structured data to deterministic geometry.
+
+## Phase 5: Traceability & Replay
+* Emit deterministic execution traces.
+* Provide replay + verification tooling.
+
+---
+
+# MX2LM — To-Do List (Current Needs)
+
+* Expand PI_METRIC_TABLE to the full 30+ metric types.
+* Implement metric aggregation and effect composition rules.
+* Add bounds/validation checks for metric-derived effects.
+* Finalize SVG rendering engine (shell templates + data binding).
+* Add runtime trace recording and replay verification pipeline.
 
 ## External generators you can plug into MX2LM orchestration
 
