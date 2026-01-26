@@ -276,43 +276,21 @@ Not by gradient noise.
 
 ---
 
-# MX2LM — Progress Phases
+## Validation Utilities
 
-## Phase 1: Specification & Deterministic Foundations
-* Align core invariants (determinism, compression-first cognition).
-* Lock schema constraints and projection-only guarantees.
+To keep brain topology bindings deterministic and projection-only, use the
+repository validation helper:
 
-## Phase 2: Schema & Registry Enforcement
-* Validate topology registries and SVG bindings.
-* Enforce non-executable, append-only projection rules.
+```bash
+python tools/validate_brains.py
+```
 
-## Phase 3: π Runtime Realization
-* Implement π evaluator with deterministic effect aggregation.
-* Seal outputs with stable hashes for replayability.
+The validator enforces:
 
-## Phase 4: SVG Cognitive Geometry Rendering
-* Render shell types (orbital halo, stack grid, tunnel rail, HUD ring, fractal lattice).
-* Bind structured data to deterministic geometry.
-
-## Phase 5: Traceability & Replay
-* Emit deterministic execution traces.
-* Provide replay + verification tooling.
-
----
-
-# MX2LM — To-Do List (Current Needs)
-
-* Expand PI_METRIC_TABLE to the full 30+ metric types.
-* Implement metric aggregation and effect composition rules.
-* Add bounds/validation checks for metric-derived effects.
-* Finalize SVG rendering engine (shell templates + data binding).
-* Add runtime trace recording and replay verification pipeline.
-
-## External generators you can plug into MX2LM orchestration
-
-MX2LM stays deterministic and symbolic, but you can still route jobs to outside generative models when you want fast scaffolded apps or UI drafts:
-
-* **Google Gemini API on Vertex AI (Gemini 2.5 / Gemini 2.0 Flash / Flash-Lite):** Use `generateContent` or `streamGenerateContent` with a `contents` array (each entry has `role` + `parts`) and optional `systemInstruction` + `generationConfig`. It’s multimodal (text + images via `inlineData`/`fileData`) and works well for rapid app blueprints and code stubs. Authenticate with an API key for simple REST calls or with a Google Cloud access token when using the OpenAI-compatible endpoint (`chat.completions`) to stream UI/app ideas into MX2LM’s builders.
+* Schema compliance for `brains/brain_topology_bindings.svg.json`.
+* Referential integrity between binding IDs and `brains/brain_topology.registry.json`.
+* SVG path patterns and allowed domains.
+* `@rules` invariants ensuring no runtime execution and projection-only assets.
 
 It is:
 
