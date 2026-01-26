@@ -276,21 +276,19 @@ Not by gradient noise.
 
 ---
 
-## Validation Utilities
+## 10. Runtime π Evaluator
 
-To keep brain topology bindings deterministic and projection-only, use the
-repository validation helper:
+MX2LM ships a deterministic π evaluator implementation in `runtime/pi_evaluator.py`. It mirrors the
+`PI_METRIC_TABLE` definition in `brains/pi_metric_interpreter.table.json` and applies those effects
+to an input state with a stable hash seal. The evaluator exposes:
 
-```bash
-python tools/validate_brains.py
-```
+* **Effect accumulation**: metric rows map to cumulative effect values.
+* **Deterministic application**: weights, biases, entropy, compression, filters, and vectors are
+  updated predictably.
+* **Sealed outputs**: evaluation results are hashed to enable replay and verification.
 
-The validator enforces:
-
-* Schema compliance for `brains/brain_topology_bindings.svg.json`.
-* Referential integrity between binding IDs and `brains/brain_topology.registry.json`.
-* SVG path patterns and allowed domains.
-* `@rules` invariants ensuring no runtime execution and projection-only assets.
+Unit tests for the evaluator live in `runtime/test_pi_evaluator.py` and cover each `pi_effect`
+branch along with seal reproducibility.
 
 It is:
 
