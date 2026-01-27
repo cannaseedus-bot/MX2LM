@@ -43,7 +43,11 @@
 
   ⟁ π_fn π_element(tag, attrs, children) -> dict
     ⟁ if tag in π_projection_banlist
-      ⟁ raise "disallowed_tag"
+      ⟁ return {
+        "tag": "g",
+        "attrs": { "data-sanitized": "true" },
+        "children": []
+      }
     ⟁ end
     ⟁ return {
       "tag": tag,
@@ -130,30 +134,20 @@
   ⟁ end
 
   ⟁ π_fn π_render_tunnel_rail(s)
-    ⟁ let packets s["packets"] or []
-    ⟁ if len(packets) == 0
-      ⟁ let count s["segments"] or 0
-      ⟁ let depths s["depth"] or []
-      ⟁ loop i 0 count
-        ⟁ push packets {
-          "lane": 0,
-          "depth": depths[i] or 0,
-          "energy": 0.0,
-          "label": "segment_" + str(i)
-        }
-      ⟁ end
-    ⟁ end
-
     ⟁ let nodes []
-    ⟁ loop p in packets
-      ⟁ let lane   p["lane"] or 0
-      ⟁ let depth  p["depth"] or 0
-      ⟁ let energy p["energy"] or 0
-      ⟁ let label  p["label"] or "packet"
+    ⟁ let depths s["depth"] or []
+    ⟁ let lanes s["lanes"] or []
+    ⟁ let energies s["energy"] or []
+    ⟁ let labels s["labels"] or []
+    ⟁ let count s["segments"] or len(depths)
+    ⟁ loop i 0 count
+      ⟁ let depth depths[i] or 0
+      ⟁ let lane  lanes[i] or 0
+      ⟁ let energy energies[i] or 0.0
+      ⟁ let label labels[i] or ("segment_" + str(i))
       ⟁ let x (lane * 22)
       ⟁ let y (depth * 0.4)
 
-      ⟁ let user_attrs π_sanitize_attrs(p["attrs"] or {})
       ⟁ let attrs {
         "x": x,
         "y": y,
@@ -162,7 +156,6 @@
         "data-energy": energy,
         "data-label": label
       }
-      ⟁ merge attrs user_attrs
       ⟁ push nodes π_element("rect", attrs, [])
     ⟁ end
 

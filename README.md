@@ -239,6 +239,8 @@ SVG shells represent:
 * inference → tunnels / flows
 * cognition → HUD rings
 
+Shell renderers obey the **projection-only rule**: SVG outputs are sanitized to remove scripts, events, and animations, and each shell is rendered deterministically from structured payloads with golden samples tracked in `runtime/shell_render_golden.json`.
+
 > SVG is a **shared cognitive coordinate system** between humans and machines.
 
 This makes internal state **visible without exposing unsafe internals**.
