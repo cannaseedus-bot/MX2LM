@@ -1223,9 +1223,11 @@ Short-lived reasoning artifacts:
 * branch evaluations
 * cluster weights
 
-These are **never persisted**.
+These are **never persisted** by default.
 
-They exist only so the system can think.
+When a π evaluator emits a **sealed execution trace** (inputs, effects, outputs, seals),
+it may be archived alongside the rendered shell artifact for replay + inspection,
+but the ephemeral cognitive traces above remain non-persistent.
 
 ---
 
