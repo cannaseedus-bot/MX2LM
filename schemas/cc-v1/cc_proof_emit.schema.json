@@ -1,0 +1,17 @@
+{
+  "$schema": "xjson://schema/draft/2020-12",
+  "$id": "asx://schema/cc/cc_proof_emit.v1",
+  "type": "object",
+  "required": ["@cc_proof_emit"],
+  "properties": {
+    "@cc_proof_emit": {
+      "type": "object",
+      "required": ["@proof"],
+      "properties": {
+        "@proof": { "$ref": "asx://schema/cc/cc_proof.v1" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

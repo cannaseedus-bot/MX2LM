@@ -1,0 +1,180 @@
+{
+  "$schema": "xjson://schema/core/v1",
+  "@id": "xjson://mesh/bootstrap/v1",
+  "@type": "mesh.bootstrap.v1",
+  "v": "1.0.0",
+  "n": "MESH WebSocket Bootstrap Contract",
+  "d": "Deterministic session bootstrap for ASX mesh WebSockets. Server is relay + auth + quota. Execution authority stays client-side (π/AST).",
+  "@law": [
+    "NO_SERVER_EXECUTION",
+    "ALL_MESSAGES_ARE_ENVELOPES",
+    "ORDERED_BOOTSTRAP_PHASES",
+    "CLIENT_FRAMES_ARE_MASKED",
+    "SERVER_MUST_NEVER_REQUEST_SECRETS_BESIDES_TOKEN_PROOF",
+    "EVENTS_ARE_APPEND_ONLY",
+    "REPLAY_MUST_BE_POSSIBLE_FROM_LOG"
+  ],
+  "@endpoints": {
+    "wss": {
+      "path": "/mesh/bootstrap",
+      "subprotocols": ["asx.mesh.v1"],
+      "compression": "optional"
+    }
+  },
+  "@phases": [
+    "client_hello",
+    "server_hello",
+    "client_auth",
+    "server_accept",
+    "client_bind",
+    "server_bound",
+    "ready"
+  ],
+  "@envelope": {
+    "required": ["@t", "@ts", "@id", "@v"],
+    "fields": {
+      "@v": "string  (semantic version, e.g. 1.0.0)",
+      "@t": "string  (message type)",
+      "@ts": "int     (unix ms timestamp)",
+      "@id": "string  (message id, client-generated)",
+      "@sid": "string? (session id once accepted)",
+      "@app": "string? (app_id)",
+      "@agent": "string? (agent_id)",
+      "@chan": "string? (channel name)",
+      "@cap": "string[]? (capabilities requested/granted)",
+      "@ok": "boolean? (ack flag)",
+      "@err": { "code": "string", "msg": "string", "meta": "object?" },
+      "@body": "object? (typed payload)",
+      "@sig": "string? (optional signature/proof)",
+      "@nonce": "string? (bootstrap nonce)",
+      "@proof": "object? (auth proof bundle)"
+    }
+  },
+  "@types": {
+    "client_hello": {
+      "@t": "mesh.hello.client",
+      "@body": {
+        "client": {
+          "impl": "string (e.g. asx.py)",
+          "impl_v": "string",
+          "os": "string?",
+          "arch": "string?"
+        },
+        "want": {
+          "app_id": "string",
+          "agent_id": "string?",
+          "channels": "string[]",
+          "capabilities": "string[]"
+        },
+        "limits": {
+          "max_frame_bytes": "int?",
+          "max_events_per_min": "int?"
+        }
+      }
+    },
+    "server_hello": {
+      "@t": "mesh.hello.server",
+      "@body": {
+        "server": {
+          "impl": "string",
+          "impl_v": "string",
+          "hive": "string?",
+          "node": "string?"
+        },
+        "nonce": "string",
+        "policy": {
+          "auth": "token|bearer|securolink",
+          "quota": "object",
+          "channels": "object"
+        }
+      }
+    },
+    "client_auth": {
+      "@t": "mesh.auth.client",
+      "@body": {
+        "auth": {
+          "mode": "bearer|token|securolink",
+          "token": "string",
+          "proof": {
+            "nonce": "string",
+            "ts": "int",
+            "hash": "string (sha256(nonce + ts + app_id + token_hint))",
+            "hint": "string? (non-secret hint)"
+          }
+        }
+      }
+    },
+    "server_accept": {
+      "@t": "mesh.accept",
+      "@body": {
+        "sid": "string",
+        "capabilities": "string[]",
+        "quota": "object",
+        "channels": "string[]"
+      }
+    },
+    "client_bind": {
+      "@t": "mesh.bind",
+      "@body": {
+        "bind": {
+          "app_id": "string",
+          "agent_id": "string?",
+          "channels": "string[]",
+          "mode": "listen|talk|both"
+        }
+      }
+    },
+    "server_bound": {
+      "@t": "mesh.bound",
+      "@body": {
+        "bound": true,
+        "channels": "string[]",
+        "capabilities": "string[]"
+      }
+    },
+    "event": {
+      "@t": "mesh.event",
+      "@body": {
+        "event": {
+          "kind": "string (agent.log|agent.tick|chat.msg|game.tick|sys.notice|...)",
+          "tick": "int?",
+          "level": "info|warn|error|debug?",
+          "data": "object"
+        }
+      }
+    },
+    "publish": {
+      "@t": "mesh.publish",
+      "@body": {
+        "to": "string (channel)",
+        "event": "object (same as event.body.event)"
+      }
+    },
+    "ping": { "@t": "mesh.ping", "@body": { "n": "int?" } },
+    "pong": { "@t": "mesh.pong", "@body": { "n": "int?" } },
+    "error": { "@t": "mesh.error", "@body": { "code": "string", "msg": "string", "meta": "object?" } },
+    "close": { "@t": "mesh.close", "@body": { "code": "int?", "msg": "string?" } }
+  },
+  "@ordering_rules": [
+    "client_hello MUST be first client message",
+    "server_hello MUST include nonce",
+    "client_auth MUST include nonce proof",
+    "server_accept MUST include sid",
+    "client_bind MUST reference app_id and channel list",
+    "server_bound transitions session to READY",
+    "event/publish only allowed after READY"
+  ],
+  "@channels": {
+    "examples": [
+      "agent:ui",
+      "agent:builder",
+      "game:world",
+      "sys:telemetry"
+    ],
+    "@law": [
+      "CHANNELS_ARE_NAMESPACED",
+      "SERVER_MAY_FILTER_BY_CAPABILITY",
+      "CLIENT_MAY_SUBSCRIBE_TO_MULTIPLE"
+    ]
+  }
+}

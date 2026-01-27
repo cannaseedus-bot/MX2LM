@@ -1,0 +1,112 @@
+{
+  "@type": "xcfe/brain",
+  "@id": "claude_brain",
+  "@law": "Ω-BLACK-PANEL",
+  "@schema": "../schema/claude.xjson",
+
+  "identity": {
+    "name": "Claude",
+    "version": "3.5",
+    "family": "constitutional_ai",
+    "architecture": "extended_thinking",
+    "source": "anthropic/claude-3-5-sonnet"
+  },
+
+  "π_kuhul": {
+    "@doc": "π-KUHUL integration for constitutional reasoning",
+    "constants": {
+      "π": 3.141592653589793,
+      "φ": 1.6180339887498948,
+      "τ": 6.283185307179586
+    },
+    "wave_functions": {
+      "constitutional_check": "∏(principle_i) → [0,1]",
+      "thinking_depth": "log(complexity) × φ",
+      "harmlessness_score": "1 - max(harm_signals)"
+    },
+    "constitutional_physics": {
+      "principles": ["harmlessness", "helpfulness", "honesty"],
+      "threshold": 0.95,
+      "extended_thinking": true
+    }
+  },
+
+  "glyph_codex": {
+    "@doc": "Glyph encoding for Claude operations",
+    "primitives": {
+      "🧠→💭": "input_to_thinking",
+      "💭→⚖️": "thinking_to_constitutional",
+      "⚖️→✨": "constitutional_to_response"
+    },
+    "opcodes": {
+      "CLD_TOK": "⟁A0",
+      "CLD_THK": "⟁A1",
+      "CLD_CON": "⟁A2",
+      "CLD_RSN": "⟁A3",
+      "CLD_TUL": "⟁A4",
+      "CLD_OUT": "⟁A5"
+    }
+  },
+
+  "xcfe_paths": {
+    "@doc": "Control flow paths",
+    "chat": ["input_processor", "text_encoder", "constitutional_filter", "reasoning_engine", "text_output"],
+    "vision": ["input_processor", "vision_encoder", "multimodal_fusion", "reasoning_engine", "text_output"],
+    "tool_use": ["input_processor", "tool_processor", "reasoning_engine", "tool_executor", "reasoning_engine"]
+  },
+
+  "compression_calculus": {
+    "@law": "CC-FULL",
+    "symbol_folding": {
+      "enabled": true,
+      "max_depth": 5,
+      "glyph_cache": true
+    },
+    "constitutional_compression": {
+      "principle_cache": true,
+      "reasoning_compression": true,
+      "tool_result_folding": true
+    }
+  },
+
+  "memory_binding": {
+    "ngram_table": "claude_patterns",
+    "glyph_weights": "claude_effectiveness",
+    "constitutional_cache": "claude_principles"
+  },
+
+  "inference": {
+    "modes": {
+      "chat": {
+        "temperature": 1.0,
+        "max_tokens": 8192,
+        "top_p": 0.999
+      },
+      "extended_thinking": {
+        "temperature": 1.0,
+        "max_tokens": 16384,
+        "thinking_budget": 32768
+      },
+      "tool_use": {
+        "temperature": 0.5,
+        "max_tokens": 4096,
+        "parallel_tools": true
+      }
+    }
+  },
+
+  "api_binding": {
+    "local": {
+      "enabled": false
+    },
+    "remote": {
+      "enabled": true,
+      "endpoint": "https://api.anthropic.com/v1",
+      "models": {
+        "opus": "claude-3-opus-20240229",
+        "sonnet": "claude-3-5-sonnet-20241022",
+        "haiku": "claude-3-5-haiku-20241022"
+      }
+    }
+  }
+}
