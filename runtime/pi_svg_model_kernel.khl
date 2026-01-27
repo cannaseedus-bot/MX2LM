@@ -3,6 +3,15 @@
   ⟁Wo⟁ law "Ω-BLACK-PANEL"
   ⟁Wo⟁ role "svg_model_executor"
 
+  # Projection-only rule: shells emit sanitized SVG fragments only
+  ⟁ π_const π_projection_banlist {
+    "script",
+    "animate",
+    "set",
+    "foreignObject",
+    "style"
+  }
+
   ⟁ π_const π_shell_registry {
     "orbital_halo",
     "stack_grid",
@@ -10,6 +19,49 @@
     "hud_ring",
     "fractal_lattice"
   }
+
+  ⟁ π_fn π_sanitize_attrs(attrs) -> dict
+    ⟁ let safe {}
+    ⟁ loop k, v in attrs
+      ⟁ let key_lower lower(k)
+      ⟁ if starts_with(key_lower, "on")
+        # Strip events to honor projection-only rule
+        ⟁ continue
+      ⟁ end
+
+      ⟁ if is_string(v)
+        ⟁ let val_lower lower(trim(v))
+        ⟁ if starts_with(val_lower, "javascript:")
+          ⟁ continue
+        ⟁ end
+      ⟁ end
+
+      ⟁ set safe[k] v
+    ⟁ end
+    ⟁ return safe
+  ⟁ end
+
+  ⟁ π_fn π_element(tag, attrs, children) -> dict
+    ⟁ if tag in π_projection_banlist
+      ⟁ return {
+        "tag": "g",
+        "attrs": { "data-sanitized": "true" },
+        "children": []
+      }
+    ⟁ end
+    ⟁ return {
+      "tag": tag,
+      "attrs": π_sanitize_attrs(attrs or {}),
+      "children": children or []
+    }
+  ⟁ end
+
+  ⟁ π_fn π_svg_root(shell_id, children) -> dict
+    ⟁ return π_element("svg", {
+      "data-shell": shell_id,
+      "viewBox": "-128 -128 256 256"
+    }, children)
+  ⟁ end
 
   ⟁ π_fn π_vec_norm(v)
     ⟁ let s 0.0
@@ -22,62 +74,200 @@
   ⟁ π_fn π_render_model(model_id, data)
     ⟁ let model data["models"][model_id]
     ⟁ let shell_id model["shell"]
-    ⟁ π_render_shell(shell_id, data["shells"])
+    ⟁ return π_render_shell(shell_id, data["shells"])
   ⟁ end
 
   ⟁ π_fn π_render_shell(shell_id, shells)
     ⟁ if not shell_id in π_shell_registry
-      ⟁ return
+      ⟁ return {"error": "invalid_shell"}
     ⟁ end
 
     ⟁ let shell shells[shell_id]
 
     ⟁ switch shell_id
       ⟁ case "orbital_halo"
-        ⟁ π_render_orbital_halo(shell)
+        ⟁ return π_render_orbital_halo(shell)
       ⟁ case "stack_grid"
-        ⟁ π_render_stack_grid(shell)
+        ⟁ return π_render_stack_grid(shell)
       ⟁ case "tunnel_rail"
-        ⟁ π_render_tunnel_rail(shell)
+        ⟁ return π_render_tunnel_rail(shell)
       ⟁ case "hud_ring"
-        ⟁ π_render_hud_ring(shell)
+        ⟁ return π_render_hud_ring(shell)
       ⟁ case "fractal_lattice"
-        ⟁ π_render_fractal_lattice(shell)
+        ⟁ return π_render_fractal_lattice(shell)
     ⟁ end
   ⟁ end
 
   ⟁ π_fn π_render_orbital_halo(s)
-    ⟁ π_render_ring("inner", s["inner"])
-    ⟁ π_render_ring("mid",   s["mid"])
-    ⟁ π_render_ring("outer", s["outer"])
+    ⟁ let rings []
+    ⟁ push rings π_render_ring("inner", s["inner"])
+    ⟁ push rings π_render_ring("mid",   s["mid"])
+    ⟁ push rings π_render_ring("outer", s["outer"])
+    ⟁ return π_svg_root("orbital_halo", rings)
   ⟁ end
 
   ⟁ π_fn π_render_stack_grid(s)
+    ⟁ let cells []
     ⟁ loop r 0 s["rows"]
+      ⟁ let row s["weights"][r] or []
       ⟁ loop c 0 s["cols"]
-        ⟁ π_render_cell(r, c, s["weights"][r][c])
+        ⟁ let weight row[c] or 0.0
+        ⟁ let x (c * 18)
+        ⟁ let y (r * 18)
+        ⟁ push cells π_element("rect", {
+          "x": x,
+          "y": y,
+          "width": 16,
+          "height": 16,
+          "data-weight": weight
+        }, [])
       ⟁ end
     ⟁ end
+
+    ⟁ let grid π_element("g", {
+      "data-grid": "stack",
+      "data-rows": s["rows"],
+      "data-cols": s["cols"]
+    }, cells)
+
+    ⟁ return π_svg_root("stack_grid", [grid])
   ⟁ end
 
   ⟁ π_fn π_render_tunnel_rail(s)
-    ⟁ loop i 0 s["segments"]
-      ⟁ π_render_segment(i, s["depth"][i])
+    ⟁ let nodes []
+    ⟁ let depths s["depth"] or []
+    ⟁ let lanes s["lanes"] or []
+    ⟁ let energies s["energy"] or []
+    ⟁ let labels s["labels"] or []
+    ⟁ let count s["segments"] or len(depths)
+    ⟁ loop i 0 count
+      ⟁ let depth depths[i] or 0
+      ⟁ let lane  lanes[i] or 0
+      ⟁ let energy energies[i] or 0.0
+      ⟁ let label labels[i] or ("segment_" + str(i))
+      ⟁ let x (lane * 22)
+      ⟁ let y (depth * 0.4)
+
+      ⟁ let attrs {
+        "x": x,
+        "y": y,
+        "width": 12,
+        "height": 6,
+        "data-energy": energy,
+        "data-label": label
+      }
+      ⟁ push nodes π_element("rect", attrs, [])
     ⟁ end
+
+    ⟁ let rail π_element("g", {"data-rail": "stream"}, nodes)
+    ⟁ return π_svg_root("tunnel_rail", [rail])
   ⟁ end
 
   ⟁ π_fn π_render_hud_ring(s)
-    ⟁ loop i 0 len(s["arcs"])
-      ⟁ π_render_arc(
-        s["arcs"][i]["start"],
-        s["arcs"][i]["end"],
-        s["arcs"][i]["label"]
-      )
+    ⟁ let arcs s["arcs"] or []
+    ⟁ let nodes []
+    ⟁ let radius 80
+    ⟁ loop i 0 len(arcs)
+      ⟁ let arc arcs[i]
+      ⟁ let θ1 (PI / 180) * (arc["start"] or 0)
+      ⟁ let θ2 (PI / 180) * (arc["end"] or 0)
+      ⟁ let x1 radius * cos(θ1)
+      ⟁ let y1 radius * sin(θ1)
+      ⟁ let x2 radius * cos(θ2)
+      ⟁ let y2 radius * sin(θ2)
+      ⟁ let path "M " + x1 + " " + y1 + " A " + radius + " " + radius + " 0 0 1 " + x2 + " " + y2
+      ⟁ push nodes π_element("path", {
+        "d": path,
+        "data-label": arc["label"]
+      }, [])
     ⟁ end
+
+    ⟁ let ring π_element("g", {"data-ring": "hud"}, nodes)
+    ⟁ return π_svg_root("hud_ring", [ring])
   ⟁ end
 
   ⟁ π_fn π_render_fractal_lattice(s)
-    ⟁ π_render_fractal_node(0, s["levels"], s["branch_factor"])
+    ⟁ let nodes π_render_fractal_node(0, s["levels"], s["branch_factor"], 0, -48)
+    ⟁ let group π_element("g", {"data-root": "fractal"}, nodes)
+    ⟁ return π_svg_root("fractal_lattice", [group])
+  ⟁ end
+
+  ⟁ π_fn π_render_ring(name, ring)
+    ⟁ let nodes []
+    ⟁ let radius ring["radius"] or 0
+    ⟁ let weights ring["weights"] or []
+    ⟁ if len(weights) == 0
+      ⟁ push weights 0
+    ⟁ end
+
+    ⟁ push nodes π_element("circle", {
+      "cx": 0,
+      "cy": 0,
+      "r": radius,
+      "data-ring": name
+    }, [])
+
+    ⟁ let count len(weights)
+    ⟁ loop i 0 count
+      ⟁ let w weights[i]
+      ⟁ let payload {}
+      ⟁ if is_number(w)
+        ⟁ set payload["magnitude"] w
+      ⟁ else
+        ⟁ merge payload w
+      ⟁ end
+
+      ⟁ let angle payload["angle"] or ((2 * PI * i) / count)
+      ⟁ let mag   payload["magnitude"] or payload["weight"] or 1.0
+      ⟁ let label payload["label"] or ("w" + str(i))
+      ⟁ let x radius * cos(angle)
+      ⟁ let y radius * sin(angle)
+
+      ⟁ push nodes π_element("circle", {
+        "cx": x,
+        "cy": y,
+        "r": (1.2 + (mag * 3)),
+        "data-weight": mag,
+        "data-label": label
+      }, [])
+    ⟁ end
+
+    ⟁ return π_element("g", {
+      "data-ring": name,
+      "data-radius": radius
+    }, nodes)
+  ⟁ end
+
+  ⟁ π_fn π_render_fractal_node(level, max_levels, branch_factor, x, y) -> list
+    ⟁ let nodes []
+    ⟁ push nodes π_element("circle", {
+      "cx": x,
+      "cy": y,
+      "r": 4,
+      "data-level": level
+    }, [])
+
+    ⟁ if level + 1 >= max_levels
+      ⟁ return nodes
+    ⟁ end
+
+    ⟁ let span (34 + (max_levels - level) * 2)
+    ⟁ let offset span * (branch_factor - 1) / 2
+    ⟁ loop i 0 branch_factor
+      ⟁ let nx (x - offset + (span * i))
+      ⟁ let ny (y + 28)
+      ⟁ push nodes π_element("line", {
+        "x1": x,
+        "y1": y,
+        "x2": nx,
+        "y2": ny,
+        "data-level": level
+      }, [])
+      ⟁ let child π_render_fractal_node(level + 1, max_levels, branch_factor, nx, ny)
+      ⟁ extend nodes child
+    ⟁ end
+
+    ⟁ return nodes
   ⟁ end
 
 ⟁ end π_module

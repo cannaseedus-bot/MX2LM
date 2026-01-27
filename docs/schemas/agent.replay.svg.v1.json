@@ -1,0 +1,40 @@
+{
+  "$schema": "xjson://schema/core/v1",
+  "@id": "xjson://agent/replay/svg/v1",
+  "@type": "agent.replay.svg.v1",
+  "v": "1.0.0",
+  "@law": [
+    "SVG_IS_PROJECTION_ONLY",
+    "NO_EXECUTION_IN_SVG",
+    "ALL_VISUALS_DERIVE_FROM_EVENTS",
+    "DETERMINISTIC_LAYOUT_ALLOWED"
+  ],
+  "svg_root": {
+    "required": ["width", "height", "viewBox", "meta", "layers"],
+    "fields": {
+      "width": "int",
+      "height": "int",
+      "viewBox": "string (0 0 w h)",
+      "meta": {
+        "title": "string",
+        "subtitle": "string?",
+        "replay_id": "string",
+        "tick": "int",
+        "hash": "string?"
+      },
+      "layers": {
+        "bg": "object",
+        "hud": "object",
+        "timeline": "object",
+        "log": "object",
+        "graph": "object?"
+      }
+    }
+  },
+  "layer_conventions": {
+    "timeline": "shows ticks, current tick marker, phase labels",
+    "log": "shows last N events kind/level + snippets",
+    "hud": "shows agent state summary + metrics",
+    "graph": "optional DAG of spans (id/parent), deterministic coordinates"
+  }
+}

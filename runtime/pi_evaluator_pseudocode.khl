@@ -1,4 +1,4 @@
-π_EVALUATE(brain_row, input_state):
+π_EVALUATE(brain_row, input_state, shell_artifact_ref = null):
 
   # Load immutable metric rows
   metrics ← brain_row.metrics
@@ -46,10 +46,71 @@
   # Apply effects deterministically
   result = APPLY_EFFECTS(effects, input_state)
 
-  return {
+  # Build structured trace payload (inputs, effects, outputs, seals)
+  trace_id = TRACE_ID(brain_row.id)
+
+  trace_inputs = {
+    brain: { id: brain_row.id, domain: brain_row.domain },
+    metrics: metrics,
+    input_state: input_state
+  }
+
+  trace_hashes = {
+    inputs: HASH(trace_inputs),
+    effects: HASH(effects),
+    output: HASH(result)
+  }
+
+  trace = {
+    trace_id: trace_id,
     brain_id: brain_row.id,
     domain: brain_row.domain,
+    inputs: trace_inputs,
     effects: effects,
     output: result,
-    seal: HASH(brain_row.id, effects, result)
+    shell_artifact: shell_artifact_ref,
+    hashes: trace_hashes,
+    seal: TRACE_SEAL(trace_id, trace_hashes, shell_artifact_ref)
   }
+
+  # Store alongside shell artifact (if provided) and enforce immutability
+  STORE_TRACE_WITH_SHELL(trace, shell_artifact_ref)
+
+  return trace
+
+# ---------------------------
+# Trace + seal helpers
+# ---------------------------
+
+TRACE_ID(brain_id):
+  return ID("trace", brain_id, CLOCK())
+
+TRACE_SEAL(trace_id, hashes, shell_artifact_ref):
+  combined = [trace_id, hashes.inputs, hashes.effects, hashes.output]
+
+  if shell_artifact_ref is not null and shell_artifact_ref.hash is not null:
+    push combined shell_artifact_ref.hash
+
+  combined_hash = HASH(combined)
+  return "⟁SEAL⟁sha256:" + combined_hash + "⟁"
+
+STORE_TRACE_WITH_SHELL(trace, shell_artifact_ref):
+  if not VERIFY_TRACE_SEAL(trace, shell_artifact_ref):
+    raise ERROR("TRACE_SEAL_INVALID")
+
+  record = {
+    trace: trace,
+    shell_artifact: shell_artifact_ref,
+    stored_at: CLOCK()
+  }
+
+  TRACE_ARCHIVE.append(record)
+  TRACE_ARCHIVE_SEAL.append({
+    trace_id: trace.trace_id,
+    seal: trace.seal,
+    shell_seal: shell_artifact_ref ? shell_artifact_ref.seal : null
+  })
+
+VERIFY_TRACE_SEAL(trace, shell_artifact_ref):
+  expected = TRACE_SEAL(trace.trace_id, trace.hashes, shell_artifact_ref)
+  return expected == trace.seal

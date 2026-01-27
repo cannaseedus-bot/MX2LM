@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
+  <rect width="100%" height="100%" fill="#070b12" />
+
+  <text x="40" y="60" fill="#e6f7ff" font-size="28" font-family="Inter, Arial, sans-serif">
+    KUHUL Agent Scaffold
+  </text>
+
+  <text x="40" y="110" fill="#9fb3c8" font-size="16" font-family="Inter, Arial, sans-serif">
+    This SVG is a projection surface. Execution authority stays in π/AST.
+  </text>
+
+  <g transform="translate(40, 150)">
+    <rect width="320" height="64" rx="12" fill="#16f2aa" />
+    <text x="160" y="40" text-anchor="middle" fill="#0b0f14" font-size="18" font-family="Inter, Arial, sans-serif">
+      Run Agent (CLI)
+    </text>
+  </g>
+
+  <text x="40" y="250" fill="#9fb3c8" font-size="14" font-family="Inter, Arial, sans-serif">
+    CLI: php ai_agent.php --complete-first
+  </text>
+
+  <text x="40" y="290" fill="#9fb3c8" font-size="14" font-family="Inter, Arial, sans-serif">
+    Event log: output/agent.events.jsonl
+  </text>
+
+  <text x="40" y="320" fill="#9fb3c8" font-size="14" font-family="Inter, Arial, sans-serif">
+    Replay: php ai_agent.php --replay output/agent.events.jsonl --svg output/agent.replay.svg
+  </text>
+
+  <metadata>
+    <kuhul>
+      {
+        "type": "projection",
+        "authority": "kuhul-pi",
+        "surface": "svg",
+        "actions": [
+          {
+            "label": "Run Agent",
+            "command": "php ai_agent.php --complete-first"
+          },
+          {
+            "label": "Replay Event Log",
+            "command": "php ai_agent.php --replay output/agent.events.jsonl --svg output/agent.replay.svg"
+          }
+        ],
+        "event_log": "output/agent.events.jsonl"
+      }
+    </kuhul>
+  </metadata>
+</svg>

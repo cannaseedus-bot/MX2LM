@@ -1,0 +1,137 @@
+{
+  "@type": "xcfe/brain",
+  "@id": "cline_agent_brain",
+  "@law": "Ω-BLACK-PANEL",
+  "@schema": "../schema/cline.xjson",
+  "@runtime": "java",
+
+  "identity": {
+    "name": "Cline Agent",
+    "version": "1.0.0",
+    "family": "autonomous_agent",
+    "architecture": "tool_augmented_llm",
+    "source": "cline/cline-agent"
+  },
+
+  "π_kuhul": {
+    "@doc": "π-KUHUL integration for agent loops",
+    "constants": {
+      "π": 3.141592653589793,
+      "φ": 1.6180339887498948,
+      "τ": 6.283185307179586
+    },
+    "wave_functions": {
+      "action_score": "confidence × φ^(-iteration)",
+      "context_decay": "e^(-t / context_half_life)",
+      "error_recovery": "retry_count × φ^(-1)"
+    },
+    "agent_physics": {
+      "max_iterations": 100,
+      "context_half_life": 50,
+      "tool_timeout_ms": 30000
+    }
+  },
+
+  "glyph_codex": {
+    "@doc": "Glyph encoding for Cline agent operations",
+    "primitives": {
+      "🤖→🔍": "plan_to_search",
+      "🔍→📁": "search_to_file",
+      "📁→💻": "file_to_terminal",
+      "💻→🤖": "result_to_plan"
+    },
+    "opcodes": {
+      "CLN_TSK": "⟁L0",
+      "CLN_CTX": "⟁L1",
+      "CLN_PLN": "⟁L2",
+      "CLN_TUL": "⟁L3",
+      "CLN_RES": "⟁L4",
+      "CLN_OUT": "⟁L5"
+    }
+  },
+
+  "xcfe_paths": {
+    "@doc": "Control flow paths",
+    "task_loop": ["task_input", "context_gather", "action_plan", "action_router", "result_process", "loop_check"],
+    "file_op": ["action_router", "file_tool", "result_process"],
+    "terminal_op": ["action_router", "terminal_tool", "result_process"],
+    "error_recovery": ["loop_check", "error_recovery", "action_plan"]
+  },
+
+  "compression_calculus": {
+    "@law": "CC-FULL",
+    "symbol_folding": {
+      "enabled": true,
+      "max_depth": 3,
+      "glyph_cache": true
+    },
+    "agent_compression": {
+      "action_deduplication": true,
+      "context_summarization": true,
+      "tool_result_compression": true
+    }
+  },
+
+  "memory_binding": {
+    "ngram_table": "cline_patterns",
+    "glyph_weights": "cline_effectiveness",
+    "action_history": "cline_actions",
+    "context_cache": "cline_context"
+  },
+
+  "tools": {
+    "file_editor": {
+      "id": "file_editor",
+      "operations": ["read", "write", "edit", "search"],
+      "timeout_ms": 10000
+    },
+    "terminal": {
+      "id": "terminal",
+      "operations": ["execute", "background"],
+      "timeout_ms": 30000
+    },
+    "browser": {
+      "id": "browser",
+      "operations": ["navigate", "click", "type", "screenshot"],
+      "timeout_ms": 60000
+    },
+    "search": {
+      "id": "search",
+      "operations": ["grep", "glob", "semantic"],
+      "timeout_ms": 5000
+    }
+  },
+
+  "java_binding": {
+    "@doc": "Java runtime integration",
+    "package": "com.cline.agent",
+    "main_class": "ClineAgent",
+    "jvm_options": ["-Xmx4g", "-XX:+UseG1GC"],
+    "dependencies": [
+      "com.google.gson:gson:2.10.1",
+      "org.apache.httpcomponents:httpclient:4.5.14"
+    ]
+  },
+
+  "inference": {
+    "modes": {
+      "planning": {
+        "temperature": 0.7,
+        "max_tokens": 4096,
+        "model": "configurable"
+      },
+      "tool_use": {
+        "temperature": 0.2,
+        "max_tokens": 2048,
+        "structured_output": true
+      }
+    }
+  },
+
+  "api_binding": {
+    "llm_provider": {
+      "configurable": true,
+      "supported": ["claude", "openai", "deepseek", "ollama"]
+    }
+  }
+}
