@@ -1,0 +1,122 @@
+{
+  "@type": "xcfe/model_schema",
+  "@id": "codegemma_v1",
+  "@law": "CC-FULL",
+  "@version": "1.0.0",
+
+  "Σ": {
+    "@doc": "Symbol set for CodeGemma",
+    "atoms": ["token", "code", "fim", "attention", "mlp"],
+    "glyphs": {
+      "💻": "code_gen",
+      "🔧": "code_fix",
+      "📝": "code_complete",
+      "🔀": "fim_mode",
+      "✅": "code_verify"
+    }
+  },
+
+  "V": {
+    "@doc": "Value bindings - CodeGemma 7B config",
+    "π": 3.141592653589793,
+    "φ": 1.6180339887498948,
+    "hidden_dim": 3072,
+    "num_layers": 28,
+    "num_heads": 16,
+    "num_kv_heads": 16,
+    "head_dim": 256,
+    "intermediate_size": 24576,
+    "vocab_size": 256000,
+    "max_seq_len": 8192,
+    "fim_tokens": {
+      "prefix": "<|fim_prefix|>",
+      "suffix": "<|fim_suffix|>",
+      "middle": "<|fim_middle|>"
+    }
+  },
+
+  "Φ": {
+    "@doc": "Control structure - FIM-enabled Code Generation",
+    "entry": "input_router",
+    "nodes": {
+      "input_router": {
+        "@type": "control/branch",
+        "conditions": {
+          "has_fim_tokens": "fim_mode",
+          "standard": "standard_mode"
+        }
+      },
+      "fim_mode": {
+        "@type": "π/transform",
+        "operation": "fim_reorder",
+        "pattern": "prefix_suffix_middle",
+        "next": "tokenizer"
+      },
+      "standard_mode": {
+        "@type": "control/passthrough",
+        "next": "tokenizer"
+      },
+      "tokenizer": {
+        "@type": "data/transform",
+        "operation": "sentencepiece_encode",
+        "next": "embed"
+      },
+      "embed": {
+        "@type": "π/transform",
+        "operation": "lookup_normalized",
+        "dim": 3072,
+        "next": "transformer_layers"
+      },
+      "transformer_layers": {
+        "@type": "control/loop",
+        "iterations": 28,
+        "body": "transformer_block",
+        "next": "output_head"
+      },
+      "transformer_block": {
+        "@type": "π/transform",
+        "components": ["rmsnorm", "multi_query_attention", "geglu_mlp"],
+        "residual": true
+      },
+      "output_head": {
+        "@type": "π/transform",
+        "operation": "lm_head",
+        "next": "sample"
+      },
+      "sample": {
+        "@type": "control/branch",
+        "conditions": {
+          "temperature_0": "argmax",
+          "temperature_gt_0": "nucleus_sampling"
+        }
+      }
+    }
+  },
+
+  "compression": {
+    "@law": "CC-v1",
+    "operators": ["⊕", "π̂", "⊗", "≈", "τ"],
+    "code_compression": {
+      "syntax_aware": true,
+      "fim_optimization": true,
+      "infilling_cache": true
+    }
+  },
+
+  "capabilities": {
+    "code_generation": true,
+    "code_completion": true,
+    "fill_in_middle": true,
+    "code_explanation": true,
+    "bug_detection": true,
+    "languages": ["python", "javascript", "java", "cpp", "go", "rust", "typescript"]
+  },
+
+  "adapters": {
+    "kuhul_pi": {
+      "wave_transform": true,
+      "golden_compression": true,
+      "syntax_glyph": true
+    }
+  }
+}

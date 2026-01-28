@@ -1,0 +1,180 @@
+{
+  "@type": "xcfe/brain",
+  "@id": "qwen_asx_base_brain",
+  "@law": "Ω-BLACK-PANEL",
+  "@schema": "../schema/qwen_asx.xjson",
+  "@role": "base_training_format",
+
+  "identity": {
+    "name": "Qwen-ASX",
+    "version": "1.0.0",
+    "family": "qwen_decoder_only",
+    "architecture": "transformer_lm",
+    "source": "custom_trained_colab",
+    "role": "mx2lm_base_training_model"
+  },
+
+  "π_kuhul": {
+    "@doc": "π-KUHUL integration for base training format",
+    "constants": {
+      "π": 3.141592653589793,
+      "φ": 1.6180339887498948,
+      "τ": 6.283185307179586,
+      "e": 2.718281828459045
+    },
+    "wave_functions": {
+      "embed_scale": "sqrt(d_model) × sin(πx)",
+      "rope_position": "e^(iθ) where θ = pos × 10000^(-2i/d)",
+      "delta_scale": "φ^(-epoch) × reward",
+      "weight_decay": "w × (1 - λ × φ^(-t))"
+    },
+    "training_physics": {
+      "delta_only": true,
+      "base_immutable": true,
+      "rlhf_scale": 0.01,
+      "clamp": 0.05,
+      "min_samples": 10
+    }
+  },
+
+  "glyph_codex": {
+    "@doc": "Glyph encoding for Qwen-ASX operations",
+    "primitives": {
+      "🧬→🎓": "base_to_training",
+      "🎓→📊": "training_to_delta",
+      "📊→🔄": "delta_to_rlhf",
+      "🔄→✅": "rlhf_to_conformance"
+    },
+    "opcodes": {
+      "QWA_TOK": "⟁W0",
+      "QWA_EMB": "⟁W1",
+      "QWA_ATT": "⟁W2",
+      "QWA_FFN": "⟁W3",
+      "QWA_NRM": "⟁W4",
+      "QWA_LMH": "⟁W5",
+      "QWA_DLT": "⟁W6",
+      "QWA_RLH": "⟁W7"
+    }
+  },
+
+  "xcfe_paths": {
+    "@doc": "Control flow paths",
+    "inference": ["tokenizer", "embedding", "transformer_layers", "norm_out", "lm_head", "sample"],
+    "training": ["tokenizer", "embedding", "transformer_layers", "norm_out", "lm_head", "loss", "delta_compute"],
+    "conformance": ["inference", "hash_output", "verify_invariants"]
+  },
+
+  "blocks": {
+    "@doc": "Declarative block registry",
+    "registry": {
+      "embedding": {
+        "@type": "tensor.embedding",
+        "@weights": ["embedding.weight"],
+        "@in": ["input_ids"],
+        "@out": ["x"]
+      },
+      "attn_N": {
+        "@type": "tensor.attention",
+        "@template": true,
+        "@weights": ["layers.N.attn.q_proj.weight", "layers.N.attn.k_proj.weight", "layers.N.attn.v_proj.weight", "layers.N.attn.o_proj.weight"],
+        "@in": ["x"],
+        "@out": ["x"]
+      },
+      "ffn_N": {
+        "@type": "tensor.ffn",
+        "@template": true,
+        "@weights": ["layers.N.mlp.gate_proj.weight", "layers.N.mlp.up_proj.weight", "layers.N.mlp.down_proj.weight"],
+        "@in": ["x"],
+        "@out": ["x"]
+      },
+      "norm_out": {
+        "@type": "tensor.rmsnorm",
+        "@weights": ["norm.weight"],
+        "@in": ["x"],
+        "@out": ["x"]
+      },
+      "lm_head": {
+        "@type": "tensor.linear",
+        "@weights": ["lm_head.weight"],
+        "@in": ["x"],
+        "@out": ["logits"]
+      }
+    },
+    "sequence": ["embedding", "attn_0", "ffn_0", "attn_1", "ffn_1", "attn_2", "ffn_2", "attn_3", "ffn_3", "attn_4", "ffn_4", "attn_5", "ffn_5", "attn_6", "ffn_6", "attn_7", "ffn_7", "attn_8", "ffn_8", "attn_9", "ffn_9", "attn_10", "ffn_10", "attn_11", "ffn_11", "norm_out", "lm_head"]
+  },
+
+  "training": {
+    "@doc": "RLHF training configuration",
+    "rlhf": {
+      "@mode": "delta_only",
+      "@min_samples": 10,
+      "@policy": {
+        "reward_scale": 0.01,
+        "clamp": 0.05,
+        "decay": "φ^(-epoch)"
+      }
+    },
+    "delta_log": {
+      "@enabled": true,
+      "@format": "scxq2_lane"
+    }
+  },
+
+  "compression_calculus": {
+    "@law": "CC-FULL",
+    "symbol_folding": {
+      "enabled": true,
+      "max_depth": 4,
+      "glyph_cache": true
+    },
+    "weight_handling": {
+      "base_weights": "immutable_safetensors",
+      "deltas": "scxq2_packed",
+      "traces": "scxq2_lane"
+    }
+  },
+
+  "memory_binding": {
+    "ngram_table": "qwen_asx_patterns",
+    "glyph_weights": "qwen_asx_effectiveness",
+    "tensor_cache": "qwen_asx_tensors",
+    "delta_log": "qwen_asx_deltas"
+  },
+
+  "external_interface": {
+    "@doc": "How external AI sees this brain",
+    "visibility": "brain_instance",
+    "exposes": {
+      "inference": true,
+      "training_details": false,
+      "multi_brain_format": false
+    },
+    "routes": {
+      "infer": "/qwen-asx/infer",
+      "test": "/qwen-asx/test"
+    }
+  },
+
+  "inference": {
+    "modes": {
+      "standard": {
+        "temperature": 0.7,
+        "max_tokens": 2048,
+        "top_p": 0.9
+      },
+      "deterministic": {
+        "temperature": 0.0,
+        "max_tokens": 2048,
+        "top_p": 1.0
+      }
+    }
+  },
+
+  "source_binding": {
+    "safetensors": {
+      "url": "https://mx2lm.app/models/Qwen-ASX/model.safetensors",
+      "local_path": "./models/qwen-asx/weights/model.safetensors",
+      "lazy_load": true
+    }
+  }
+}

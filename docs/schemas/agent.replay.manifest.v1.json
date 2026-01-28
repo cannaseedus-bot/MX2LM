@@ -1,0 +1,27 @@
+{
+  "$schema": "xjson://schema/core/v1",
+  "@id": "xjson://agent/replay/manifest/v1",
+  "@type": "agent.replay.manifest.v1",
+  "v": "1.0.0",
+  "required": ["replay_id", "events_path", "projection"],
+  "fields": {
+    "replay_id": "string",
+    "events_path": "string (path to events.jsonl)",
+    "projection": {
+      "type": "svg",
+      "size": { "w": "int", "h": "int" },
+      "theme": "string? (hazard|ghost|emerald|...)",
+      "frames": {
+        "mode": "per_tick|keyframes",
+        "start_tick": "int?",
+        "end_tick": "int?"
+      }
+    },
+    "provenance": {
+      "app_id": "string?",
+      "agent_id": "string?",
+      "host": "string?",
+      "created_ts": "int?"
+    }
+  }
+}

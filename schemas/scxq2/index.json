@@ -1,0 +1,45 @@
+{
+  "$schema": "xjson://schema/draft/2020-12",
+  "$id": "asx://schema/scxq2/pack",
+  "@type": "xcfe/schema_pack",
+  "@law": "SCXQ2/CC-v1",
+  "@status": "FROZEN",
+
+  "description": "SCXQ2 binary schema headers for CC-v1 wire encoding",
+
+  "schemas": {
+    "dict_header": "asx://schema/scxq2/scxq2_dict_header.v1",
+    "field_header": "asx://schema/scxq2/scxq2_field_header.v1",
+    "edge_header": "asx://schema/scxq2/scxq2_edge_header.v1",
+    "lane_header": "asx://schema/scxq2/scxq2_lane_header.v1"
+  },
+
+  "chunk_types": {
+    "DICT": {
+      "description": "Symbol table chunk",
+      "cc_operator": "⊕",
+      "header_schema": "asx://schema/scxq2/scxq2_dict_header.v1"
+    },
+    "FIELD": {
+      "description": "Field ID table chunk",
+      "cc_operator": "π̂",
+      "header_schema": "asx://schema/scxq2/scxq2_field_header.v1"
+    },
+    "EDGES": {
+      "description": "Control/graph adjacency chunk",
+      "cc_operator": "⊗",
+      "header_schema": "asx://schema/scxq2/scxq2_edge_header.v1"
+    },
+    "LANE": {
+      "description": "Value lane chunk",
+      "cc_operator": "≈",
+      "header_schema": "asx://schema/scxq2/scxq2_lane_header.v1"
+    }
+  },
+
+  "stream_format": {
+    "order": ["META", "DICT", "FIELD", "EDGES", "DATA", "PROOF"],
+    "checkpoints_supported": true,
+    "temporal_folding": "τ"
+  }
+}

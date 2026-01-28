@@ -1,0 +1,8 @@
+{
+  "@type": "pi.ast",
+  "v": 1,
+  "op": "emit_task",
+  "args": {
+    "task": "Wire event log replay into SVG dashboard"
+  }
+}

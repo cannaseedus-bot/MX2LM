@@ -1,0 +1,22 @@
+{
+  "$schema": "xjson://schema/draft/2020-12",
+  "$id": "asx://schema/scxq2/scxq2_edge_header.v1",
+  "type": "object",
+  "required": ["@scxq2_edges"],
+  "properties": {
+    "@scxq2_edges": {
+      "type": "object",
+      "required": ["@version", "@graph_id", "@nodes", "@edges", "@hash", "@ordering"],
+      "properties": {
+        "@version": { "const": "1.0" },
+        "@graph_id": { "type": "string" },
+        "@nodes": { "type": "integer", "minimum": 0 },
+        "@edges": { "type": "integer", "minimum": 0 },
+        "@ordering": { "type": "string", "enum": ["preserved", "canonical"] },
+        "@hash": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
