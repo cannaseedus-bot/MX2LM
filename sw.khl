@@ -1,5 +1,5 @@
 /* ============================================================
-   sw.khl — K'UHUL KERNEL (Qwen-ASX Runtime Folds)
+   sw.khl — K'UHUL KERNEL (ASX Runtime Folds)
    Law: Ω-BLACK-PANEL
 
    This is the execution kernel for MX2LM's base training format.
@@ -45,8 +45,8 @@ const KUHUL_KERNEL = (function () {
       qwen_asx: {
         source: {
           type: 'remote_safetensors',
-          url: 'https://mx2lm.app/models/Qwen-ASX/model.safetensors',
-          local: './models/qwen-asx/weights/model.safetensors'
+          url: 'https://remote-model-domain.com/model.safetensors',
+          local: './model/your-local-model/model.safetensors'
         },
         topology: {
           type: 'qwen_decoder_only',
