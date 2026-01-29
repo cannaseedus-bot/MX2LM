@@ -53,8 +53,10 @@ For the canonical ASX specification and language family overview, see:
 
 MX2LM is intentionally **narrower** than ASX.
 
-* ASX answers: *“What is allowed to exist and change?”*
-* MX2LM answers: *“How cognition emerges under those laws.”*
+## K'UHUL Query Language (KQL)
+
+The formal KQL v1.0 specification lives in `docs/kuhul_query_language_spec_v1.md`, covering glyph grammar, AST definitions, semantics, compression rules, and worked examples for implementation reference.
+
 
 MX2LM is therefore:
 
