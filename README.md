@@ -2,6 +2,10 @@
 
 ![MX2LM Brain](dashboard.svg)
 
+## K'UHUL Query Language (KQL)
+
+The formal KQL v1.0 specification lives in `docs/kuhul_query_language_spec_v1.md`, covering glyph grammar, AST definitions, semantics, compression rules, and worked examples for implementation reference.
+
 
 Here’s a **clean, compact MX2LM specification** that reflects *exactly* what we just aligned on — no hype, no mysticism, no ego inflation.
 
