@@ -193,7 +193,32 @@ Not by gradient noise.
 
 ---
 
-## 9. What MX2LM Is *Not*
+## 9. Request Legality Pipeline (ASX-R Phases)
+
+Every kernel request follows a fixed phase order so execution remains replayable and lawful:
+
+1. **@Pop** — decode the request payload deterministically (SCXQ2/XJSON).
+2. **@Wo** — canonicalize and validate structure (no hidden semantics).
+3. **@Sek** — verify or emit proofs for the canonical form.
+4. **@Collapse** — seal the request and allow execution.
+
+If any phase fails, the request is rejected with a deterministic error.
+
+---
+
+## 10. Zero-Trust Capabilities
+
+Sensitive endpoints require explicit capability scopes (e.g., memory, RLHF, micro-swarm). Tokens must carry the right scope or the request is denied. This prevents UI or external clients from mutating state without authority.
+
+---
+
+## 11. Projection Law (Read-Only UI)
+
+The UI is a projection surface only. SVG/DOM output is sealed and read-only; it cannot write semantics back into the kernel. All legality, compression, and proof checks happen inside the kernel runtime.
+
+---
+
+## 12. What MX2LM Is *Not*
 
 * Not a quantum computer
 * Not magic
