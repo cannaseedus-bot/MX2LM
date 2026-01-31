@@ -83,6 +83,8 @@ KQL is the bridge between Kuhul control flow and inference data. A complete Type
 
 See `examples/scxq2_transformers/` for a concrete verify → decode → inference → encode loop that keeps SCXQ2 as the input/output gate while running Transformers.js v3 (Node CLI and browser/WebGPU samples).
 
+For the authoritative runtime language law, see **`ASX-R_SPEC.md`** (frozen) and the companion schemas in `specs/asx-r/`.
+
 ---
 
 ## Tabbed Categories
