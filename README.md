@@ -2,8 +2,9 @@
 
 ![MX2LM Brain](dashboard.svg)
 
-
 Here’s a **clean, compact MX2LM specification** that reflects *exactly* what we just aligned on — no hype, no mysticism, no ego inflation.
+
+For the authoritative runtime language law, see **`ASX-R_SPEC.md`** (frozen) and the companion schemas in `specs/asx-r/`.
 
 ---
 
