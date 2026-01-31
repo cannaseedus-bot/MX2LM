@@ -1,0 +1,63 @@
+{
+  "$schema": "xjson://schema/draft/2020-12",
+  "$id": "asx://schema/pi/symbol_vector.v1",
+  "$comment": "Symbol Vector Schema (Tokenizer Inference Plane)",
+  "type": "object",
+  "required": ["@type", "@tokens"],
+  "properties": {
+    "@type": { "const": "symbol.vector.v1" },
+    "@domain": { "type": "string" },
+    "@tokens": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/token" }
+    },
+    "@bindings": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/binding" }
+    },
+    "@source": {
+      "type": "object",
+      "properties": {
+        "@text": { "type": "string" },
+        "@language": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "token": {
+      "type": "object",
+      "required": ["@class", "@value"],
+      "properties": {
+        "@class": {
+          "type": "string",
+          "enum": ["phase", "operator", "variable", "mode", "literal", "unknown"]
+        },
+        "@value": { "type": "string" },
+        "@role": { "type": "string" },
+        "@span": {
+          "type": "object",
+          "required": ["@start", "@end"],
+          "properties": {
+            "@start": { "type": "integer", "minimum": 0 },
+            "@end": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "binding": {
+      "type": "object",
+      "required": ["@symbol", "@value"],
+      "properties": {
+        "@symbol": { "type": "string" },
+        "@value": { "type": ["number", "string", "boolean"] },
+        "@unit": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

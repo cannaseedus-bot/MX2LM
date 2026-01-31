@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "truncation": null,
+  "padding": null,
+  "added_tokens": [
+    {"id": 0, "content": "[Pop]", "single_word": false, "lstrip": false, "rstrip": false, "normalized": false, "special": true},
+    {"id": 1, "content": "[Wo]", "single_word": false, "lstrip": false, "rstrip": false, "normalized": false, "special": true},
+    {"id": 2, "content": "[Ch'en]", "single_word": false, "lstrip": false, "rstrip": false, "normalized": false, "special": true},
+    {"id": 3, "content": "[Yax]", "single_word": false, "lstrip": false, "rstrip": false, "normalized": false, "special": true},
+    {"id": 4, "content": "[Sek]", "single_word": false, "lstrip": false, "rstrip": false, "normalized": false, "special": true},
+    {"id": 5, "content": "[Xul]", "single_word": false, "lstrip": false, "rstrip": false, "normalized": false, "special": true}
+  ],
+  "model": {
+    "type": "BPE",
+    "vocab": {
+      "[Pop]": 0,
+      "[Wo]": 1,
+      "[Ch'en]": 2,
+      "[Yax]": 3,
+      "[Sek]": 4,
+      "[Xul]": 5
+    },
+    "merges": []
+  },
+  "normalizer": {
+    "type": "Sequence",
+    "normalizers": [{"type": "NFC"}]
+  },
+  "pre_tokenizer": {
+    "type": "Whitespace"
+  },
+  "post_processor": null,
+  "decoder": {
+    "type": "BPEDecoder",
+    "suffix": ""
+  }
+}

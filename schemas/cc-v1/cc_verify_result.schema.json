@@ -1,0 +1,24 @@
+{
+  "$schema": "xjson://schema/draft/2020-12",
+  "$id": "asx://schema/cc/cc_verify_result.v1",
+  "type": "object",
+  "required": ["@cc_verify_result"],
+  "properties": {
+    "@cc_verify_result": {
+      "type": "object",
+      "required": ["@ok"],
+      "properties": {
+        "@ok": { "type": "boolean" },
+        "@input_hash": { "type": ["string", "null"] },
+        "@output_hash": { "type": ["string", "null"] },
+        "@proof_hash": { "type": ["string", "null"] },
+        "@failure_stage": { "type": ["string", "null"] },
+        "@failure_reason": { "type": ["string", "null"] },
+        "@expected": { "type": ["string", "null"] },
+        "@got": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

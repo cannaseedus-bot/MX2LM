@@ -1,0 +1,108 @@
+{
+  "@type": "xcfe/model_schema",
+  "@id": "janus_multimodal_v1",
+  "@law": "CC-FULL",
+  "@version": "1.0.0",
+
+  "Σ": {
+    "@doc": "Symbol set for Janus model",
+    "atoms": ["image", "text", "token", "embedding", "flow"],
+    "glyphs": {
+      "🖼": "image_input",
+      "📝": "text_input",
+      "🔄": "flow_control",
+      "⚡": "generation",
+      "🌀": "diffusion"
+    }
+  },
+
+  "V": {
+    "@doc": "Value bindings",
+    "π": 3.141592653589793,
+    "φ": 1.6180339887498948,
+    "τ": 6.283185307179586,
+    "image_dim": [384, 384],
+    "embed_dim": 4096,
+    "vocab_size": 100000,
+    "max_seq_len": 8192
+  },
+
+  "Φ": {
+    "@doc": "Control structure - XCFE graph",
+    "entry": "input_router",
+    "nodes": {
+      "input_router": {
+        "@type": "control/branch",
+        "conditions": {
+          "has_image": "vision_encoder",
+          "text_only": "text_encoder"
+        }
+      },
+      "vision_encoder": {
+        "@type": "π/transform",
+        "model": "siglip_vit",
+        "output": "visual_tokens",
+        "next": "fusion"
+      },
+      "text_encoder": {
+        "@type": "π/transform",
+        "model": "llm_backbone",
+        "output": "text_tokens",
+        "next": "fusion"
+      },
+      "fusion": {
+        "@type": "control/merge",
+        "strategy": "concatenate",
+        "next": "decoder"
+      },
+      "decoder": {
+        "@type": "π/transform",
+        "model": "autoregressive",
+        "next": "output_router"
+      },
+      "output_router": {
+        "@type": "control/branch",
+        "conditions": {
+          "generate_image": "diffusion_decoder",
+          "generate_text": "text_output"
+        }
+      },
+      "diffusion_decoder": {
+        "@type": "π/physics",
+        "equation": "rectified_flow",
+        "steps": 30,
+        "next": "image_output"
+      },
+      "text_output": {
+        "@type": "data/output",
+        "format": "tokens"
+      },
+      "image_output": {
+        "@type": "data/output",
+        "format": "image"
+      }
+    }
+  },
+
+  "compression": {
+    "@law": "CC-v1",
+    "operators": ["⊕", "π̂", "⊗", "≈", "τ"],
+    "invariants": ["I1", "I2", "I3", "I4"],
+    "proof_required": true
+  },
+
+  "capabilities": {
+    "understanding": ["image", "text"],
+    "generation": ["image", "text"],
+    "multimodal": true,
+    "unified_architecture": true
+  },
+
+  "adapters": {
+    "kuhul_pi": {
+      "wave_transform": true,
+      "golden_compression": true,
+      "fractal_encoding": true
+    }
+  }
+}

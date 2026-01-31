@@ -1,0 +1,21 @@
+{
+  "$schema": "xjson://schema/draft/2020-12",
+  "$id": "asx://schema/scxq2/scxq2_field_header.v1",
+  "type": "object",
+  "required": ["@scxq2_fieldmap"],
+  "properties": {
+    "@scxq2_fieldmap": {
+      "type": "object",
+      "required": ["@version", "@fieldmap_id", "@count", "@hash"],
+      "properties": {
+        "@version": { "const": "1.0" },
+        "@fieldmap_id": { "type": "string" },
+        "@count": { "type": "integer", "minimum": 0 },
+        "@path_encoding": { "type": "string", "enum": ["jsonptr", "dotpath"] },
+        "@hash": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

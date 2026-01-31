@@ -1,0 +1,5 @@
+{
+  "surface": "kuhul-es",
+  "op": "emit_task",
+  "task": "Wire event log replay into SVG dashboard"
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "xjson://schema/draft/2020-12",
+  "$id": "asx://schema/scxq2/scxq2_lane_header.v1",
+  "type": "object",
+  "required": ["@scxq2_lane"],
+  "properties": {
+    "@scxq2_lane": {
+      "type": "object",
+      "required": ["@version", "@lane_id", "@lane_type", "@count", "@hash"],
+      "properties": {
+        "@version": { "const": "1.0" },
+        "@lane_id": { "type": "string" },
+        "@lane_type": { "type": "string", "enum": ["sym_lane", "raw_lane", "q_lane"] },
+        "@count": { "type": "integer", "minimum": 0 },
+        "@hash": { "type": "string" },
+        "@quant": {
+          "type": ["object", "null"],
+          "required": ["@min", "@max", "@step", "@round"],
+          "properties": {
+            "@min": { "type": "number" },
+            "@max": { "type": "number" },
+            "@step": { "type": "number", "exclusiveMinimum": 0 },
+            "@round": { "type": "string", "enum": ["nearest", "floor", "ceil"] }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

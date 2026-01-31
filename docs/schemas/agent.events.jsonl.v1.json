@@ -1,0 +1,38 @@
+{
+  "$schema": "xjson://schema/core/v1",
+  "@id": "xjson://agent/replay/events-jsonl/v1",
+  "@type": "agent.events.jsonl.v1",
+  "v": "1.0.0",
+  "@law": [
+    "APPEND_ONLY",
+    "TICK_ORDERED",
+    "REPLAYABLE_FROM_LOG",
+    "NO_UI_AUTHORITY"
+  ],
+  "line": {
+    "required": ["@v", "@t", "@ts", "tick", "kind", "data"],
+    "fields": {
+      "@v": "string (1.0.0)",
+      "@t": "string (agent.event)",
+      "@ts": "int (unix ms)",
+      "tick": "int (monotonic tick)",
+      "kind": "string (agent.log|agent.step|agent.io|mesh.recv|mesh.send|build.emit|error|metric)",
+      "level": "info|warn|error|debug?",
+      "actor": {
+        "id": "string? (agent_id)",
+        "role": "string? (foreman|builder|ui|security|...)"
+      },
+      "span": {
+        "id": "string? (correlation id)",
+        "parent": "string?"
+      },
+      "data": "object (payload; must be JSON-safe)",
+      "state_delta": "object? (deterministic patch-like diff)",
+      "proof": {
+        "hash": "string? (sha256 canonical)",
+        "prev": "string? (hash chain)",
+        "sig": "string? (optional)"
+      }
+    }
+  }
+}
