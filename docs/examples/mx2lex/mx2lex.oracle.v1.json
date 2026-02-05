@@ -1,0 +1,22 @@
+{
+  "@id": "asx://example/mx2lex/mx2lex.oracle.v1",
+  "@type": "mx2lex.oracle.v1",
+  "@schema": "xjson://schema/core/v1",
+  "@canon": { "ordering": "lexicographic_keys", "utf8": true, "float": "no_nan_no_inf" },
+  "@run": {
+    "case": "PASS",
+    "input": "node()",
+    "result": { "ok": true, "violations": [] }
+  },
+  "@run_fail": {
+    "case": "FAIL",
+    "input": "node(",
+    "result": {
+      "ok": false,
+      "violations": [
+        { "id": "syntax.missing_rparen", "message": "Expected ')' before EOF." }
+      ]
+    }
+  },
+  "@hash": { "algo": "sha256", "mode": "SELF", "bind": ["@canon", "@run", "@run_fail"] }
+}

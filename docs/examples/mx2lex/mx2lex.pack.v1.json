@@ -1,0 +1,13 @@
+{
+  "@id": "asx://example/mx2lex/mx2lex.pack.v1",
+  "@type": "mx2lex.pack.v1",
+  "@schema": "xjson://schema/core/v1",
+  "@canon": { "ordering": "lexicographic_keys", "utf8": true, "float": "no_nan_no_inf" },
+  "@grammar_ref": "asx://example/mx2lex/lex.grammar.v1",
+  "@pack": {
+    "tokens": ["node", "(", ")"],
+    "ast": { "type": "node", "children": [] },
+    "entry": "node()"
+  },
+  "@hash": { "algo": "sha256", "mode": "SELF", "bind": ["@canon", "@grammar_ref", "@pack"] }
+}
