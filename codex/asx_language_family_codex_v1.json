@@ -632,5 +632,32 @@
       "asx://layer/proof",
       "asx://layer/scxq2"
     ]
-  }
+  },
+
+  "@examples": [
+    {
+      "@id": "asx://example/hello_world.v1",
+      "@type": "asx.example",
+      "@role": "asx-r_smoke",
+      "@ref": "codex.asx_language_family_codex_v1:@hello_world"
+    },
+    {
+      "@id": "asx://example/geometry_metrics.v1",
+      "@type": "asx.example.geometry_metrics.v1",
+      "@role": "geometry_metrics_vertical_slice",
+      "@path": "examples/asx/geometry_metrics_example_v1.json"
+    },
+    {
+      "@id": "asx://example/kpi_syscall_lowering.v1",
+      "@type": "asx.example.kpi_syscall_lowering.v1",
+      "@role": "kpi_syscall_lowering_vertical_slice",
+      "@path": "examples/asx/kpi_syscall_lowering_example_v1.json"
+    },
+    {
+      "@id": "asx://example/temporal_persistence.v1",
+      "@type": "asx.example.temporal_persistence.v1",
+      "@role": "temporal_persistence_vertical_slice",
+      "@path": "examples/asx/temporal_persistence_example_v1.json"
+    }
+  ]
 }

@@ -1,0 +1,60 @@
+{
+  "@id": "asx://example/temporal_persistence.v1",
+  "@type": "asx.example.temporal_persistence.v1",
+  "@schema": "xjson://schema/core/v1",
+  "@status": "CANONICAL",
+  "@version": "1.0.0",
+  "@note": "Temporal persistence vertical slice: deterministic tick ledger, KQL commit, IDB-API persistence, replay seal.",
+  "@asx": {
+    "lang": "ASX-R",
+    "profile": "ASX-R/REF",
+    "semver": "1.1.0"
+  },
+  "@temporal": {
+    "tick": 1842,
+    "previous_root": "sha256:...",
+    "barrier": "@Ch'en",
+    "monotonic": true
+  },
+  "@persistence": {
+    "idb": "idb://primary",
+    "kql": {
+      "op": "insert",
+      "into": "ledger.events",
+      "values": [
+        {
+          "tick": 1842,
+          "event": "session.persist",
+          "payload_ref": "scxq2://lane/events/1842"
+        }
+      ]
+    },
+    "commit": {
+      "mode": "append_only",
+      "canonical_order": ["tick", "event", "payload_ref"],
+      "proof_required": true
+    }
+  },
+  "@replay": {
+    "sealed": true,
+    "proof": "sha256:...",
+    "scxq2": {
+      "lane": "events",
+      "layout": ["DICT", "FIELD", "LANE", "EDGE"]
+    }
+  },
+  "@hash": {
+    "algo": "sha256",
+    "mode": "SELF",
+    "bind": [
+      "@asx",
+      "@temporal",
+      "@persistence",
+      "@replay",
+      "@id",
+      "@status",
+      "@type",
+      "@version"
+    ]
+  }
+}

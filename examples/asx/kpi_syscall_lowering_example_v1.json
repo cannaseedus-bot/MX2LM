@@ -1,0 +1,79 @@
+{
+  "@id": "asx://example/kpi_syscall_lowering.v1",
+  "@type": "asx.example.kpi_syscall_lowering.v1",
+  "@schema": "xjson://schema/core/v1",
+  "@status": "CANONICAL",
+  "@version": "1.0.0",
+  "@note": "KPI syscall + lowering vertical slice: syscall declaration, capability guard, deterministic AST lowering.",
+  "@asx": {
+    "lang": "ASX-R",
+    "profile": "ASX-R/REF",
+    "semver": "1.1.0"
+  },
+  "@kpi": {
+    "syscall": "kpi.syscall.v1",
+    "capability": "cap://tensor.readonly",
+    "call": "tensor.load",
+    "args": {
+      "tensor_id": "tensor://vocab/main",
+      "shape": [4096, 768],
+      "dtype": "f16"
+    },
+    "guards": {
+      "no_side_effects": true,
+      "deterministic": true
+    }
+  },
+  "@lowering": {
+    "ast": {
+      "@type": "ast.program.v1",
+      "@entry": "node0",
+      "@nodes": [
+        {
+          "@id": "node0",
+          "@type": "kpi.syscall",
+          "@op": "tensor.load",
+          "@args": "node1",
+          "@caps": "node2",
+          "@next": "node3"
+        },
+        {
+          "@id": "node1",
+          "@type": "kpi.args",
+          "@value": {
+            "tensor_id": "tensor://vocab/main",
+            "shape": [4096, 768],
+            "dtype": "f16"
+          }
+        },
+        {
+          "@id": "node2",
+          "@type": "kpi.capability",
+          "@value": "cap://tensor.readonly"
+        },
+        {
+          "@id": "node3",
+          "@type": "kpi.result.bind",
+          "@assign": "tensor_handle"
+        }
+      ]
+    },
+    "xcfe": {
+      "phase": "@Sek",
+      "ordering": "declared"
+    }
+  },
+  "@hash": {
+    "algo": "sha256",
+    "mode": "SELF",
+    "bind": [
+      "@asx",
+      "@kpi",
+      "@lowering",
+      "@id",
+      "@status",
+      "@type",
+      "@version"
+    ]
+  }
+}

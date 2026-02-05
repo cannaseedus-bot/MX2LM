@@ -1,0 +1,65 @@
+{
+  "@id": "asx://example/geometry_metrics.v1",
+  "@type": "asx.example.geometry_metrics.v1",
+  "@schema": "xjson://schema/core/v1",
+  "@status": "CANONICAL",
+  "@version": "1.0.0",
+  "@note": "Geometry + Metrics vertical slice: G2L-1 geometry lowering, MFA-1 metric assertions, deterministic SCXQ2 lanes.",
+  "@asx": {
+    "lang": "ASX-R",
+    "profile": "ASX-R/REF",
+    "semver": "1.1.0"
+  },
+  "@geometry": {
+    "manifold": "Plane2D",
+    "metric": "L2",
+    "shapes": {
+      "point_a": { "type": "Point", "x": 1, "y": 2 },
+      "point_b": { "type": "Point", "x": 4, "y": 6 },
+      "segment": { "type": "Line", "a": "point_a", "b": "point_b" }
+    }
+  },
+  "@metrics": {
+    "assertions": [
+      {
+        "id": "distance_ab",
+        "op": "distance",
+        "metric": "L2",
+        "from": "point_a",
+        "to": "point_b",
+        "equals": 5,
+        "tolerance": 0
+      }
+    ]
+  },
+  "@lowering": {
+    "g2l": {
+      "dict_id": "H32(\"DICT|geometry|Plane2D\")",
+      "field_ids": [
+        "H32(\"FIELD|Plane2D|point_a\")",
+        "H32(\"FIELD|Plane2D|point_b\")",
+        "H32(\"FIELD|Plane2D|segment\")"
+      ],
+      "batch_id": "H32(\"BATCH|Plane2D|geometry_stream\")"
+    },
+    "scxq2": {
+      "layout": ["DICT", "FIELD", "LANE", "EDGE"],
+      "lanes": ["geometry", "metric_assertions"],
+      "ordering": "lexicographic_keys"
+    }
+  },
+  "@hash": {
+    "algo": "sha256",
+    "mode": "SELF",
+    "bind": [
+      "@asx",
+      "@geometry",
+      "@lowering",
+      "@metrics",
+      "@id",
+      "@status",
+      "@type",
+      "@version"
+    ]
+  }
+}
