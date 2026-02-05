@@ -1,0 +1,18 @@
+{
+  "@id": "asx://example/mx2lex/lex.grammar.v1",
+  "@type": "lex.grammar.v1",
+  "@schema": "xjson://schema/core/v1",
+  "@canon": { "ordering": "lexicographic_keys", "utf8": true, "float": "no_nan_no_inf" },
+  "@grammar": {
+    "tokens": [
+      { "id": "T_ID", "pattern": "[a-zA-Z_][a-zA-Z0-9_]*" },
+      { "id": "T_LPAREN", "pattern": "\\(" },
+      { "id": "T_RPAREN", "pattern": "\\)" }
+    ],
+    "rules": [
+      { "id": "node", "pattern": "T_ID T_LPAREN T_RPAREN" }
+    ],
+    "start": "node"
+  },
+  "@hash": { "algo": "sha256", "mode": "SELF", "bind": ["@canon", "@grammar"] }
+}

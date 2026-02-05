@@ -1,0 +1,11 @@
+{
+  "@id": "asx://example/mx2lex/mx2lex.weights.bind.v1",
+  "@type": "mx2lex.weights.bind.v1",
+  "@schema": "xjson://schema/core/v1",
+  "@canon": { "ordering": "lexicographic_keys", "utf8": true, "float": "no_nan_no_inf" },
+  "@weights": {
+    "illegal_transition_penalty": 0.85,
+    "structure_reward": 0.35
+  },
+  "@hash": { "algo": "sha256", "mode": "SELF", "bind": ["@canon", "@weights"] }
+}
