@@ -1,0 +1,10 @@
+{
+  "$schema": "KUHUL-TSG",
+  "version": "scxq7",
+  "description": "Micronaut semantics projection schema",
+  "constraints": {
+    "chat_protocol": "append-only",
+    "stream_protocol": "append-only",
+    "authority": "file-centric"
+  }
+}
