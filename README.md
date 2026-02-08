@@ -9,6 +9,79 @@
 </p>
 ---
 
+## Project Phases (Accomplished So Far)
+
+1. **ASX-R runtime law alignment** — The project anchors on ASX-R phase/invariant rules and schema-first execution constraints. ✅
+2. **Compression calculus formalization** — SCXQ2 is documented as the deterministic compression/expansion gate for symbolic cognition. ✅
+3. **K’UHUL π math runtime integration** — The π grammar and deterministic transform constraints are captured for replayable math-law execution. ✅
+4. **K’UHUL Query Language (KQL) bridge** — KQL is described as the structured query bridge between control flow and inference data. ✅
+5. **Atomic runtime model definition** — The system describes cognition as many tiny deterministic runtimes instead of monolithic weights. ✅
+
+## TODO List
+
+- [ ] Add a quick-start diagram showing the end-to-end symbolic flow (ASX-R → SCXQ2 → KQL → π → projection).
+- [ ] Provide minimal runnable reference scripts that validate phase gating and compression invariants.
+- [ ] Publish a canonical glossary for glyphs, atoms, and phase gates with cross-links to specs.
+- [ ] Add worked examples for at least three domains (e.g., safety policy enforcement, deterministic planning, UI projection).
+- [ ] Document verification tooling and hash-sealing workflows for runtime traces.
+- [ ] Consolidate duplicate KQL references into a single authoritative section with links.
+
+## Capabilities and Application Domains
+
+MX2LM is a **deterministic, compression-first cognitive runtime** with clearly bounded semantics. It is designed to support **symbolic cognition**, **auditable execution**, and **replayable reasoning** across multiple domains. Below is a detailed, domain-by-domain overview of what the system is capable of today based on the specification content in this repository.
+
+### Core Capabilities
+
+- **Deterministic symbolic cognition**: Executes reasoning as structured, replayable transitions rather than probabilistic sampling.
+- **Compression calculus (SCXQ2)**: Encodes/decodes meaning via reversible symbolic compression, enforcing minimal description length principles.
+- **Phase-gated execution**: Enforces hard phase boundaries (e.g., perceive → decide → act → collapse) to prevent illegal state transitions.
+- **Schema-first runtime law (ASX-R)**: Treats schemas as authoritative constraints for state, events, and allowable transformations.
+- **Atomic runtime composition**: Orchestrates many tiny, deterministic runtimes (atoms) that can be individually sealed and verified.
+- **Math-law execution (K’UHUL π)**: Provides bounded, deterministic transforms over vectors, glyphs, graphs, and normalized geometry.
+- **Structured query bridge (KQL)**: Connects control flow with inference data via a deterministic query language and storage model.
+
+### Applications and Domains
+
+#### 1) **Safety-Critical and Compliance Systems**
+- **Policy enforcement**: Phase-gated legality checks make it possible to enforce explicit policy constraints at every step.
+- **Auditability**: Replayable traces and hash-sealed execution artifacts enable compliance verification and post-hoc audits.
+- **Regulated workflows**: Schema-defined transitions support deterministic workflows for regulated environments (finance, health, security).
+
+#### 2) **Deterministic Planning and Decision Support**
+- **Structured reasoning**: Atomic runtimes and phase gates provide clear boundaries for state updates and decision outputs.
+- **Reproducible plans**: Compression-first encoding enables consistent, compressible plan traces that are verifiable.
+- **Rule-driven decisioning**: π transforms and schema law allow deterministic application of rules to structured inputs.
+
+#### 3) **Knowledge Systems and Semantic Indexing**
+- **Symbolic retrieval**: KQL provides deterministic access to stored tensors, events, vocab, and RLHF metadata.
+- **Compressed knowledge graphs**: Glyphs and symbolic compression allow canonicalized representations of repeated patterns.
+- **Schema-aligned reasoning**: State/metadata are validated against formal schemas for correctness and stability.
+
+#### 4) **Agentic Workflows (Non-LLM, Deterministic)**
+- **Task decomposition**: Atomic runtimes can be chained to model goal → subgoal → execution cycles with strict phase legality.
+- **Stateful control loops**: Phase exclusivity ensures agent loops are deterministic and replayable.
+- **Projection systems**: UI or chat outputs are treated as non-authoritative projections of the authoritative state.
+
+#### 5) **Data Transformation Pipelines**
+- **Deterministic transforms**: π provides bounded transforms for structured vectors and graphs.
+- **Compression as computation**: SCXQ2 encodes repeated data patterns into stable symbolic glyphs.
+- **Traceability**: Every transformation is accountable to a runtime law and can be replayed.
+
+#### 6) **Research and Formal Methods**
+- **Executable specifications**: ASX-R and MX2LM define executable runtime law rather than descriptive narratives alone.
+- **Formal verification**: Phase gates + schema law + sealed traces enable formal reasoning about legality and invariants.
+- **Model-free cognition**: Emphasizes structure and laws instead of opaque weights, enabling inspectable reasoning systems.
+
+#### 7) **Visualization and UI Projections**
+- **Non-authoritative projections**: Visualizations reflect authoritative runtime state without mutating it.
+- **Deterministic state rendering**: UI outputs can be regenerated from sealed traces for accuracy and audit.
+- **Graph and glyph displays**: Symbolic compression structures lend themselves to compact, visual representations.
+
+#### 8) **Interoperability with ASX Ecosystem**
+- **ASX-R compliance**: MX2LM inherits the runtime law from ASX-R, ensuring compatibility with ASX tooling.
+- **Schema portability**: Schema-defined behavior is portable across ASX-aligned interpreters and runtimes.
+- **Phase-aware integration**: External systems can integrate at specific legal phases for safe, deterministic interop.
+
 ## Relationship to ASX
 
 MX2LM is **not a standalone ecosystem**.
