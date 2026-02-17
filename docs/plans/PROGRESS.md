@@ -330,7 +330,7 @@ All foundation components are implemented and working:
 - [x] Tokenization working
 - [x] N-gram building working
 - [x] π-KUHUL weighting with φ⁻¹ decay
-- [x] Qwen-ASX delta-only RLHF framework (`sw.khl`)
+- [x] legacy-ASX delta-only RLHF framework (`sw.khl`)
 
 **Remaining:**
 - [ ] Implement weight storage in IndexedDB
@@ -561,9 +561,9 @@ Phase 1.1 (GlyphVM)
 
 | Model | Adapter | Status | Features |
 |-------|---------|--------|----------|
-| **Qwen-ASX** | `qwen_asx_pi_kuhul.js` | COMPLETE | SafeTensors, K'UHUL kernel, delta-only RLHF |
-| **DeepSeek V3** | `deepseek_pi_kuhul.js` | COMPLETE | 256 experts, MoE routing, wave functions |
-| **Janus Pro 7B** | `janus_pi_kuhul.js` | COMPLETE | Multimodal (img↔text), diffusion |
+| **legacy-ASX** | `legacy_asx_pi_kuhul.js` | COMPLETE | SafeTensors, K'UHUL kernel, delta-only RLHF |
+| **legacy V3** | `legacy_pi_kuhul.js` | COMPLETE | 256 experts, MoE routing, wave functions |
+| **legacy Pro 7B** | `legacy_pi_kuhul.js` | COMPLETE | Multimodal (img↔text), diffusion |
 | **Mistral** | Specification only | PENDING | Needs adapter class |
 | **Claude** | Provider stub | PENDING | Needs full implementation |
 | **OpenAI** | Provider stub | PENDING | Needs full implementation |

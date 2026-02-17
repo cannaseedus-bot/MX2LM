@@ -69,11 +69,11 @@
       }
     },
 
-    "webllm_qwen": {
-      "id": "webllm_qwen",
-      "name": "Qwen2.5 1.5B (WebLLM)",
+    "webllm_legacy": {
+      "id": "webllm_legacy",
+      "name": "legacy2.5 1.5B (WebLLM)",
       "type": "LOCAL_WEBLLM",
-      "model_id": "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
+      "model_id": "legacy2.5-1.5B-Instruct-q4f16_1-MLC",
       "capabilities": ["chat", "reasoning", "math"],
       "learning_enabled": true,
       "priority": 4,
@@ -83,12 +83,12 @@
       }
     },
 
-    "openrouter_deepseek": {
-      "id": "openrouter_deepseek",
-      "name": "DeepSeek R1 (OpenRouter)",
+    "openrouter_legacy": {
+      "id": "openrouter_legacy",
+      "name": "legacy R1 (OpenRouter)",
       "type": "API_EXTERNAL",
       "provider": "openrouter",
-      "model_id": "deepseek/deepseek-r1",
+      "model_id": "legacy/legacy-r1",
       "capabilities": ["chat", "reasoning", "math", "code"],
       "learning_enabled": true,
       "priority": 5,
@@ -109,27 +109,27 @@
       "env_key": "OPENROUTER_API_KEY"
     },
 
-    "janus_multimodal": {
-      "id": "janus_multimodal",
-      "name": "Janus Pro 7B",
+    "legacy_multimodal": {
+      "id": "legacy_multimodal",
+      "name": "legacy Pro 7B",
       "type": "API_EXTERNAL",
       "provider": "custom",
-      "model_id": "deepseek-ai/Janus-Pro-7B",
+      "model_id": "legacy-ai/legacy-Pro-7B",
       "capabilities": ["chat", "vision", "generation"],
       "learning_enabled": true,
       "priority": 7,
       "requires_api_key": true,
-      "env_key": "JANUS_API_KEY"
+      "env_key": "legacy_API_KEY"
     }
   },
 
   "routing_rules": {
-    "math_queries": ["mistral_glyph", "openrouter_deepseek", "webllm_qwen"],
-    "code_queries": ["openrouter_deepseek", "openrouter_claude", "webllm_phi3"],
-    "vision_queries": ["janus_multimodal"],
+    "math_queries": ["mistral_glyph", "openrouter_legacy", "webllm_legacy"],
+    "code_queries": ["openrouter_legacy", "openrouter_claude", "webllm_phi3"],
+    "vision_queries": ["legacy_multimodal"],
     "general_chat": ["webllm_phi3", "webllm_llama", "openrouter_claude"],
     "fast_response": ["mistral_glyph", "webllm_phi3"],
-    "high_quality": ["openrouter_deepseek", "openrouter_claude"]
+    "high_quality": ["openrouter_legacy", "openrouter_claude"]
   },
 
   "learning_config": {
