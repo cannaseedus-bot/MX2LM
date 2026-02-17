@@ -2,8 +2,8 @@
    MX2LM BRAIN MODEL INTEGRATION LAYER
 
    Purpose: Orchestrate multiple LLM backends while MX2LM learns
-   - WebLLM for local models (Phi-3, Llama, Qwen)
-   - API connectors for external models (OpenRouter, Janus)
+   - WebLLM for local models (Phi-3, Llama, legacy)
+   - API connectors for external models (OpenRouter, legacy)
    - RLHF absorption from all model interactions
    - Native glyph brain execution
 

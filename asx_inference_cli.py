@@ -54,7 +54,7 @@ def almost_equal(a: float, b: float, tol: float = 1e-9) -> bool:
 # 1) SYMBOL VECTOR (symbol.xjson shape)
 # -------------------------
 
-def make_symbol_base(problem: str, model: str = "qwen2-1.5b", tokenizer: str = "asx-specializer") -> Dict[str, Any]:
+def make_symbol_base(problem: str, model: str = "legacy2-1.5b", tokenizer: str = "asx-specializer") -> Dict[str, Any]:
     return {
         "meta": {
             "trace_id": "trace_" + str(abs(hash(problem)) % 10**10),

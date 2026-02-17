@@ -19,7 +19,7 @@ app.post('/api/tokenize', express.json(), async (req, res) => {
   try {
     const { text } = req.body;
 
-    // Simulate tokenization (replace with actual Qwen tokenizer)
+    // Simulate tokenization (replace with actual legacy tokenizer)
     const tokens = text.split(/\s+/).filter(Boolean).map(token => ({
       token,
       length: token.length,

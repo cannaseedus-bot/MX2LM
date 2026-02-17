@@ -3416,11 +3416,10 @@ importScripts('./research/arxiv_fetcher.js');
 importScripts('./models/model_providers.js');
 
 // Import π-KUHUL Model Adapters
-importScripts('./models/janus/adapters/janus_pi_kuhul.js');
-importScripts('./models/deepseek/adapters/deepseek_pi_kuhul.js');
-importScripts('./models/qwen-asx/adapters/qwen_asx_pi_kuhul.js');
+importScripts('./models/legacy/adapters/legacy_pi_kuhul.js');
+importScripts('./models/legacy-asx/adapters/legacy_asx_pi_kuhul.js');
 
-// Import K'UHUL Kernel (Qwen-ASX base training format)
+// Import K'UHUL Kernel (legacy-ASX base training format)
 importScripts('./sw.khl');
 
 // Note: src/voice_interface.js requires browser APIs (SpeechRecognition, SpeechSynthesis)
@@ -3430,9 +3429,8 @@ importScripts('./sw.khl');
 let SCXQ2_ENCODER = null;
 let ARXIV_FETCHER = null;
 let MODEL_PROVIDER_MANAGER = null;
-let JANUS_ADAPTER = null;
-let DEEPSEEK_ADAPTER = null;
-let QWEN_ASX_ADAPTER = null;
+let legacy_ADAPTER = null;
+let legacy_ASX_ADAPTER = null;
 
 // Lazy initialization for new components
 function initNewComponents() {
@@ -3445,14 +3443,11 @@ function initNewComponents() {
   if (!MODEL_PROVIDER_MANAGER && typeof ModelProviderManager !== 'undefined') {
     MODEL_PROVIDER_MANAGER = new ModelProviderManager();
   }
-  if (!JANUS_ADAPTER && typeof JanusPiKuhulAdapter !== 'undefined') {
-    JANUS_ADAPTER = new JanusPiKuhulAdapter();
+  if (!legacy_ADAPTER && typeof legacyPiKuhulAdapter !== 'undefined') {
+    legacy_ADAPTER = new legacyPiKuhulAdapter();
   }
-  if (!DEEPSEEK_ADAPTER && typeof DeepseekPiKuhulAdapter !== 'undefined') {
-    DEEPSEEK_ADAPTER = new DeepseekPiKuhulAdapter();
-  }
-  if (!QWEN_ASX_ADAPTER && typeof QwenASXPiKuhulAdapter !== 'undefined') {
-    QWEN_ASX_ADAPTER = new QwenASXPiKuhulAdapter();
+  if (!legacy_ASX_ADAPTER && typeof legacyASXPiKuhulAdapter !== 'undefined') {
+    legacy_ASX_ADAPTER = new legacyASXPiKuhulAdapter();
   }
 }
 
@@ -4466,11 +4461,11 @@ self.addEventListener("message", async (event) => {
    ============================================================ */
 
 // Extended API paths for new components
-const EXTENDED_API_PATHS = new Set([
+const EXTENDED_API_PATHS_V2 = new Set([
   '/research/arxiv/search', '/research/arxiv/paper', '/research/arxiv/pi-kuhul',
   '/scxq2/encode', '/scxq2/decode', '/scxq2/verify',
-  '/adapters/janus/infer', '/adapters/janus/image-to-text', '/adapters/janus/text-to-image',
-  '/adapters/deepseek/infer', '/adapters/deepseek/route',
+  '/adapters/legacy/infer', '/adapters/legacy/image-to-text', '/adapters/legacy/text-to-image',
+  '/adapters/legacy/infer', '/adapters/legacy/route',
   '/providers/list', '/providers/configure', '/providers/request',
   // GlyphVM & K'UHUL Pipeline
   '/glyph/execute', '/glyph/compile', '/glyph/metrics', '/glyph/vm/status',
@@ -4479,10 +4474,10 @@ const EXTENDED_API_PATHS = new Set([
   '/xcfe/tokenize', '/xcfe/parse', '/xcfe/transform', '/xcfe/optimize', '/xcfe/pipeline',
   // SCXQ2 Compression (enhanced)
   '/scxq2/compress', '/scxq2/decompress', '/scxq2/dict',
-  // Qwen-ASX (base training format)
-  '/qwen-asx/infer', '/qwen-asx/test', '/qwen-asx/status',
-  '/qwen-asx/training/record', '/qwen-asx/training/emit-delta',
-  '/qwen-asx/trace',
+  // legacy-ASX (base training format)
+  '/legacy-asx/infer', '/legacy-asx/test', '/legacy-asx/status',
+  '/legacy-asx/training/record', '/legacy-asx/training/emit-delta',
+  '/legacy-asx/trace',
   // SQL API (IndexedDB query interface)
   '/sql/query', '/sql/execute', '/sql/parse', '/sql/tables', '/sql/schema',
   // IDB Storage API (K'UHUL-integrated IndexedDB)
@@ -4864,31 +4859,31 @@ async function handleExtendedAPI(url, request) {
         return mx2_json({ ok: false, error: err.message }, 500);
       }
 
-    // ===== Janus Adapter API =====
-    case '/adapters/janus/infer':
+    // ===== legacy Adapter API =====
+    case '/adapters/legacy/infer':
       if (method !== 'POST') {
         return mx2_json({ error: 'method_not_allowed' }, 405);
       }
-      if (!JANUS_ADAPTER) {
-        return mx2_json({ error: 'janus_adapter_not_initialized' }, 500);
+      if (!legacy_ADAPTER) {
+        return mx2_json({ error: 'legacy_adapter_not_initialized' }, 500);
       }
-      const janusResult = await JANUS_ADAPTER.processXCFE(payload, payload.mode || 'chat');
+      const legacyResult = await legacy_ADAPTER.processXCFE(payload, payload.mode || 'chat');
       kuhulTick();
       return mx2_json({
-        ok: !janusResult.error,
-        ...janusResult,
-        xcfeAst: JANUS_ADAPTER.buildXcfeAst(),
+        ok: !legacyResult.error,
+        ...legacyResult,
+        xcfeAst: legacy_ADAPTER.buildXcfeAst(),
         tick: ΩCLOCK.tick
       });
 
-    case '/adapters/janus/image-to-text':
+    case '/adapters/legacy/image-to-text':
       if (method !== 'POST') {
         return mx2_json({ error: 'method_not_allowed' }, 405);
       }
-      if (!JANUS_ADAPTER) {
-        return mx2_json({ error: 'janus_adapter_not_initialized' }, 500);
+      if (!legacy_ADAPTER) {
+        return mx2_json({ error: 'legacy_adapter_not_initialized' }, 500);
       }
-      const i2tResult = await JANUS_ADAPTER.imageToText({
+      const i2tResult = await legacy_ADAPTER.imageToText({
         image: payload.image,
         prompt: payload.prompt,
         options: payload.options || {}
@@ -4900,14 +4895,14 @@ async function handleExtendedAPI(url, request) {
         tick: ΩCLOCK.tick
       });
 
-    case '/adapters/janus/text-to-image':
+    case '/adapters/legacy/text-to-image':
       if (method !== 'POST') {
         return mx2_json({ error: 'method_not_allowed' }, 405);
       }
-      if (!JANUS_ADAPTER) {
-        return mx2_json({ error: 'janus_adapter_not_initialized' }, 500);
+      if (!legacy_ADAPTER) {
+        return mx2_json({ error: 'legacy_adapter_not_initialized' }, 500);
       }
-      const t2iResult = await JANUS_ADAPTER.textToImage({
+      const t2iResult = await legacy_ADAPTER.textToImage({
         prompt: payload.prompt,
         options: payload.options || {}
       });
@@ -4918,15 +4913,15 @@ async function handleExtendedAPI(url, request) {
         tick: ΩCLOCK.tick
       });
 
-    // ===== Deepseek Adapter API =====
-    case '/adapters/deepseek/infer':
+    // ===== legacy Adapter API =====
+    case '/adapters/legacy/infer':
       if (method !== 'POST') {
         return mx2_json({ error: 'method_not_allowed' }, 405);
       }
-      if (!DEEPSEEK_ADAPTER) {
-        return mx2_json({ error: 'deepseek_adapter_not_initialized' }, 500);
+      if (!legacy_ADAPTER) {
+        return mx2_json({ error: 'legacy_adapter_not_initialized' }, 500);
       }
-      const dsResult = await DEEPSEEK_ADAPTER.infer(payload.prompt || '', payload.mode || 'reasoning');
+      const dsResult = await legacy_ADAPTER.infer(payload.prompt || '', payload.mode || 'reasoning');
       kuhulTick();
       return mx2_json({
         ok: !dsResult.error,
@@ -4934,18 +4929,18 @@ async function handleExtendedAPI(url, request) {
         tick: ΩCLOCK.tick
       });
 
-    case '/adapters/deepseek/route':
+    case '/adapters/legacy/route':
       if (method !== 'POST') {
         return mx2_json({ error: 'method_not_allowed' }, 405);
       }
-      if (!DEEPSEEK_ADAPTER) {
-        return mx2_json({ error: 'deepseek_adapter_not_initialized' }, 500);
+      if (!legacy_ADAPTER) {
+        return mx2_json({ error: 'legacy_adapter_not_initialized' }, 500);
       }
-      const routeResult = DEEPSEEK_ADAPTER.routeToExperts(payload.value || 0);
+      const routeResult = legacy_ADAPTER.routeToExperts(payload.value || 0);
       return mx2_json({
         ok: true,
         ...routeResult,
-        stats: DEEPSEEK_ADAPTER.getStats(),
+        stats: legacy_ADAPTER.getStats(),
         tick: ΩCLOCK.tick
       });
 
@@ -4992,47 +4987,47 @@ async function handleExtendedAPI(url, request) {
         tick: ΩCLOCK.tick
       });
 
-    // ===== Qwen-ASX API (Base Training Format) =====
-    case '/qwen-asx/infer':
+    // ===== legacy-ASX API (Base Training Format) =====
+    case '/legacy-asx/infer':
       if (method !== 'POST') {
         return mx2_json({ error: 'method_not_allowed' }, 405);
       }
       if (typeof KUHUL_KERNEL === 'undefined') {
         return mx2_json({ error: 'kuhul_kernel_not_loaded' }, 500);
       }
-      const qwenInferResult = await KUHUL_KERNEL.exec({
+      const legacyInferResult = await KUHUL_KERNEL.exec({
         route: 'model.infer',
         input_ids: payload.input_ids || []
       });
       kuhulTick();
       return mx2_json({
-        ok: !qwenInferResult.error,
-        ...qwenInferResult,
+        ok: !legacyInferResult.error,
+        ...legacyInferResult,
         tick: ΩCLOCK.tick
       });
 
-    case '/qwen-asx/test':
+    case '/legacy-asx/test':
       if (typeof KUHUL_KERNEL === 'undefined') {
         return mx2_json({ error: 'kuhul_kernel_not_loaded' }, 500);
       }
-      const qwenTestResult = await KUHUL_KERNEL.exec({ route: 'model.test' });
+      const legacyTestResult = await KUHUL_KERNEL.exec({ route: 'model.test' });
       return mx2_json({
-        ...qwenTestResult,
+        ...legacyTestResult,
         tick: ΩCLOCK.tick
       });
 
-    case '/qwen-asx/status':
+    case '/legacy-asx/status':
       if (typeof KUHUL_KERNEL === 'undefined') {
         return mx2_json({ error: 'kuhul_kernel_not_loaded' }, 500);
       }
-      const qwenStatus = await KUHUL_KERNEL.exec({ route: 'model.status' });
+      const legacyStatus = await KUHUL_KERNEL.exec({ route: 'model.status' });
       return mx2_json({
         ok: true,
-        ...qwenStatus,
+        ...legacyStatus,
         tick: ΩCLOCK.tick
       });
 
-    case '/qwen-asx/training/record':
+    case '/legacy-asx/training/record':
       if (method !== 'POST') {
         return mx2_json({ error: 'method_not_allowed' }, 405);
       }
@@ -5051,7 +5046,7 @@ async function handleExtendedAPI(url, request) {
         tick: ΩCLOCK.tick
       });
 
-    case '/qwen-asx/training/emit-delta':
+    case '/legacy-asx/training/emit-delta':
       if (method !== 'POST') {
         return mx2_json({ error: 'method_not_allowed' }, 405);
       }
@@ -5066,7 +5061,7 @@ async function handleExtendedAPI(url, request) {
         tick: ΩCLOCK.tick
       });
 
-    case '/qwen-asx/trace':
+    case '/legacy-asx/trace':
       if (typeof KUHUL_KERNEL === 'undefined') {
         return mx2_json({ error: 'kuhul_kernel_not_loaded' }, 500);
       }
@@ -5749,27 +5744,27 @@ console.log(`
 ║ + REAL P2P NETWORK & WEB CRYPTO                         ║
 ║ + SCXQ2/CC-v1 COMPRESSION BINDING                       ║
 ║ + ARXIV RESEARCH PAPER FETCHER                          ║
-║ + JANUS MULTIMODAL ADAPTER (π-KUHUL)                    ║
-║ + DEEPSEEK MoE ADAPTER (π-KUHUL)                        ║
-║ + QWEN-ASX BASE TRAINING FORMAT (sw.khl kernel)         ║
-║ + MULTI-PROVIDER API (Claude/OpenAI/Deepseek/Mistral)   ║
+║ + legacy MULTIMODAL ADAPTER (π-KUHUL)                    ║
+║ + legacy MoE ADAPTER (π-KUHUL)                        ║
+║ + legacy-ASX BASE TRAINING FORMAT (sw.khl kernel)         ║
+║ + MULTI-PROVIDER API (Claude/OpenAI/legacy/Mistral)   ║
 ║ + SQL API (IndexedDB query interface + π-KUHUL funcs)   ║
 ║ + IDB STORAGE (Tensor/RLHF/Events + SCXQ2 compression)  ║
 ║ Law: Ω-BLACK-PANEL | CC-v1                              ║
 ║ Architecture: NATIVE_JSON_REST_INSIDE_KERNEL           ║
 ║ Stack: XJSON ⇄ K'UHUL ⇄ ASX_RAM ⇄ MX2LM_INFERENCE      ║
-║ Base Model: Qwen-ASX (delta-only RLHF training)        ║
+║ Base Model: legacy-ASX (delta-only RLHF training)        ║
 ║ Security: SCXQ2 QUANTUM ENCRYPTED AUTHENTICATION       ║
 ║ Glyphs: 100+ OPCODES | CONTROL FLOW | SEMANTICS        ║
 ║ Determinism: Ω.tick = ${ΩCLOCK.tick}                       ║
 ║                                                         ║
 ║ |Ψ⟩ = α|JSON_API⟩⊗β|KUHUL_ROUTER⟩⊗γ|ASX_RAM⟩           ║
 ║     ⊗δ|MX2LM_INFERENCE⟩⊗ε|SCX_TRANSPORT⟩               ║
-║     ⊗ζ|GLYPH_CODEX⟩⊗η|QWEN_ASX⟩⊗θ|CC-v1⟩               ║
+║     ⊗ζ|GLYPH_CODEX⟩⊗η|legacy_ASX⟩⊗θ|CC-v1⟩               ║
 ║                                                         ║
-║ CHAT:     /chat          JANUS:    /adapters/janus     ║
-║ VM:       /vm/execute    DEEPSEEK: /adapters/deepseek  ║
-║ BLOCKS:   /blocks        QWEN-ASX: /qwen-asx           ║
+║ CHAT:     /chat          legacy:    /adapters/legacy     ║
+║ VM:       /vm/execute    legacy: /adapters/legacy  ║
+║ BLOCKS:   /blocks        legacy-ASX: /legacy-asx           ║
 ║ P2P:      /p2p           SCXQ2:    /scxq2              ║
 ║ CRYPTO:   /crypto        PROVIDERS:/providers          ║
 ║ SQL:      /sql/query     XCFE:     /xcfe/pipeline      ║

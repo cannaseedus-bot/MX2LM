@@ -477,7 +477,7 @@
           <!-- Log entries populated dynamically -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Inference Bridge — Qwen + Cline</title>
+  <title>Inference Bridge — legacy + legacy</title>
   <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@latest"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -532,19 +532,19 @@
       </div>
       <div class="model-status">
         <span class="status-dot"></span>
-        <strong>Qwen Model</strong>
+        <strong>legacy Model</strong>
         <div style="font-size: 12px; color: #8892b0; margin-top: 4px;">Transformers.js ready</div>
       </div>
       <div class="model-status">
         <span class="status-dot"></span>
-        <strong>Cline Runtime</strong>
+        <strong>legacy Runtime</strong>
         <div style="font-size: 12px; color: #8892b0; margin-top: 4px;">Java bridge active</div>
       </div>
-      <div class="api-endpoint" title="https://mx2lm.app/Qwen-ASX/model.safetensors">
-        Qwen: https://mx2lm.app/Qwen-ASX/...
+      <div class="api-endpoint" title="https://mx2lm.app/legacy-ASX/model.safetensors">
+        legacy: https://mx2lm.app/legacy-ASX/...
       </div>
-      <div class="api-endpoint" title="https://mx2lm.app/cline-jar/lib/">
-        Cline: https://mx2lm.app/cline-jar/...
+      <div class="api-endpoint" title="https://mx2lm.app/legacy-jar/lib/">
+        legacy: https://mx2lm.app/legacy-jar/...
       </div>
       <div style="margin-top: auto; font-size: 11px; color: #495670; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.05);">
         Glyph execution layer active<br />
@@ -560,7 +560,7 @@
         <div class="message assistant">
           <div class="message-bubble">
             <strong>System Ready</strong><br /><br />
-            I'm running Qwen inference via Transformers.js with Cline Java integration.<br /><br />
+            I'm running legacy inference via Transformers.js with legacy Java integration.<br /><br />
             Behind the scenes, your requests convert to glyph execution contracts that process through the inference engine.<br /><br />
             <em>No glyphs visible to users. Just results.</em>
           </div>
@@ -597,7 +597,7 @@
             <span style="font-size: 10px; color: #8892b0;" id="step3">●</span>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="font-size: 11px;">Cline Bridge</span>
+            <span style="font-size: 11px;">legacy Bridge</span>
             <span style="font-size: 10px; color: #8892b0;" id="step4">●</span>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -621,14 +621,14 @@
           <div style="display: flex; align-items: center; margin-bottom: 12px;">
             <div style="width: 8px; height: 8px; background: #64ffda; border-radius: 50%; margin-right: 10px;"></div>
             <div>
-              <div style="font-size: 13px; font-weight: 500;">Qwen-ASX</div>
+              <div style="font-size: 13px; font-weight: 500;">legacy-ASX</div>
               <div style="font-size: 11px; color: #8892b0;">Transformers.js in-browser</div>
             </div>
           </div>
           <div style="display: flex; align-items: center;">
             <div style="width: 8px; height: 8px; background: #4dabf7; border-radius: 50%; margin-right: 10px;"></div>
             <div>
-              <div style="font-size: 13px; font-weight: 500;">Cline Java</div>
+              <div style="font-size: 13px; font-weight: 500;">legacy Java</div>
               <div style="font-size: 11px; color: #8892b0;">JVM integration bridge</div>
             </div>
           </div>
@@ -636,8 +636,8 @@
 
         <div style="font-size: 12px; color: #8892b0; margin-bottom: 10px;">Model URLs</div>
         <div style="background: rgba(10, 15, 25, 0.6); border-radius: 10px; padding: 12px; font-size: 11px; font-family: 'Monaco', monospace;">
-          <div style="color: #64ffda; margin-bottom: 8px; word-break: break-all;">https://mx2lm.app/Qwen-ASX/model.safetensors</div>
-          <div style="color: #4dabf7; word-break: break-all;">https://mx2lm.app/cline-jar/lib/</div>
+          <div style="color: #64ffda; margin-bottom: 8px; word-break: break-all;">https://mx2lm.app/legacy-ASX/model.safetensors</div>
+          <div style="color: #4dabf7; word-break: break-all;">https://mx2lm.app/legacy-jar/lib/</div>
         </div>
       </div>
 
@@ -651,7 +651,7 @@
           <div style="font-size: 10px; color: #8892b0; font-family: 'Monaco', monospace; background: rgba(0, 0, 0, 0.3); padding: 10px; border-radius: 6px;">
             User: "Process document" →<br />
             Glyph: ⟁DocProc:{"type":"document","action":"process"} →<br />
-            Execute: Transformers.js + Cline →<br />
+            Execute: Transformers.js + legacy →<br />
             Return: Clean result
           </div>
         </div>
@@ -659,7 +659,7 @@
         <div style="font-size: 12px; color: #8892b0; margin-bottom: 10px;">Active Contracts</div>
         <div style="font-size: 10px; color: #8892b0; font-family: 'Monaco', monospace; background: rgba(10, 15, 25, 0.6); border-radius: 10px; padding: 10px;">
           <div style="color: #64ffda; margin-bottom: 4px;">⟁Inference → Transformers.js execution</div>
-          <div style="color: #4dabf7; margin-bottom: 4px;">⟁JavaBridge → Cline JVM integration</div>
+          <div style="color: #4dabf7; margin-bottom: 4px;">⟁JavaBridge → legacy JVM integration</div>
           <div style="color: #ff6b6b; margin-bottom: 4px;">⟁Tokenize → Token processing engine</div>
           <div style="color: #ffd166;">⟁Encrypt → Encryption operations</div>
         </div>
@@ -1078,7 +1078,7 @@
         this.glyphRegistry.set('javabridge', {
           symbol: '⟁JavaBridge',
           handler: this.executeJavaBridge.bind(this),
-          description: 'Cline JVM integration',
+          description: 'legacy JVM integration',
           params: ['operation', 'data']
         });
 
@@ -1198,7 +1198,7 @@
           };
         }
 
-        if (lowerText.includes('java') || lowerText.includes('jvm') || lowerText.includes('cline')) {
+        if (lowerText.includes('java') || lowerText.includes('jvm') || lowerText.includes('legacy')) {
           return {
             symbol: '⟁JavaBridge',
             handler: 'javabridge',
@@ -1221,16 +1221,16 @@
         await new Promise((resolve) => setTimeout(resolve, 800));
 
         const responses = [
-          "I've processed your request through the Qwen model via Transformers.js. The inference engine analyzed your input and generated this response.",
+          "I've processed your request through the legacy model via Transformers.js. The inference engine analyzed your input and generated this response.",
           'Transformers.js executed successfully. I am running completely in your browser with no external Python dependencies.',
           'Inference complete. The glyph execution layer processed your request through the AI model and returned optimized results.',
-          'Qwen model response generated. Behind the scenes, this used the glyph contract system to manage the inference pipeline.'
+          'legacy model response generated. Behind the scenes, this used the glyph contract system to manage the inference pipeline.'
         ];
 
         return {
           success: true,
           result: responses[Math.floor(Math.random() * responses.length)],
-          model: 'Qwen-ASX (Transformers.js)',
+          model: 'legacy-ASX (Transformers.js)',
           timestamp: new Date().toISOString(),
           glyphUsed: '⟁Inference'
         };
@@ -1242,9 +1242,9 @@
 
         return {
           success: true,
-          result: `Java bridge executed via Cline JAR. Operation: ${params.operation}`,
-          service: 'Cline Java Runtime',
-          endpoint: 'https://mx2lm.app/cline-jar/lib/'
+          result: `Java bridge executed via legacy JAR. Operation: ${params.operation}`,
+          service: 'legacy Java Runtime',
+          endpoint: 'https://mx2lm.app/legacy-jar/lib/'
         };
       }
 

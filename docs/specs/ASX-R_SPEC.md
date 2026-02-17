@@ -1,6 +1,6 @@
 # ASX-R Specification
 
-## Image Inference Plane v1 (Janus-style) — ASX-R Extension
+## Image Inference Plane v1 (legacy-style) — ASX-R Extension
 
 ### 11.0 Scope
 
@@ -22,7 +22,7 @@ These are the only image-plane ops permitted inside `image.plan.v1`:
 * `img.fetch` (resolve bytes by ref; must be bounded + deterministic)
 * `img.decode` (bytes → pixel tensor; deterministic)
 * `img.preprocess` (resize/normalize/crop; deterministic)
-* `vision.run` (Janus-like model execution)
+* `vision.run` (legacy-like model execution)
 * `return`
 
 Anything else ⇒ non-conformant.
@@ -58,13 +58,13 @@ Then:
 
 If `vision.run` uses embeddings or tokens, record:
 
-* `@model_hash` (exact Janus/Qwen-V/vision build id hash)
+* `@model_hash` (exact legacy/legacy-V/vision build id hash)
 * `@prompt_hash` (if prompt present)
 * optional `@seed` policy hash (if you allow seeded stochasticity)
 
 ---
 
-## 11.4 Minimal Plan Example (Janus-style caption + embeddings)
+## 11.4 Minimal Plan Example (legacy-style caption + embeddings)
 
 ```json
 {
@@ -91,7 +91,7 @@ If `vision.run` uses embeddings or tokens, record:
 
     { "@op":"vision.run", "@into":"y",
       "@task":"caption+embed",
-      "@model_ref":{"@family":"janus","@id":"janus_asx_v1"},
+      "@model_ref":{"@family":"legacy","@id":"legacy_asx_v1"},
       "@input":"x",
       "@prompt":"Describe the image. Return JSON with caption, tags, safety, and embedding_ref." },
 
@@ -171,7 +171,7 @@ Below are the **five** schemas you asked for. They’re written in the same “c
       "type": "object",
       "required": ["@family", "@id"],
       "properties": {
-        "@family": { "type": "string", "enum": ["janus", "qwen_vl", "mx2lm_vision"] },
+        "@family": { "type": "string", "enum": ["legacy", "legacy_vl", "mx2lm_vision"] },
         "@id": { "type": "string", "minLength": 1 }
       },
       "additionalProperties": false
@@ -267,7 +267,7 @@ Below are the **five** schemas you asked for. They’re written in the same “c
     "@model_ref": {
       "type": "object",
       "properties": {
-        "@family": { "type": "string", "enum": ["janus", "qwen_vl", "mx2lm_vision"] },
+        "@family": { "type": "string", "enum": ["legacy", "legacy_vl", "mx2lm_vision"] },
         "@id": { "type": "string" }
       },
       "required": ["@family", "@id"],
@@ -416,7 +416,7 @@ If you want it embedded rather than referenced:
 
 ---
 
-## 🧬 “Janus Python but with K’UHUL”
+## 🧬 “legacy Python but with K’UHUL”
 
 Here’s the clean mental mapping:
 
@@ -425,7 +425,7 @@ Here’s the clean mental mapping:
 ```py
 img = idb.kql("...get img ref...")
 x = decode(img)
-y = janus(x, prompt="caption+embed")
+y = legacy(x, prompt="caption+embed")
 return y
 ```
 
