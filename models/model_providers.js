@@ -242,14 +242,14 @@ class ClaudeProvider extends ModelProvider {
 }
 
 /**
- * Deepseek Provider
+ * legacy Provider
  */
-class DeepseekProvider extends ModelProvider {
+class legacyProvider extends ModelProvider {
   constructor(config = {}) {
     super({
-      name: 'deepseek',
-      baseUrl: 'https://api.deepseek.com/v1',
-      model: config.model || 'deepseek-chat',
+      name: 'legacy',
+      baseUrl: 'https://api.legacy.com/v1',
+      model: config.model || 'legacy-chat',
       ...config
     });
   }
@@ -359,7 +359,7 @@ class OpenRouterProvider extends ModelProvider {
     super({
       name: 'openrouter',
       baseUrl: 'https://openrouter.ai/api/v1',
-      model: config.model || 'deepseek/deepseek-chat',
+      model: config.model || 'legacy/legacy-chat',
       ...config
     });
     this.siteUrl = config.siteUrl || '';
@@ -551,7 +551,7 @@ class ModelProviderManager {
     const providerClasses = {
       openai: OpenAIProvider,
       claude: ClaudeProvider,
-      deepseek: DeepseekProvider,
+      legacy: legacyProvider,
       mistral: MistralProvider,
       openrouter: OpenRouterProvider,
       together: TogetherProvider,
@@ -667,8 +667,8 @@ class ModelProviderManager {
       'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'
     ];
 
-    models.deepseek = [
-      'deepseek-chat', 'deepseek-coder'
+    models.legacy = [
+      'legacy-chat', 'legacy-coder'
     ];
 
     models.mistral = [
@@ -688,7 +688,7 @@ class ModelProviderManager {
     ];
 
     models.openrouter = [
-      'deepseek/deepseek-chat',
+      'legacy/legacy-chat',
       'anthropic/claude-3-5-sonnet',
       'google/gemini-pro',
       'meta-llama/llama-3-70b-instruct'
@@ -703,7 +703,7 @@ if (typeof self !== 'undefined') {
   self.ModelProvider = ModelProvider;
   self.OpenAIProvider = OpenAIProvider;
   self.ClaudeProvider = ClaudeProvider;
-  self.DeepseekProvider = DeepseekProvider;
+  self.legacyProvider = legacyProvider;
   self.MistralProvider = MistralProvider;
   self.OpenRouterProvider = OpenRouterProvider;
   self.TogetherProvider = TogetherProvider;

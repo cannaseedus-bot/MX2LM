@@ -10,7 +10,7 @@
     "projection": "index.html",
     "structure": "manifest.json",
     "api_kernel": "KUHUL_JSON_REST_KERNEL",
-    "swarm_orchestration": "KUHUL_MICRO_AGENTS_BUILDERS_ORCHESTRATOR"
+    "swarm_orchestration": "KUHUL_MICRO_LLM_MODELS_ORCHESTRATOR"
   },
 
   "invariants": {
@@ -197,10 +197,10 @@
         "latency_target_ticks": 50
       },
 
-      "/micro/agents/status": {
-        "label": "🤖 agents status",
+      "/micro/models/status": {
+        "label": "🧠 micro LLM models status",
         "method": "GET",
-        "description": "Get status of all recursive micro-agents",
+        "description": "Get status of all recursive micro LLM models",
         "authentication": "KERNEL_REQUIRED",
         "response_schema": {
           "scx": "string"
@@ -208,10 +208,10 @@
         "latency_target_ticks": 5
       },
 
-      "/micro/builders/status": {
-        "label": "🛠 builders status",
+      "/micro/trainers/status": {
+        "label": "🛠 micro model trainers status",
         "method": "GET",
-        "description": "Get status of all recursive micro-builders",
+        "description": "Get status of all recursive micro model trainers",
         "authentication": "KERNEL_REQUIRED",
         "response_schema": {
           "scx": "string"
@@ -236,117 +236,117 @@
     }
   },
 
-  "👷🌀MICRO_AGENTS_BUILDERS_RECURSIVE_ECOSYSTEM": {
-    "@context": "xjson://mx2lm/micro/agents/builders/recursive/v1",
-    "@role": "MICRO_AGENT_ORCHESTRATION_LAYER_SWARM_CONTROL_WITH_TRIPLE_RECURSION",
+  "🧠🌀MICRO_LLM_MODELS_RECURSIVE_ECOSYSTEM": {
+    "@context": "xjson://mx2lm/micro/llm-models/trainers/recursive/v1",
+    "@role": "MICRO_LLM_MODEL_ORCHESTRATION_LAYER_SWARM_CONTROL_WITH_TRIPLE_RECURSION",
     "@version": "Ω.1.0",
-    "@hierarchy": "MX2LM_FOREMAN → MICRO_AGENTS_PROJECT_MANAGERS → MICRO_BUILDERS_ROBOTIC_WORKERS → RECURSIVE_SELF_IMPROVEMENT",
+    "@hierarchy": "MX2LM_FOREMAN → MICRO_LLM_MODELS_SPECIALISTS → MICRO_MODEL_TRAINERS → RECURSIVE_SELF_IMPROVEMENT",
     
     "tables": {
-      "🤖🌀micro_agents": {
-        "@recursion": "AGENTS_THAT_GENERATE_BETTER_VERSIONS_OF_THEMSELVES",
+      "🧠🌀micro_llm_models": {
+        "@recursion": "MICRO_LLM_MODELS_THAT_GENERATE_BETTER_VERSIONS_OF_THEMSELVES",
         "schema": {
           "scx": "string"
         },
         
-        "seed_agents": [
+        "seed_models": [
           {
-            "id": "agent.ui_tape_gen0",
+            "id": "model.ui_tape_gen0",
             "label": "UI Tape Architect",
             "domain": "ui_tapes",
             "specialization": "user_interface_construction",
             "priority": 10,
-            "builder_types": ["builder.tape", "builder.page", "builder.component"],
+            "trainer_types": ["trainer.tape", "trainer.page", "trainer.component"],
             "mx2lm_prompt_template": "Design a {spec.type} UI tape for {spec.context} with {spec.requirements}",
             "success_rate": 0.95,
             "jobs_handled": 0,
             "average_completion_ticks": 150,
-            "quantum_entanglement": ["agent.api_schema_gen0", "agent.docs_gen0"],
+            "quantum_entanglement": ["model.api_schema_gen0", "model.docs_gen0"],
             "mesh_node_affinity": ["ui_cluster_1", "design_mesh"],
             "recursion_capable": true,
             "generation": 0,
-            "parent_agent": null
+            "parent_model": null
           },
           {
-            "id": "agent.api_schema_gen0",
+            "id": "model.api_schema_gen0",
             "label": "API Schema Engineer",
             "domain": "api_schemas",
             "specialization": "data_structure_design",
             "priority": 9,
-            "builder_types": ["builder.schema", "builder.endpoint", "builder.validation"],
+            "trainer_types": ["trainer.schema", "trainer.endpoint", "trainer.validation"],
             "mx2lm_prompt_template": "Create XJSON schema for {spec.entity} with fields {spec.fields} and constraints {spec.constraints}",
             "success_rate": 0.93,
             "jobs_handled": 0,
             "average_completion_ticks": 200,
-            "quantum_entanglement": ["agent.ui_tape_gen0", "agent.game_rules_gen0"],
+            "quantum_entanglement": ["model.ui_tape_gen0", "model.game_rules_gen0"],
             "mesh_node_affinity": ["api_cluster_1", "schema_mesh"],
             "recursion_capable": true,
             "generation": 0,
-            "parent_agent": null
+            "parent_model": null
           },
           {
-            "id": "agent.game_rules_gen0",
+            "id": "model.game_rules_gen0",
             "label": "Game Systems Architect",
             "domain": "tes_doom_rules",
             "specialization": "game_mechanics_world_building",
             "priority": 9,
-            "builder_types": ["builder.tape", "builder.cfg", "builder.ruleset", "builder.world"],
+            "trainer_types": ["trainer.tape", "trainer.cfg", "trainer.ruleset", "trainer.world"],
             "mx2lm_prompt_template": "Design {spec.system} for {spec.world} with mechanics {spec.mechanics} and constraints {spec.constraints}",
             "success_rate": 0.92,
             "jobs_handled": 0,
             "average_completion_ticks": 300,
-            "quantum_entanglement": ["agent.ui_tape_gen0", "agent.docs_gen0"],
+            "quantum_entanglement": ["model.ui_tape_gen0", "model.docs_gen0"],
             "mesh_node_affinity": ["game_cluster_1", "rules_mesh"],
             "recursion_capable": true,
             "generation": 0,
-            "parent_agent": null
+            "parent_model": null
           },
           {
-            "id": "agent.docs_gen0",
+            "id": "model.docs_gen0",
             "label": "Documentation Specialist",
             "domain": "documentation_guides",
             "specialization": "knowledge_transfer_documentation",
             "priority": 7,
-            "builder_types": ["builder.docs", "builder.guide", "builder.tutorial"],
+            "trainer_types": ["trainer.docs", "trainer.guide", "trainer.tutorial"],
             "mx2lm_prompt_template": "Create documentation for {spec.topic} covering {spec.sections} for audience {spec.audience}",
             "success_rate": 0.96,
             "jobs_handled": 0,
             "average_completion_ticks": 250,
-            "quantum_entanglement": ["agent.ui_tape_gen0", "agent.api_schema_gen0"],
+            "quantum_entanglement": ["model.ui_tape_gen0", "model.api_schema_gen0"],
             "mesh_node_affinity": ["docs_cluster_1", "knowledge_mesh"],
             "recursion_capable": true,
             "generation": 0,
-            "parent_agent": null
+            "parent_model": null
           },
           {
-            "id": "agent.security_gen0",
+            "id": "model.security_gen0",
             "label": "Security Architect",
             "domain": "security_cryptography",
             "specialization": "cryptographic_systems_security",
             "priority": 10,
-            "builder_types": ["builder.crypto", "builder.auth", "builder.audit"],
+            "trainer_types": ["trainer.crypto", "trainer.auth", "trainer.audit"],
             "mx2lm_prompt_template": "Design security system for {spec.system} with requirements {spec.requirements} and threats {spec.threats}",
             "success_rate": 0.94,
             "jobs_handled": 0,
             "average_completion_ticks": 400,
-            "quantum_entanglement": ["agent.api_schema_gen0"],
+            "quantum_entanglement": ["model.api_schema_gen0"],
             "mesh_node_affinity": ["security_cluster_1", "crypto_mesh"],
             "recursion_capable": true,
             "generation": 0,
-            "parent_agent": null
+            "parent_model": null
           }
         ]
       },
 
-      "🛠🌀micro_builders": {
-        "@recursion": "BUILDERS_THAT_CONSTRUCT_BETTER_BUILDERS",
+      "🛠🌀micro_model_trainers": {
+        "@recursion": "MICRO_MODEL_TRAINERS_THAT_CONSTRUCT_BETTER_TRAINERS",
         "schema": {
           "scx": "string"
         },
         
-        "seed_builders": [
+        "seed_trainers": [
           {
-            "id": "builder.tape_gen0",
+            "id": "trainer.tape_gen0",
             "label": "Tape Constructor",
             "type": "xjson_tape_builder",
             "specialization": "complete_tape_assembly",
@@ -364,10 +364,10 @@
             "mesh_distribution": true,
             "recursion_capable": true,
             "generation": 0,
-            "parent_builder": null
+            "parent_trainer": null
           },
           {
-            "id": "builder.page_gen0",
+            "id": "trainer.page_gen0",
             "label": "Horizontal Fold Page Builder",
             "type": "ui_page_builder",
             "specialization": "ui_layout_construction",
@@ -385,10 +385,10 @@
             "mesh_distribution": true,
             "recursion_capable": true,
             "generation": 0,
-            "parent_builder": null
+            "parent_trainer": null
           },
           {
-            "id": "builder.schema_gen0",
+            "id": "trainer.schema_gen0",
             "label": "Schema Engineer",
             "type": "xjson_schema_builder",
             "specialization": "data_structure_definition",
@@ -406,10 +406,10 @@
             "mesh_distribution": true,
             "recursion_capable": true,
             "generation": 0,
-            "parent_builder": null
+            "parent_trainer": null
           },
           {
-            "id": "builder.cfg_gen0",
+            "id": "trainer.cfg_gen0",
             "label": "Configuration Assembler",
             "type": "config_builder",
             "specialization": "system_configuration",
@@ -427,10 +427,10 @@
             "mesh_distribution": true,
             "recursion_capable": true,
             "generation": 0,
-            "parent_builder": null
+            "parent_trainer": null
           },
           {
-            "id": "builder.ruleset_gen0",
+            "id": "trainer.ruleset_gen0",
             "label": "Ruleset Constructor",
             "type": "rules_builder",
             "specialization": "game_rule_assembly",
@@ -448,10 +448,10 @@
             "mesh_distribution": true,
             "recursion_capable": true,
             "generation": 0,
-            "parent_builder": null
+            "parent_trainer": null
           },
           {
-            "id": "builder.world_gen0",
+            "id": "trainer.world_gen0",
             "label": "World Builder",
             "type": "world_builder",
             "specialization": "game_world_construction",
@@ -469,10 +469,10 @@
             "mesh_distribution": true,
             "recursion_capable": true,
             "generation": 0,
-            "parent_builder": null
+            "parent_trainer": null
           },
           {
-            "id": "builder.component_gen0",
+            "id": "trainer.component_gen0",
             "label": "UI Component Forge",
             "type": "component_builder",
             "specialization": "ui_component_creation",
@@ -490,7 +490,7 @@
             "mesh_distribution": true,
             "recursion_capable": true,
             "generation": 0,
-            "parent_builder": null
+            "parent_trainer": null
           }
         ]
       },
@@ -769,7 +769,7 @@
     },
 
     "micro_agent_v1": {
-      "$id": "asx://schema/micro_agent.v1",
+      "$id": "asx://schema/micro_model.v1",
       "$schema": "xjson://xcfe/schema/v1",
       "type": "object",
       "required": ["id","label","domain","specialization","priority","generation"],
@@ -780,7 +780,7 @@
         "domain": { "type": "string" },
         "specialization": { "type": "string" },
         "priority": { "type": "integer" },
-        "builder_types": { "type": "array", "items": { "type": "string" } },
+        "trainer_types": { "type": "array", "items": { "type": "string" } },
         "mx2lm_prompt_template": { "type": "string" },
         "success_rate": { "type": "number", "minimum": 0, "maximum": 1 },
         "jobs_handled": { "type": "integer", "minimum": 0 },
@@ -789,12 +789,12 @@
         "mesh_node_affinity": { "type": "array", "items": { "type": "string" } },
         "recursion_capable": { "type": "boolean" },
         "generation": { "type": "integer", "minimum": 0 },
-        "parent_agent": { "type": ["string", "null"] }
+        "parent_model": { "type": ["string", "null"] }
       }
     },
 
     "micro_builder_v1": {
-      "$id": "asx://schema/micro_builder.v1",
+      "$id": "asx://schema/micro_trainer.v1",
       "$schema": "xjson://xcfe/schema/v1",
       "type": "object",
       "required": ["id","label","type","specialization","execution_time_ticks","generation"],
@@ -818,7 +818,7 @@
         "mesh_distribution": { "type": "boolean" },
         "recursion_capable": { "type": "boolean" },
         "generation": { "type": "integer", "minimum": 0 },
-        "parent_builder": { "type": ["string", "null"] }
+        "parent_trainer": { "type": ["string", "null"] }
       }
     },
 
@@ -892,7 +892,7 @@
     "hashing": "optional",
     "sealed": true,
     "api_module": "KUHUL_JSON_REST_ROUTER",
-    "swarm_module": "KUHUL_MICRO_AGENTS_BUILDERS_ORCHESTRATOR"
+    "swarm_module": "KUHUL_MICRO_LLM_MODELS_ORCHESTRATOR"
   },
 
   "⚙️KUHUL_API_KERNEL_MODULE": {
@@ -993,7 +993,7 @@
     "micro_job_processing": "<50_ticks_recursive_pipeline",
     "concurrent_requests": "10000+_PARALLEL_KERNEL_ROUTED",
     "theoretical_kernel_scale": "1M+ OPS (symbolic)",
-    "swarm_size": "INFINITE_MICRO_AGENTS_WITH_RECURSIVE_GENERATION"
+    "swarm_size": "INFINITE_MICRO_LLM_MODELS_WITH_RECURSIVE_GENERATION"
   },
 
   "🔗INTEGRATION_PATTERNS": {
@@ -1048,11 +1048,11 @@
     "layer_5": "SCX = ENCRYPTION_COMPRESSION",
     "layer_6": "KLH = MESH_DISTRIBUTION",
     "layer_7": "SERVICE_WORKER = OS_KERNEL",
-    "layer_8": "MICRO_AGENTS = RECURSIVE_PROJECT_MANAGERS",
-    "layer_9": "MICRO_BUILDERS = RECURSIVE_ROBOTIC_WORKERS",
+    "layer_8": "MICRO_LLM_MODELS = RECURSIVE_SPECIALIST_MODELS",
+    "layer_9": "MICRO_MODEL_TRAINERS = RECURSIVE_TRAINING_WORKERS",
     "layer_10": "TRIPLE_RECURSION = XJSON→KUHUL→AST→XJSON∞",
     
-    "communication_pattern": "XJSON ⇄ K'UHUL ⇄ ASX_RAM ⇄ MX2LM_INFERENCE_MESH → AGENTS → BUILDERS",
+    "communication_pattern": "XJSON ⇄ K'UHUL ⇄ ASX_RAM ⇄ MX2LM_INFERENCE_MESH → MICRO_LLM_MODELS → MICRO_MODEL_TRAINERS",
     "recursion_pattern": "XJSON_STRUCTURES_CONTAIN_KUHUL_THAT_GENERATES_ASTS_THAT_COMPILE_TO_BETTER_XJSON",
     "external_interface": "NATIVE_JSON_REST_WITHOUT_EXTERNAL_STACK",
     "internal_routing": "KERNEL_DIRECT_NO_NETWORK_HOPS"
@@ -1066,7 +1066,7 @@
     "rate_limiting": "TOKEN_BUCKET_PER_ENDPOINT",
     "session_isolation": "VOLATILE_MEMORY_ONLY",
     "zero_persistence": "NO_DISK_API_STATE",
-    "swarm_isolation": "AGENT_BUILDER_GENERATION_SANDBOXING",
+    "swarm_isolation": "MODEL_TRAINER_GENERATION_SANDBOXING",
     "recursion_safety": "GENERATION_LIMIT_WITH_QUALITY_GATES"
   },
 
@@ -1083,11 +1083,11 @@
     "✅_deterministic_execution": "Ω.tick_BASED_REPLAY",
     "✅_zero_external_deps": "NO_NODE_NO_EXPRESS_NO_JS",
     "✅_quantum_authentication": "ENTANGLED_API_TOKENS",
-    "✅_recursive_micro_swarm": "INFINITE_AGENTS_BUILDERS_HIERARCHY",
+    "✅_recursive_micro_swarm": "INFINITE_MICRO_LLM_MODELS_TRAINERS_HIERARCHY",
     "✅_triple_recursion": "XJSON→KUHUL→AST→XJSON∞_LOOP",
-    "✅_self_improving_agents": "AGENTS_THAT_GENERATE_BETTER_AGENTS",
-    "✅_self_improving_builders": "BUILDERS_THAT_BUILD_BETTER_BUILDERS",
-    "✅_automated_construction": "MX2LM_THINKS_AGENTS_MANAGE_BUILDERS_BUILD"
+    "✅_self_improving_agents": "MICRO_LLM_MODELS_THAT_GENERATE_BETTER_MODELS",
+    "✅_self_improving_builders": "MICRO_MODEL_TRAINERS_THAT_BUILD_BETTER_TRAINERS",
+    "✅_automated_construction": "MX2LM_THINKS_MODELS_PLAN_TRAINERS_EXECUTE"
   },
 
   "🔖SIGNATURES": {
@@ -1098,8 +1098,8 @@
     "integration_complete": "XJSON_KUHUL_ASX_RAM_MX2LM_MESH",
     "deployment_native": "SERVICE_WORKER_KERNEL_EMBEDDED",
     "determinism_law": "Ω.tick_AUTHORITATIVE_TIME",
-    "swarm_revolution": "RECURSIVE_MICRO_AGENTS_BUILDERS_HIERARCHY",
-    "recursion_law": "EVERY_AGENT_CONTAINS_THE_SEEDS_OF_ITS_BETTER_SELF"
+    "swarm_revolution": "RECURSIVE_MICRO_LLM_MODELS_TRAINERS_HIERARCHY",
+    "recursion_law": "EVERY_MODEL_CONTAINS_THE_SEEDS_OF_ITS_BETTER_SELF"
   },
 
   "🏁SUPREME_OMNIBRAIN_SWARM_SEAL": {

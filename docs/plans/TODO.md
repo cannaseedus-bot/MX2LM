@@ -16,7 +16,7 @@
 - [x] Basic SVG brain projection
 - [x] index.html UI entry point
 - [x] Brain topology registry loading
-- [x] Micro-agent/builder registry loading
+- [x] Micro-LLM-model/trainer registry loading
 - [x] Message bridge (postMessage API)
 
 ---
@@ -203,23 +203,23 @@
 - [ ] Implement build output validation
 - [ ] Implement build metrics collection
 - [ ] Connect builders to job pipeline
-- [ ] Add `/micro/builders/{id}/execute` endpoint
+- [ ] Add `/micro/trainers/{id}/execute` endpoint
 
 ### 5.3 Agent Self-Improvement
-- [ ] Implement `improveAgent(agent_id)` function
+- [ ] Implement `improveModel(model_id)` function
 - [ ] Implement generation tracking system
 - [ ] Implement quality gate validation
 - [ ] Implement `collectGenerationLearnings()`
 - [ ] Implement parent-child lineage tracking
 - [ ] Add improvement triggers and thresholds
-- [ ] Add `/micro/agents/{id}/improve` endpoint
+- [ ] Add `/micro/models/{id}/improve` endpoint
 
 ### 5.4 Builder Self-Improvement
 - [ ] Implement `improveBuilder(builder_id)` function
 - [ ] Implement builder capability expansion
 - [ ] Implement performance metric tracking
 - [ ] Implement builder specialization
-- [ ] Add `/micro/builders/{id}/improve` endpoint
+- [ ] Add `/micro/trainers/{id}/improve` endpoint
 
 ### 5.5 Recursive Orchestration
 - [ ] Implement XJSON → KUHUL transform

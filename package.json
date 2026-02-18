@@ -1,7 +1,7 @@
 {
   "name": "mx2lm-pwa-builder",
   "version": "1.0.0",
-  "description": "MX2LM PWA Builder with Qwen2 Tokenizer",
+  "description": "MX2LM PWA Builder with legacy2 Tokenizer",
   "main": "build-tools/pwa-builder.js",
   "scripts": {
     "build": "node build-tools/pwa-builder.js",
@@ -24,7 +24,7 @@
   "keywords": [
     "pwa",
     "tokenizer",
-    "qwen",
+    "legacy",
     "mx2lm",
     "ai"
   ],

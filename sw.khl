@@ -42,14 +42,14 @@ const KUHUL_KERNEL = (function () {
 
   const FOLD = {
     model: {
-      qwen_asx: {
+      legacy_asx: {
         source: {
           type: 'remote_safetensors',
           url: 'https://remote-model-domain.com/model.safetensors',
           local: './model/your-local-model/model.safetensors'
         },
         topology: {
-          type: 'qwen_decoder_only',
+          type: 'legacy_decoder_only',
           layers: 12,
           heads: 12,
           d_model: 768,
@@ -134,7 +134,7 @@ const KUHUL_KERNEL = (function () {
     if (!FOLD.audit.enabled) return;
     FOLD.audit.inference_trace.push({
       t: Date.now(),
-      tick: FOLD.model.qwen_asx.state.version,
+      tick: FOLD.model.legacy_asx.state.version,
       ...rec
     });
   }
@@ -166,7 +166,7 @@ const KUHUL_KERNEL = (function () {
   }
 
   function tensor_from_index(name) {
-    const q = FOLD.model.qwen_asx;
+    const q = FOLD.model.legacy_asx;
     if (!q.tensors.index) throw new Error('Tensor index not built');
     const entry = q.tensors.index[name];
     if (!entry) throw new Error(`Missing tensor: ${name}`);
@@ -246,7 +246,7 @@ const KUHUL_KERNEL = (function () {
   }
 
   async function load_model() {
-    const q = FOLD.model.qwen_asx;
+    const q = FOLD.model.legacy_asx;
     if (q.tensors.status === 'ready') return;
 
     trace_push({ op: 'load.begin', url: q.source.url });
@@ -348,7 +348,7 @@ const KUHUL_KERNEL = (function () {
      ============================================================ */
 
   function register_blocks() {
-    const q = FOLD.model.qwen_asx;
+    const q = FOLD.model.legacy_asx;
     const reg = FOLD.blocks.registry;
     reg.clear();
 
@@ -609,7 +609,7 @@ const KUHUL_KERNEL = (function () {
     const logitsBytes = f32_to_bytes(ctx.logits);
     const outHash = fnv1a32(logitsBytes);
 
-    FOLD.model.qwen_asx.state.version++;
+    FOLD.model.legacy_asx.state.version++;
     trace_push({ op: 'infer.ok', out_hash: outHash });
 
     return {
@@ -660,11 +660,11 @@ const KUHUL_KERNEL = (function () {
       '@input': input,
       '@output_hash': output.hash32,
       '@reward': reward,
-      '@epoch': FOLD.model.qwen_asx.state.epoch,
+      '@epoch': FOLD.model.legacy_asx.state.epoch,
       '@timestamp': Date.now()
     });
 
-    trace_push({ op: 'training.sample', reward, epoch: FOLD.model.qwen_asx.state.epoch });
+    trace_push({ op: 'training.sample', reward, epoch: FOLD.model.legacy_asx.state.epoch });
   }
 
   function emit_delta() {
@@ -675,27 +675,27 @@ const KUHUL_KERNEL = (function () {
 
     const avgReward = log.reduce((s, t) => s + t['@reward'], 0) / log.length;
     const policy = FOLD.training.rlhf.policy;
-    const scaledDelta = Math.pow(π.PHI, -FOLD.model.qwen_asx.state.epoch) * avgReward * policy.reward_scale;
+    const scaledDelta = Math.pow(π.PHI, -FOLD.model.legacy_asx.state.epoch) * avgReward * policy.reward_scale;
     const clampedDelta = Math.max(-policy.clamp, Math.min(policy.clamp, scaledDelta));
 
     // Emit delta record (for SCXQ2 lane storage)
     const delta = {
       '@delta': 'weight.patch',
-      '@epoch': FOLD.model.qwen_asx.state.epoch,
+      '@epoch': FOLD.model.legacy_asx.state.epoch,
       '@avg_reward': avgReward,
       '@scaled_delta': clampedDelta,
       '@sample_count': log.length,
       '@lane': 'RAW',
       '@hash': fnv1a32(new TextEncoder().encode(JSON.stringify({
         avgReward,
-        epoch: FOLD.model.qwen_asx.state.epoch,
+        epoch: FOLD.model.legacy_asx.state.epoch,
         samples: log.length
       })))
     };
 
     // Clear log, advance epoch
     FOLD.training.rlhf.delta_log = [];
-    FOLD.model.qwen_asx.state.epoch++;
+    FOLD.model.legacy_asx.state.epoch++;
 
     trace_push({ op: 'training.delta_emitted', ...delta });
 
@@ -722,11 +722,11 @@ const KUHUL_KERNEL = (function () {
         return {
           version: Ω.VERSION,
           law: Ω.LAW,
-          model_status: FOLD.model.qwen_asx.tensors.status,
-          model_version: FOLD.model.qwen_asx.state.version,
-          epoch: FOLD.model.qwen_asx.state.epoch,
+          model_status: FOLD.model.legacy_asx.tensors.status,
+          model_version: FOLD.model.legacy_asx.state.version,
+          epoch: FOLD.model.legacy_asx.state.epoch,
           blocks: FOLD.blocks.sequence.length,
-          cached_tensors: FOLD.model.qwen_asx.tensors.cache.size,
+          cached_tensors: FOLD.model.legacy_asx.tensors.cache.size,
           training_samples: FOLD.training.rlhf.delta_log.length,
           trace_length: FOLD.audit.inference_trace.length
         };

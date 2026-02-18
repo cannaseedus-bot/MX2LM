@@ -19,7 +19,7 @@
 - [x] Basic SVG brain projection
 - [x] UI entry point (`index.html`)
 - [x] Brain topology loading
-- [x] Micro-agent/builder registry loading
+- [x] Micro-LLM-model/trainer registry loading
 
 ---
 
@@ -159,7 +159,7 @@
 - [ ] `/micro/jobs/{id}/result` endpoint
 
 **5.2 Agent Self-Improvement**
-- [ ] `improveAgent(agent_id)` - create improved version
+- [ ] `improveModel(model_id)` - create improved version
 - [ ] Generation tracking
 - [ ] Quality gate validation
 - [ ] `collectGenerationLearnings()`

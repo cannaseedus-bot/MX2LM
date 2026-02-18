@@ -17,7 +17,7 @@ class ABILock {
 
     const checksums = {
       tokenizer: await this.generateChecksum('./tokenizer/tokenizer.json'),
-      model: await this.generateChecksum('./mx2lm-qwen2-model/pytorch_model.bin'),
+      model: await this.generateChecksum('./mx2lm-legacy2-model/pytorch_model.bin'),
     };
 
     // Store for comparison
