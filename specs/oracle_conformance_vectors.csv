@@ -1,0 +1,5 @@
+id,input,expected_stage,expected_code,expected_score,java_expected_code
+missing_boundary,hello world,boundary,E_GGL_BOUNDARY,0.0,E_GGL_BOUNDARY
+outside_text,before <GGL>abc</GGL> after,boundary,E_GGL_OUTSIDE_TEXT,0.05,E_GGL_OUTSIDE_TEXT
+tokenize_disallowed,<GGL>abc#</GGL>,tokenize,E_TOKEN_DISALLOWED_CHAR,0.1,E_TOKEN_DISALLOWED_CHAR
+parse_unimplemented,<GGL>abc</GGL>,parse,E_PARSE_UNIMPLEMENTED,0.25,E_PARSE
