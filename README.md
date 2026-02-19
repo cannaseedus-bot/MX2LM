@@ -20692,3 +20692,9 @@ public class LineageUpdate {
 Just tell me which direction you want to expand.
 
 </details>
+
+## Brain topology schemas
+
+Canonical brain topology schemas and bindings are maintained in `brains/topologies/`.
+Use `python tools/validate_brains.py` to validate canonical topology assets.
+For compatibility-path details, see `brains/README.md`.

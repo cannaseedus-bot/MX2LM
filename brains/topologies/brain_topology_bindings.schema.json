@@ -97,7 +97,7 @@
         "id": {
           "type": "string",
           "pattern": "^[a-z][a-z0-9_]{2,48}$",
-          "description": "Stable brain topology identifier. Must exist in brain_topology.registry.json."
+          "description": "Stable brain topology identifier. Must exist in brain_topology_registry.json."
         },
 
         "svg": {

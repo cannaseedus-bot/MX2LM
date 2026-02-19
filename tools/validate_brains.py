@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Validate brain topology SVG bindings against the repository schema and registry.
+Validate brain topology SVG bindings against the canonical schema and registry.
 
 Checks performed:
 1) JSON Schema validation using the bundled schema definition.
@@ -19,9 +19,10 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SCHEMA_PATH = REPO_ROOT / "brains" / "brain_topology_bindings.schema.json"
-BINDINGS_PATH = REPO_ROOT / "brains" / "brain_topology_bindings.svg.json"
-REGISTRY_PATH = REPO_ROOT / "brains" / "brain_topology.registry.json"
+TOPOLOGY_ROOT = REPO_ROOT / "brains" / "topologies"
+SCHEMA_PATH = TOPOLOGY_ROOT / "brain_topology_bindings.schema.json"
+BINDINGS_PATH = TOPOLOGY_ROOT / "brain_topology_bindings.svg.json"
+REGISTRY_PATH = TOPOLOGY_ROOT / "brain_topology_registry.json"
 METADATA_FIELDS = {"$id", "$schema", "@description"}
 
 def strip_json_comments(raw: str) -> str:
@@ -189,9 +190,9 @@ def validate_against_schema(instance: Any, schema: Mapping[str, Any]) -> List[st
 
 def load_registry_ids(path: Path) -> set[str]:
     registry = load_json(path, allow_comments=True)
-    brains = registry.get("brains", [])
+    brains = registry.get("@brains", registry.get("brains", []))
     if not isinstance(brains, list):
-        raise ValueError("Registry 'brains' field must be an array")
+        raise ValueError("Registry '@brains' or 'brains' field must be an array")
     ids = []
     for entry in brains:
         if isinstance(entry, Mapping) and "id" in entry:
@@ -324,6 +325,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if not args.quiet:
         print("Brain topology bindings validation report")
+        print(f"- Canonical topology directory: {TOPOLOGY_ROOT.relative_to(REPO_ROOT)}")
         for line in report_lines:
             print(f"- {line}")
 
@@ -336,6 +338,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not args.quiet:
         print("All bindings are valid and projection-only.")
     return 0
+
+
+def validate() -> int:
+    """Backwards-compatible import entrypoint for tests and scripts."""
+    return main(["--quiet"])
 
 
 if __name__ == "__main__":

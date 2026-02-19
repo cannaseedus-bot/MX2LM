@@ -1,14 +1,6 @@
 {
-  "$id": "asx://schema/shell/stack_grid.v1",
-  "$schema": "xjson://xcfe/schema/v1",
-  "type": "object",
-  "required": ["rows","cols","weights"],
-  "properties": {
-    "rows": { "type": "integer", "minimum": 1 },
-    "cols": { "type": "integer", "minimum": 1 },
-    "weights": {
-      "type": "array",
-      "items": { "type": "array" }
-    }
-  }
+  "@type": "mx2lm.pointer.v1",
+  "@canonical": "brains/topologies/schema.shell.stack_grid.json",
+  "@generated": false,
+  "@note": "Canonical topology schema lives in brains/topologies/. This compatibility pointer is intentionally lightweight."
 }
