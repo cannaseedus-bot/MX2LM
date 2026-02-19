@@ -1,20 +1,6 @@
 {
-  "$id": "asx://schema/shell/hud_ring.v1",
-  "$schema": "xjson://xcfe/schema/v1",
-  "type": "object",
-  "required": ["arcs"],
-  "properties": {
-    "arcs": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["start","end","label"],
-        "properties": {
-          "start": { "type": "number" },
-          "end":   { "type": "number" },
-          "label": { "type": "string" }
-        }
-      }
-    }
-  }
+  "@type": "mx2lm.pointer.v1",
+  "@canonical": "brains/topologies/schema.shell.hud_ring.json",
+  "@generated": false,
+  "@note": "Canonical topology schema lives in brains/topologies/. This compatibility pointer is intentionally lightweight."
 }
