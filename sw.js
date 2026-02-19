@@ -105,6 +105,9 @@ const KERNEL_STATE = {
   entropy: 0.32,
   ticks: 0,
   micro: {
+    models: [],
+    trainers: [],
+    // backward compatible aliases
     agents: [],
     builders: [],
     jobs: []
@@ -170,13 +173,15 @@ async function loadManifest() {
 }
 
 function hydrateMicroState(manifest) {
-  const microRoot = manifest?.["👷🌀MICRO_AGENTS_BUILDERS_RECURSIVE_ECOSYSTEM"];
+  const microRoot = manifest?.["🧠🌀MICRO_LLM_MODELS_RECURSIVE_ECOSYSTEM"] || manifest?.["👷🌀MICRO_AGENTS_BUILDERS_RECURSIVE_ECOSYSTEM"];
   const tables = microRoot?.tables || {};
-  const agentSeeds = tables["🤖🌀micro_agents"]?.seed_agents || [];
-  const builderSeeds = tables["🛠🌀micro_builders"]?.seed_builders || [];
+  const modelSeeds = tables["🧠🌀micro_llm_models"]?.seed_models || tables["🤖🌀micro_agents"]?.seed_agents || [];
+  const trainerSeeds = tables["🛠🌀micro_model_trainers"]?.seed_trainers || tables["🛠🌀micro_builders"]?.seed_builders || [];
 
-  KERNEL_STATE.micro.agents = agentSeeds;
-  KERNEL_STATE.micro.builders = builderSeeds;
+  KERNEL_STATE.micro.models = modelSeeds;
+  KERNEL_STATE.micro.trainers = trainerSeeds;
+  KERNEL_STATE.micro.agents = modelSeeds;
+  KERNEL_STATE.micro.builders = trainerSeeds;
   KERNEL_STATE.micro.jobs = KERNEL_STATE.micro.jobs || [];
 }
 
@@ -184,7 +189,7 @@ const DEFAULT_API_PATHS = [
   "/health","/infer","/memory/read","/memory/write",
   "/reinforce","/penalize","/ngrams/snapshot",
   "/routines/detect","/asx/blocks","/weights",
-  "/micro/jobs/submit","/micro/agents/status","/micro/builders/status"
+  "/micro/jobs/submit","/micro/models/status","/micro/trainers/status","/micro/agents/status","/micro/builders/status"
 ];
 
 const CAPABILITY_RULES = Object.freeze({
@@ -193,6 +198,8 @@ const CAPABILITY_RULES = Object.freeze({
   "/reinforce": ["cap:rlhf"],
   "/penalize": ["cap:rlhf"],
   "/micro/jobs/submit": ["cap:micro.submit"],
+  "/micro/models/status": ["cap:micro.status"],
+  "/micro/trainers/status": ["cap:micro.status"],
   "/micro/agents/status": ["cap:micro.status"],
   "/micro/builders/status": ["cap:micro.status"]
 });
@@ -1019,6 +1026,8 @@ class SupremeJSONRESTAPI {
       "/asx/blocks": this.asxBlocksEndpoint.bind(this),
       "/weights": this.weightsEndpoint.bind(this),
       "/micro/jobs/submit": this.microJobsSubmitEndpoint.bind(this),
+      "/micro/models/status": this.microModelsStatusEndpoint.bind(this),
+      "/micro/trainers/status": this.microTrainersStatusEndpoint.bind(this),
       "/micro/agents/status": this.microAgentsStatusEndpoint.bind(this),
       "/micro/builders/status": this.microBuildersStatusEndpoint.bind(this)
     };
@@ -1289,8 +1298,10 @@ class SupremeJSONRESTAPI {
       quantum_coherence: this.calculateQuantumCoherence(),
       route_metrics: KERNEL_STATE.api.route_metrics,
       micro_state: {
-        agents: KERNEL_STATE.micro.agents.length,
-        builders: KERNEL_STATE.micro.builders.length,
+        models: (KERNEL_STATE.micro.models || []).length,
+        trainers: (KERNEL_STATE.micro.trainers || []).length,
+        agents: (KERNEL_STATE.micro.agents || []).length,
+        builders: (KERNEL_STATE.micro.builders || []).length,
         jobs: KERNEL_STATE.micro.jobs.length
       },
       api_metrics: {
@@ -1595,22 +1606,30 @@ class SupremeJSONRESTAPI {
     });
   }
 
-  async microAgentsStatusEndpoint() {
-    const agents = KERNEL_STATE.micro.agents || [];
+  async microModelsStatusEndpoint() {
+    const models = KERNEL_STATE.micro.models || KERNEL_STATE.micro.agents || [];
     return this.formatResponse(200, {
-      agents,
-      total_agents: agents.length,
-      quantum_state: "|Ψ⟩ = Σ|AGENT⟩"
+      models,
+      total_models: models.length,
+      quantum_state: "|Ψ⟩ = Σ|MICRO_LLM_MODEL⟩"
     });
   }
 
-  async microBuildersStatusEndpoint() {
-    const builders = KERNEL_STATE.micro.builders || [];
+  async microTrainersStatusEndpoint() {
+    const trainers = KERNEL_STATE.micro.trainers || KERNEL_STATE.micro.builders || [];
     return this.formatResponse(200, {
-      builders,
-      total_builders: builders.length,
-      quantum_state: "|Ψ⟩ = Σ|BUILDER⟩"
+      trainers,
+      total_trainers: trainers.length,
+      quantum_state: "|Ψ⟩ = Σ|MICRO_MODEL_TRAINER⟩"
     });
+  }
+
+  async microAgentsStatusEndpoint() {
+    return this.microModelsStatusEndpoint();
+  }
+
+  async microBuildersStatusEndpoint() {
+    return this.microTrainersStatusEndpoint();
   }
 
   // Helper Methods
@@ -2889,10 +2908,13 @@ function activateBrain(brainId, input_state = {}) {
 }
 
 /* ============================================================
-   MICRO-AGENT/BUILDER SWARM ORCHESTRATION
+   MICRO-LLM MODEL/TRAINER SWARM ORCHESTRATION
    ============================================================ */
 
 const SWARM_ENGINE = {
+  models: new Map(),
+  trainers: new Map(),
+  // Compatibility aliases
   agents: new Map(),
   builders: new Map(),
   jobs: [],
@@ -2901,32 +2923,34 @@ const SWARM_ENGINE = {
 
 // Initialize swarm from manifest
 function initializeSwarm(manifest) {
-  const ecosystem = manifest['👷🌀MICRO_AGENTS_BUILDERS_RECURSIVE_ECOSYSTEM'];
+  const ecosystem = manifest['🧠🌀MICRO_LLM_MODELS_RECURSIVE_ECOSYSTEM'] || manifest['👷🌀MICRO_AGENTS_BUILDERS_RECURSIVE_ECOSYSTEM'];
   if (!ecosystem?.tables) return;
 
   // Load seed agents
-  const agentTable = ecosystem.tables['🤖🌀micro_agents'];
-  if (agentTable?.seed_agents) {
-    for (const agent of agentTable.seed_agents) {
-      SWARM_ENGINE.agents.set(agent.id, {
-        ...agent,
-        status: 'ready',
-        current_job: null
-      });
-    }
+  const modelTable = ecosystem.tables['🧠🌀micro_llm_models'] || ecosystem.tables['🤖🌀micro_agents'];
+  const seedModels = modelTable?.seed_models || modelTable?.seed_agents || [];
+  for (const model of seedModels) {
+    SWARM_ENGINE.models.set(model.id, {
+      ...model,
+      status: 'ready',
+      current_job: null
+    });
   }
 
-  // Load seed builders
-  const builderTable = ecosystem.tables['🛠🌀micro_builders'];
-  if (builderTable?.seed_builders) {
-    for (const builder of builderTable.seed_builders) {
-      SWARM_ENGINE.builders.set(builder.id, {
-        ...builder,
-        status: 'ready',
-        current_job: null
-      });
-    }
+  // Load seed trainers
+  const trainerTable = ecosystem.tables['🛠🌀micro_model_trainers'] || ecosystem.tables['🛠🌀micro_builders'];
+  const seedTrainers = trainerTable?.seed_trainers || trainerTable?.seed_builders || [];
+  for (const trainer of seedTrainers) {
+    SWARM_ENGINE.trainers.set(trainer.id, {
+      ...trainer,
+      status: 'ready',
+      current_job: null
+    });
   }
+
+  // Keep compatibility views
+  SWARM_ENGINE.agents = SWARM_ENGINE.models;
+  SWARM_ENGINE.builders = SWARM_ENGINE.trainers;
 }
 
 // Submit job to swarm
@@ -2943,36 +2967,42 @@ function submitSwarmJob(spec) {
     result: null
   };
 
-  // Find matching agent
-  for (const [id, agent] of SWARM_ENGINE.agents) {
-    if (agent.status === 'ready' && agent.domain === spec.domain) {
-      job.assigned_agent = id;
-      agent.status = 'busy';
-      agent.current_job = jobId;
+  // Find matching model
+  for (const [id, model] of SWARM_ENGINE.models) {
+    if (model.status === 'ready' && model.domain === spec.domain) {
+      job.assigned_model = id;
+      model.status = 'busy';
+      model.current_job = jobId;
       break;
     }
   }
 
-  // Find matching builder
-  if (job.assigned_agent) {
-    const agent = SWARM_ENGINE.agents.get(job.assigned_agent);
-    for (const builderType of (agent.builder_types || [])) {
-      const builder = SWARM_ENGINE.builders.get(`${builderType}_gen0`);
-      if (builder && builder.status === 'ready') {
-        job.assigned_builder = builder.id;
-        builder.status = 'busy';
-        builder.current_job = jobId;
+  // Find matching trainer
+  if (job.assigned_model) {
+    const model = SWARM_ENGINE.models.get(job.assigned_model);
+    for (const trainerType of (model.trainer_types || model.builder_types || [])) {
+      const trainer = SWARM_ENGINE.trainers.get(`${trainerType}_gen0`) || SWARM_ENGINE.trainers.get(trainerType);
+      if (trainer && trainer.status === 'ready') {
+        job.assigned_trainer = trainer.id;
+        trainer.status = 'busy';
+        trainer.current_job = jobId;
         break;
       }
     }
   }
 
-  job.status = job.assigned_agent ? 'assigned' : 'queued';
+  // Backward compatibility job aliases
+  job.assigned_agent = job.assigned_model || null;
+  job.assigned_builder = job.assigned_trainer || null;
+
+  job.status = job.assigned_model ? 'assigned' : 'queued';
   SWARM_ENGINE.jobs.push(job);
 
   return {
     job_id: jobId,
     status: job.status,
+    assigned_model: job.assigned_model || null,
+    assigned_trainer: job.assigned_trainer || null,
     assigned_agent: job.assigned_agent,
     assigned_builder: job.assigned_builder,
     quantum_state: '|Ψ⟩ = |JOB_SUBMITTED⟩⊗|SWARM_PROCESSING⟩'
@@ -2980,41 +3010,49 @@ function submitSwarmJob(spec) {
 }
 
 // Get agent status
-function getAgentsStatus() {
-  const agents = [];
-  for (const [id, agent] of SWARM_ENGINE.agents) {
-    agents.push({
+function getModelsStatus() {
+  const models = [];
+  for (const [id, model] of SWARM_ENGINE.models) {
+    models.push({
       id,
-      label: agent.label,
-      domain: agent.domain,
-      status: agent.status,
-      generation: agent.generation,
-      success_rate: agent.success_rate,
-      jobs_handled: agent.jobs_handled,
-      current_job: agent.current_job,
-      recursion_capable: agent.recursion_capable
+      label: model.label,
+      domain: model.domain,
+      status: model.status,
+      generation: model.generation,
+      success_rate: model.success_rate,
+      jobs_handled: model.jobs_handled,
+      current_job: model.current_job,
+      recursion_capable: model.recursion_capable
     });
   }
-  return agents;
+  return models;
+}
+
+function getAgentsStatus() {
+  return getModelsStatus();
 }
 
 // Get builder status
-function getBuildersStatus() {
-  const builders = [];
-  for (const [id, builder] of SWARM_ENGINE.builders) {
-    builders.push({
+function getTrainersStatus() {
+  const trainers = [];
+  for (const [id, trainer] of SWARM_ENGINE.trainers) {
+    trainers.push({
       id,
-      label: builder.label,
-      type: builder.type,
-      status: builder.status,
-      generation: builder.generation,
-      success_rate: builder.success_rate,
-      jobs_completed: builder.jobs_completed,
-      current_job: builder.current_job,
-      recursion_capable: builder.recursion_capable
+      label: trainer.label,
+      type: trainer.type,
+      status: trainer.status,
+      generation: trainer.generation,
+      success_rate: trainer.success_rate,
+      jobs_completed: trainer.jobs_completed,
+      current_job: trainer.current_job,
+      recursion_capable: trainer.recursion_capable
     });
   }
-  return builders;
+  return trainers;
+}
+
+function getBuildersStatus() {
+  return getTrainersStatus();
 }
 
 /* ============================================================
@@ -3182,7 +3220,7 @@ function generateTopologyConstellationSVG() {
 // Extended API paths
 const EXTENDED_API_PATHS = new Set([
   '/brain/list', '/brain/activate', '/brain/status', '/brain/svg',
-  '/micro/jobs/submit', '/micro/agents/status', '/micro/builders/status',
+  '/micro/jobs/submit', '/micro/models/status', '/micro/trainers/status', '/micro/agents/status', '/micro/builders/status',
   '/topology/svg'
 ]);
 
@@ -3269,22 +3307,26 @@ async function handleExtendedAPI(url, request) {
         tick: ΩCLOCK.tick
       });
 
+    case '/micro/models/status':
     case '/micro/agents/status':
       return mx2_json({
         ok: true,
+        models: getModelsStatus(),
         agents: getAgentsStatus(),
-        total: SWARM_ENGINE.agents.size,
+        total: SWARM_ENGINE.models.size,
         tick: ΩCLOCK.tick,
-        quantum_state: '|Ψ⟩ = Σ|AGENT_i⟩⊗|STATUS⟩'
+        quantum_state: '|Ψ⟩ = Σ|MICRO_LLM_MODEL_i⟩⊗|STATUS⟩'
       });
 
+    case '/micro/trainers/status':
     case '/micro/builders/status':
       return mx2_json({
         ok: true,
+        trainers: getTrainersStatus(),
         builders: getBuildersStatus(),
-        total: SWARM_ENGINE.builders.size,
+        total: SWARM_ENGINE.trainers.size,
         tick: ΩCLOCK.tick,
-        quantum_state: '|Ψ⟩ = Σ|BUILDER_i⟩⊗|READY⟩'
+        quantum_state: '|Ψ⟩ = Σ|MICRO_MODEL_TRAINER_i⟩⊗|READY⟩'
       });
 
     default:
@@ -5092,7 +5134,7 @@ async function handleExtendedAPI(url, request) {
         if (typeof registerMX2Tables !== 'undefined') {
           registerMX2Tables(sqlExecutor, {
             brains: KERNEL_STATE.brain_topologies || {},
-            agents: KERNEL_STATE.micro_agents || {},
+            agents: KERNEL_STATE.micro.models || KERNEL_STATE.micro.agents || {},
             metrics: PI_METRIC_TABLE || {},
             weights: KERNEL_STATE.ngram_weights || [],
             traces: KERNEL_STATE.traces || [],

@@ -53,7 +53,7 @@ All foundation components are implemented and working:
 - [x] Basic SVG brain projection
 - [x] `index.html` UI dashboard
 - [x] Brain topology registry (30 topologies)
-- [x] Micro-agent/builder registry loading
+- [x] Micro-LLM-model/trainer registry loading
 - [x] Message bridge (postMessage API)
 
 ---
@@ -377,20 +377,20 @@ All foundation components are implemented and working:
 - [ ] Implement `executeBuilder(builder_id, job_spec)`
 - [ ] Implement builder capability matching
 - [ ] Implement build output validation
-- [ ] Add `/micro/builders/{id}/execute` endpoint
+- [ ] Add `/micro/trainers/{id}/execute` endpoint
 
 ### 5.3 Agent Self-Improvement
-- [ ] Implement `improveAgent(agent_id)` function
+- [ ] Implement `improveModel(model_id)` function
 - [ ] Implement generation tracking system
 - [ ] Implement quality gate validation
 - [ ] Implement parent-child lineage tracking
-- [ ] Add `/micro/agents/{id}/improve` endpoint
+- [ ] Add `/micro/models/{id}/improve` endpoint
 
 ### 5.4 Builder Self-Improvement
 - [ ] Implement `improveBuilder(builder_id)` function
 - [ ] Implement builder capability expansion
 - [ ] Implement performance metric tracking
-- [ ] Add `/micro/builders/{id}/improve` endpoint
+- [ ] Add `/micro/trainers/{id}/improve` endpoint
 
 ### 5.5 Recursive Orchestration
 - [ ] Implement XJSON → KUHUL transform
