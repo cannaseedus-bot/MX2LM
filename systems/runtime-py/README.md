@@ -4,7 +4,7 @@
 Python runtime, tooling, and verification harnesses for MX2LM/ASX workflows.
 
 ## Authoritative entrypoints
-- `systems/runtime-py/runtime/` (Python runtime modules, including symbolic LLM scaffold in `symbolic_llm.py`)
+- `systems/runtime-py/runtime/` (Python runtime modules, including symbolic LLM scaffold in `symbolic_llm.py` and binary shard trainer in `symbolic_trainer.py`)
 - `systems/runtime-py/tools/` (developer and automation utilities)
 - `systems/runtime-py/tests/` (test and conformance coverage)
 
