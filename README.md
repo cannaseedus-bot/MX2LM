@@ -32,6 +32,10 @@
 - `kuhul_poc/` has been reclassified as experimental and moved to `misc/experimental/kuhul_poc/`.
 - It is **not** part of the production MX2LM runtime path until graduation criteria in `misc/README.md` are met.
 
+## Subsystem Index (Non-Authoritative / Excluded from Core Runtime Guarantees)
+
+- `misc/micronaut/` — Prototype artifact bundle (`*.s7`, `*.trace`, `*.proof`, `semantics.xjson`) retained for reference only. **Non-authoritative** and **excluded from core runtime guarantees**.
+
 ## Next TODO (Logical Follow-Ups)
 
 - [ ] Add these reference scripts to CI (`node scripts/reference/validate_phase_gating.mjs` and `node scripts/reference/validate_compression_invariants.mjs`) to enforce gating/compression checks on every PR.
