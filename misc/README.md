@@ -17,3 +17,9 @@ The module can be considered for promotion out of `misc/experimental/` only afte
 3. **Docs + operator contract:** Has clear CLI docs, I/O schemas, and failure-mode behavior documented in root docs.
 4. **Runtime integration proof:** Demonstrates a validated, deterministic handoff with `runtime/` or `src/` and records artifacts in CI.
 5. **Ownership + maintenance:** Declares maintainers and a support policy (versioning, deprecation, and compatibility guarantees).
+
+## `micronaut/`
+
+**Status:** Prototype reference bundle (non-authoritative, excluded from core runtime guarantees).
+
+This module has been relocated to `misc/micronaut/` and is preserved for artifact inspection only. See `misc/micronaut/README.md` for format and runtime-consumption notes.
