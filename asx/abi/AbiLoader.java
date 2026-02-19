@@ -36,6 +36,12 @@ public final class AbiLoader {
     return new AbiLoader(h, tokObj, grObj);
   }
 
+
+
+  public static AbiLoader fromObjects(String abiHashHex, Object tokenizerAbi, Object grammarAbi) {
+    return new AbiLoader(abiHashHex, tokenizerAbi, grammarAbi);
+  }
+
   public interface JsonAdapter {
     Object parse(String s) throws Exception;
 
