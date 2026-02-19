@@ -27,6 +27,11 @@
 - ✅ Worked examples (safety policy, deterministic planning, UI projection): `docs/WORKED_EXAMPLES.md`
 - ✅ Verification and hash-sealing workflow: `docs/VERIFICATION_AND_HASH_SEALING.md`
 
+## Experimental Module Status
+
+- `kuhul_poc/` has been reclassified as experimental and moved to `misc/experimental/kuhul_poc/`.
+- It is **not** part of the production MX2LM runtime path until graduation criteria in `misc/README.md` are met.
+
 ## Next TODO (Logical Follow-Ups)
 
 - [ ] Add these reference scripts to CI (`node scripts/reference/validate_phase_gating.mjs` and `node scripts/reference/validate_compression_invariants.mjs`) to enforce gating/compression checks on every PR.
