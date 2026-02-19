@@ -27,6 +27,16 @@
 - ✅ Worked examples (safety policy, deterministic planning, UI projection): `docs/WORKED_EXAMPLES.md`
 - ✅ Verification and hash-sealing workflow: `docs/VERIFICATION_AND_HASH_SEALING.md`
 
+## Next TODO (Logical Follow-Ups)
+
+- [ ] Add these reference scripts to CI (`node scripts/reference/validate_phase_gating.mjs` and `node scripts/reference/validate_compression_invariants.mjs`) to enforce gating/compression checks on every PR.
+- [ ] Add golden input/output fixtures for the three worked domains so examples become executable regression tests.
+- [ ] Add a `docs/INDEX.md` that maps quick-start, glossary, worked examples, KQL, and verification docs for easier onboarding.
+- [ ] Extend verification docs with an end-to-end trace archive example (emit → seal → persist → inspect → replay).
+- [ ] Add schema references for each phase gate (`@Pop`, `@Wo`, `@Sek`, `@Collapse`) with direct links to corresponding enforcement points in runtime code.
+- [ ] Add a short troubleshooting section for common invariant failures (proof mismatch, structural_illegal, seal mismatch) and recommended remediation steps.
+
+
 ## Capabilities and Application Domains
 
 MX2LM is a **deterministic, compression-first cognitive runtime** with clearly bounded semantics. It is designed to support **symbolic cognition**, **auditable execution**, and **replayable reasoning** across multiple domains. Below is a detailed, domain-by-domain overview of what the system is capable of today based on the specification content in this repository.
