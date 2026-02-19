@@ -17,14 +17,15 @@
 4. **K’UHUL Query Language (KQL) bridge** — KQL is described as the structured query bridge between control flow and inference data. ✅
 5. **Atomic runtime model definition** — The system describes cognition as many tiny deterministic runtimes instead of monolithic weights. ✅
 
-## TODO List
+## Quick-Start and Reference Additions
 
-- [ ] Add a quick-start diagram showing the end-to-end symbolic flow (ASX-R → SCXQ2 → KQL → π → projection).
-- [ ] Provide minimal runnable reference scripts that validate phase gating and compression invariants.
-- [ ] Publish a canonical glossary for glyphs, atoms, and phase gates with cross-links to specs.
-- [ ] Add worked examples for at least three domains (e.g., safety policy enforcement, deterministic planning, UI projection).
-- [ ] Document verification tooling and hash-sealing workflows for runtime traces.
-- [ ] Consolidate duplicate KQL references into a single authoritative section with links.
+- ✅ End-to-end symbolic flow diagram: `docs/QUICKSTART_SYMBOLIC_FLOW.md`
+- ✅ Runnable validation scripts:
+  - `scripts/reference/validate_phase_gating.mjs`
+  - `scripts/reference/validate_compression_invariants.mjs`
+- ✅ Canonical glossary (glyphs, atoms, phase gates): `docs/CANONICAL_GLOSSARY.md`
+- ✅ Worked examples (safety policy, deterministic planning, UI projection): `docs/WORKED_EXAMPLES.md`
+- ✅ Verification and hash-sealing workflow: `docs/VERIFICATION_AND_HASH_SEALING.md`
 
 ## Capabilities and Application Domains
 
@@ -126,11 +127,6 @@ For the canonical ASX specification and language family overview, see:
 
 MX2LM is intentionally **narrower** than ASX.
 
-## K'UHUL Query Language (KQL)
-
-The formal KQL v1.0 specification lives in `docs/kuhul_query_language_spec_v1.md`, covering glyph grammar, AST definitions, semantics, compression rules, and worked examples for implementation reference.
-
-
 MX2LM is therefore:
 
 * **not** a chat system
@@ -138,9 +134,15 @@ MX2LM is therefore:
 * **not** a UI framework
 * **not** an implementation repo
 
-## K'UHUL Query Language (KQL)
+## K'UHUL Query Language (KQL) — Authoritative Reference
 
-KQL is the bridge between Kuhul control flow and inference data. A complete TypeScript implementation (lexer, parser, executor, compressor) is available in `runtime/kql.ts`, with IndexedDB integration for tensors, RLHF, events, and vocab payloads. For usage and storage details, see `docs/KQL.md`.
+KQL is the bridge between Kuhul control flow and inference data.
+
+- **Formal language spec (authoritative):** `docs/kuhul_query_language_spec_v1.md`
+- **Implementation/runtime guide:** `docs/KQL.md`
+- **Reference implementation:** `runtime/kql.ts`
+
+This section is the canonical KQL entry point for this repository; other documents should link here.
 
 
 ---
