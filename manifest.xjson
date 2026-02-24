@@ -1,0 +1,21 @@
+{
+  "@context": "asx://trinity/manifest/v1",
+  "@type": "Application",
+  "@identity": {
+    "@name": "mx2lm-trinity-shell",
+    "@version": "1.0.0"
+  },
+  "@runtime": {
+    "@kernel": "kuhul://v1",
+    "@shell": "powershell://v7"
+  },
+  "@schema": {
+    "api": {
+      "@routes": {
+        "GET /health": {
+          "@handler": "kuhul://handlers/health"
+        }
+      }
+    }
+  }
+}

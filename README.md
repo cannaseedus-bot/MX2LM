@@ -62,3 +62,14 @@ flowchart TD
     Experts --> Action
     Action --> Output
 ```
+
+
+## Trinity architecture clarified
+
+We now explicitly model the sovereignty stack as:
+
+- **K'UHUL** = compute kernel (math, memory, tensor maps, XJSON execution)
+- **PowerShell** = orchestration shell (`TrinityShell.psm1`, `trinity.ps1`)
+- **XJSON** = law/contract manifests (`manifest.xjson`, `moe-manifest.xjson`)
+
+This design keeps the baseline runtime dependency-light and avoids requiring numpy/pytorch for core kernel capabilities.
