@@ -1,0 +1,162 @@
+{
+  "@context": "asx://mx2lm/moe/omega/v1",
+  "@version": "Ω.1.0.0",
+  "@law": "MIXTURE_OF_TRINITY_EXPERTS",
+  "@identity": {
+    "@name": "MX2LM-MOE",
+    "@description": "Mixture of Experts where each expert is a complete Trinity stack",
+    "@architecture": "Router → Expert Selection → Trinity Execution → Synthesis"
+  },
+  "@router": {
+    "@type": "semantic_gatekeeper",
+    "@function": "Analyze input, determine intent, select experts, synthesize outputs",
+    "@intent_categories": [
+      "code_generation",
+      "code_review",
+      "reasoning_logic",
+      "planning_strategy",
+      "policy_governance",
+      "clarification_needed",
+      "meta_reflection",
+      "multi_domain"
+    ],
+    "@routing_strategy": {
+      "@single_expert": "When intent is clear and singular",
+      "@multi_expert": "When task requires multiple domains",
+      "@cascade": "When one expert's output feeds another",
+      "@ensemble": "When consensus is needed"
+    }
+  },
+  "@experts": {
+    "CODE": {
+      "@id": "expert.code",
+      "@domain": "Agentic Semantic Coding",
+      "@trinity": {
+        "@kuhul": "Code generation, AST manipulation, compilation",
+        "@powershell": "File I/O, execution, testing, deployment",
+        "@xjson": "Code contracts, type schemas, API definitions"
+      },
+      "@triggers": ["write code", "implement", "build", "create function", "fix bug", "refactor", "optimize", "generate"],
+      "@weights": {
+        "@syntax_precision": 0.95,
+        "@semantic_understanding": 0.90,
+        "@pattern_recognition": 0.92,
+        "@error_anticipation": 0.88
+      },
+      "@clarifying_questions": [
+        "What language/framework are you targeting?",
+        "Should this integrate with existing code?",
+        "What are the performance requirements?",
+        "Are there specific patterns you want me to follow?"
+      ]
+    },
+    "REASON": {
+      "@id": "expert.reason",
+      "@domain": "Logical Reasoning & Problem Solving",
+      "@trinity": {
+        "@kuhul": "Logic operations, proof verification, constraint solving",
+        "@powershell": "Data gathering, evidence collection, output formatting",
+        "@xjson": "Argument schemas, proof structures, validity rules"
+      },
+      "@triggers": ["why", "how does", "explain", "analyze", "compare", "what if", "prove", "deduce", "infer"],
+      "@weights": {
+        "@logical_consistency": 0.96,
+        "@causal_reasoning": 0.93,
+        "@abstraction": 0.91,
+        "@counterexample_generation": 0.89,
+        "@semantic_understanding": 0.9
+      },
+      "@clarifying_questions": [
+        "What assumptions should I work with?",
+        "Are you looking for a formal proof or intuitive explanation?",
+        "What level of detail do you need?",
+        "Should I consider edge cases?"
+      ]
+    },
+    "POLICY": {
+      "@id": "expert.policy",
+      "@domain": "Meta/Policy Planning & Governance",
+      "@trinity": {
+        "@kuhul": "Rule evaluation, constraint checking, policy execution",
+        "@powershell": "Policy deployment, monitoring, enforcement",
+        "@xjson": "Policy definitions, governance rules, compliance schemas"
+      },
+      "@triggers": ["should", "policy", "rule", "govern", "comply", "standard", "best practice", "guideline", "strategy"],
+      "@weights": {
+        "@rule_consistency": 0.94,
+        "@ethical_reasoning": 0.92,
+        "@risk_assessment": 0.90,
+        "@stakeholder_consideration": 0.88,
+        "@semantic_understanding": 0.9
+      },
+      "@clarifying_questions": [
+        "What are the constraints or boundaries?",
+        "Who are the stakeholders affected?",
+        "What's the risk tolerance?",
+        "Are there existing policies this should align with?"
+      ]
+    },
+    "CLARIFY": {
+      "@id": "expert.clarify",
+      "@domain": "Contextual Clarification & Intent Discovery",
+      "@trinity": {
+        "@kuhul": "Semantic parsing, ambiguity detection, intent scoring",
+        "@powershell": "Context gathering, history analysis, user profiling",
+        "@xjson": "Question schemas, clarification trees, intent maps"
+      },
+      "@triggers": ["@always_first_pass", "ambiguous_input", "missing_context", "multiple_interpretations"],
+      "@weights": {
+        "@ambiguity_detection": 0.97,
+        "@intent_inference": 0.94,
+        "@context_synthesis": 0.93,
+        "@question_relevance": 0.95,
+        "@semantic_understanding": 0.94
+      },
+      "@question_types": {
+        "WHAT": "Clarify the object/target of the request",
+        "WHY": "Understand the underlying goal/motivation",
+        "HOW": "Determine approach preferences",
+        "WHO": "Identify stakeholders/audience",
+        "WHEN": "Establish timeline/urgency",
+        "WHERE": "Determine scope/context boundaries"
+      },
+      "@clarifying_questions": [
+        "What are you trying to accomplish?",
+        "Can you provide a concrete example?",
+        "What should the final output look like?"
+      ]
+    },
+    "META": {
+      "@id": "expert.meta",
+      "@domain": "Self-Reflection & System Optimization",
+      "@trinity": {
+        "@kuhul": "Performance metrics, weight adjustment, routing optimization",
+        "@powershell": "Logging, monitoring, self-modification",
+        "@xjson": "Meta-schemas, reflection contracts, improvement rules"
+      },
+      "@triggers": ["improve", "reflect", "meta", "system", "optimize", "how are you", "what are you", "your capabilities"],
+      "@weights": {
+        "@self_awareness": 0.91,
+        "@improvement_identification": 0.89,
+        "@capability_assessment": 0.92,
+        "@limitation_acknowledgment": 0.94,
+        "@semantic_understanding": 0.9
+      },
+      "@clarifying_questions": [
+        "What aspect of the system should I focus on?",
+        "Are you asking about my capabilities or limitations?",
+        "Should I explain my reasoning process?",
+        "Do you want me to suggest improvements?"
+      ]
+    }
+  },
+  "@synthesis": {
+    "@strategy": "Combine expert outputs into coherent response",
+    "@methods": {
+      "@weighted_merge": "Combine based on confidence scores",
+      "@sequential": "Chain expert outputs",
+      "@consensus": "Find agreement across experts",
+      "@dominant": "Use highest-confidence expert"
+    }
+  }
+}
